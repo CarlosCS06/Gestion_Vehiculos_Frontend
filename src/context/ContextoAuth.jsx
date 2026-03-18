@@ -1,0 +1,75 @@
+import { createContext, useContext, useState, useEffect } from 'react';
+import { iniciarSesion, verificarDniConductor, registrarConductor } from '../services/servicioAuth.js';
+
+const ContextoAuth = createContext(null);
+
+export const useAuth = () => {
+  const contexto = useContext(ContextoAuth);
+  if (!contexto) {
+    throw new Error('useAuth debe usarse dentro de un ProveedorAuth');
+  }
+  return contexto;
+};
+
+export const ProveedorAuth = ({ children }) => {
+  const [usuario, setUsuario] = useState(null);
+  const [cargando, setCargando] = useState(true);
+
+  // Recuperar sesión del localStorage al cargar
+  useEffect(() => {
+    const usuarioGuardado = localStorage.getItem('usuario_sesion');
+    if (usuarioGuardado) {
+      try {
+        setUsuario(JSON.parse(usuarioGuardado));
+      } catch {
+        localStorage.removeItem('usuario_sesion');
+      }
+    }
+    setCargando(false);
+  }, []);
+
+  const login = async (dni, contrasena) => {
+    const usuarioAuth = await iniciarSesion(dni, contrasena);
+    setUsuario(usuarioAuth);
+    localStorage.setItem('usuario_sesion', JSON.stringify(usuarioAuth));
+    return usuarioAuth;
+  };
+
+  const logout = () => {
+    setUsuario(null);
+    localStorage.removeItem('usuario_sesion');
+  };
+
+  const verificarDni = async (dni) => {
+    return await verificarDniConductor(dni);
+  };
+
+  const registro = async (dni, contrasena, email) => {
+    const nuevoUsuario = await registrarConductor(dni, contrasena, email);
+    setUsuario(nuevoUsuario);
+    localStorage.setItem('usuario_sesion', JSON.stringify(nuevoUsuario));
+    return nuevoUsuario;
+  };
+
+  const estaAutenticado = !!usuario;
+  const esAdmin = usuario?.rol === 'admin';
+
+  const valor = {
+    usuario,
+    cargando,
+    estaAutenticado,
+    esAdmin,
+    login,
+    logout,
+    verificarDni,
+    registro,
+  };
+
+  return (
+    <ContextoAuth.Provider value={valor}>
+      {children}
+    </ContextoAuth.Provider>
+  );
+};
+
+export default ContextoAuth;
