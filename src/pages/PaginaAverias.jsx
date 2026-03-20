@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+﻿import { useState, useEffect, useCallback } from 'react';
 import {
   makeStyles,
   tokens,
@@ -28,6 +28,7 @@ import {
   Toolbar,
   ToolbarButton,
   Badge,
+  Checkbox,
 } from '@fluentui/react-components';
 import {
   Add24Regular,
@@ -83,8 +84,11 @@ const columnas = [
   { nombre: 'ID', campo: 'id' },
   { nombre: 'Descripción', campo: 'descripcion' },
   { nombre: 'Vehículos afectados', campo: 'vehiculosAveriados' },
-  { nombre: 'Fecha reparación', campo: 'fechaReparacion' },
+  { nombre: 'Fecha avería', campo: 'fechaAveria' },
+  { nombre: 'Fecha comienzo reparación', campo: 'fechaComienzoReparacion' },
+  { nombre: 'Fecha fin reparación', campo: 'fechaFinReparacion' },
   { nombre: 'Lugar reparación', campo: 'lugarReparacion' },
+  { nombre: 'Coste reparación', campo: 'costeReparacion' },
   { nombre: 'Estado', campo: 'estado' },
   { nombre: 'Acciones', campo: 'acciones' },
 ];
@@ -225,16 +229,35 @@ const PaginaAverias = () => {
                   ))}
                 </TableCell>
                 <TableCell>
-                  {averia.fechaReparacion
-                    ? new Date(averia.fechaReparacion).toLocaleDateString('es-ES')
-                    : <Badge appearance="filled" color="danger">Sin reparar</Badge>
+                  {averia.fechaAveria
+                    ? new Date(averia.fechaAveria).toLocaleDateString('es-ES')
+                    : '—'
                   }
                 </TableCell>
-                <TableCell>{averia.lugarReparacion || 'â€”'}</TableCell>
                 <TableCell>
-                  <Badge appearance="filled" color={averia.fechaReparacion ? 'success' : 'danger'}>
-                    {averia.fechaReparacion ? 'Reparada' : 'Pendiente'}
-                  </Badge>
+                  {averia.fechaComienzoReparacion
+                    ? new Date(averia.fechaComienzoReparacion).toLocaleDateString('es-ES')
+                    : '—'
+                  }
+                </TableCell>
+                <TableCell>
+                  {averia.fechaFinReparacion
+                    ? new Date(averia.fechaFinReparacion).toLocaleDateString('es-ES')
+                    : (averia.enReparacion ? <Badge appearance="outline" color="warning">En taller</Badge> : '—')
+                  }
+                </TableCell>
+                <TableCell>{averia.lugarReparacion || '—'}</TableCell>
+                <TableCell>
+                  {averia.costeReparacion ? `${averia.costeReparacion} €` : '—'}
+                </TableCell>
+                <TableCell>
+                  {averia.fechaFinReparacion ? (
+                    <Badge appearance="filled" color="success">Reparado</Badge>
+                  ) : averia.enReparacion ? (
+                    <Badge appearance="filled" color="warning">En reparación</Badge>
+                  ) : (
+                    <Badge appearance="filled" color="danger">Sin reparar</Badge>
+                  )}
                 </TableCell>
                 <TableCell>
                   {esAdmin && (
@@ -274,13 +297,29 @@ const PaginaAverias = () => {
                   <Input value={vehiculosTexto} onChange={(_, d) => setVehiculosTexto(d.value)} placeholder="1234-ABC, 5678-DEF" />
                 </Field>
                 <div className={estilos.filaFormulario}>
-                  <Field label="Fecha reparación">
-                    <Input type="date" value={averiaActual.fechaReparacion} onChange={(_, d) => manejarCambio('fechaReparacion', d.value)} />
+                  <Field label="Fecha avería">
+                    <Input type="date" value={averiaActual.fechaAveria} onChange={(_, d) => manejarCambio('fechaAveria', d.value)} />
+                  </Field>
+                  <Field label="Fecha comienzo reparación">
+                    <Input type="date" value={averiaActual.fechaComienzoReparacion} onChange={(_, d) => manejarCambio('fechaComienzoReparacion', d.value)} />
+                  </Field>
+                  <Field label="Fecha fin reparación">
+                    <Input type="date" value={averiaActual.fechaFinReparacion} onChange={(_, d) => manejarCambio('fechaFinReparacion', d.value)} />
                   </Field>
                   <Field label="Lugar reparación">
                     <Input value={averiaActual.lugarReparacion} onChange={(_, d) => manejarCambio('lugarReparacion', d.value)} placeholder="Taller Central" />
                   </Field>
+                  <Field label="Coste reparación">
+                    <Input value={averiaActual.costeReparacion} onChange={(_, d) => manejarCambio('costeReparacion', d.value)} placeholder="1000" />
+                  </Field>
                 </div>
+                <Field>
+                  <Checkbox
+                    label="¿Está actualmente en reparación?"
+                    checked={averiaActual.enReparacion}
+                    onChange={(_, d) => manejarCambio('enReparacion', !!d.checked)}
+                  />
+                </Field>
               </div>
             </DialogContent>
             <DialogActions>

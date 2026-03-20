@@ -13,7 +13,7 @@ import {
 } from '@fluentui/react-components';
 import {
   VehicleCar24Regular,
-  Map24Regular,
+  VehicleBus24Regular,
   Wrench24Regular,
   Person24Regular,
   Warning24Regular,
@@ -70,7 +70,7 @@ const useEstilos = makeStyles({
 
 const pestanas = [
   { valor: '/vehiculos', etiqueta: 'Vehículos', icono: <VehicleCar24Regular /> },
-  { valor: '/trayectos', etiqueta: 'Trayectos', icono: <Map24Regular /> },
+  { valor: '/viajes', etiqueta: 'Viajes', icono: <VehicleBus24Regular /> },
   { valor: '/revisiones', etiqueta: 'Revisiones', icono: <Wrench24Regular /> },
   { valor: '/conductores', etiqueta: 'Conductores', icono: <Person24Regular /> },
   { valor: '/averias', etiqueta: 'Averías', icono: <Warning24Regular /> },

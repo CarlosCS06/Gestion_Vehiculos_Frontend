@@ -30,6 +30,7 @@ import {
   MessageBar,
   MessageBarBody,
   MessageBarTitle,
+  Badge,
 } from '@fluentui/react-components';
 import {
   Add24Regular,
@@ -112,6 +113,85 @@ const useEstilos = makeStyles({
   valorResumen: {
     fontSize: tokens.fontSizeHero700,
     fontWeight: tokens.fontWeightBold,
+  },
+  listaTarjetas: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: tokens.spacingVerticalM,
+  },
+  tarjetaVehiculo: {
+    display: 'flex',
+    flexDirection: 'row',
+    alignItems: 'stretch',
+    padding: '0',
+    overflow: 'hidden',
+    transition: 'transform 0.2s ease, box-shadow 0.2s ease',
+    ':hover': {
+      transform: 'translateY(-2px)',
+      boxShadow: tokens.shadow8,
+    },
+  },
+  contenedorImagen: {
+    width: '200px',
+    minWidth: '200px',
+    backgroundColor: tokens.colorNeutralBackground3,
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRight: `1px solid ${tokens.colorNeutralStroke1}`,
+  },
+  imagenVehiculo: {
+    width: '100%',
+    height: '100%',
+    objectFit: 'cover',
+  },
+  iconoPlaceholder: {
+    fontSize: '60px',
+    color: tokens.colorNeutralForeground4,
+  },
+  contenidoTarjeta: {
+    display: 'flex',
+    flexDirection: 'column',
+    flexGrow: 1,
+    padding: tokens.spacingHorizontalL,
+    gap: tokens.spacingVerticalS,
+  },
+  cabeceraTarjeta: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+  },
+  infoPrincipal: {
+    display: 'flex',
+    flexDirection: 'column',
+  },
+  gridDetalles: {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))',
+    gap: tokens.spacingHorizontalM,
+    paddingTop: tokens.spacingVerticalS,
+    borderTop: `1px solid ${tokens.colorNeutralStroke2}`,
+    marginTop: tokens.spacingVerticalS,
+  },
+  datoEtiqueta: {
+    fontSize: tokens.fontSizeBase200,
+    color: tokens.colorNeutralForeground3,
+    marginBottom: '2px',
+  },
+  datoValor: {
+    fontSize: tokens.fontSizeBase400,
+    fontWeight: tokens.fontWeightSemibold,
+  },
+  accionesTarjeta: {
+    display: 'flex',
+    gap: tokens.spacingHorizontalS,
+  },
+  botonBorrar: {
+    color: tokens.colorPaletteRedForeground1,
+    ':hover': {
+      color: tokens.colorPaletteRedForeground1,
+      backgroundColor: tokens.colorPaletteRedBackground2,
+    },
   },
 });
 
@@ -280,67 +360,126 @@ const PaginaVehiculos = () => {
         </MessageBar>
       )}
 
-      {/* Tabla */}
-      <Card className={estilos.tarjetaTabla}>
-        <Table className={estilos.tabla}>
-          <TableHeader>
-            <TableRow>
-              {columnas.map((col) => (
-                <TableHeaderCell key={col.campo}>
-                  <strong>{col.nombre}</strong>
-                </TableHeaderCell>
-              ))}
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {vehiculosFiltrados.map((vehiculo) => (
-              <TableRow
-                key={vehiculo.matricula}
-                className={estilos.filaClickable}
-              >
-                <TableCell><strong>{vehiculo.matricula}</strong></TableCell>
-                <TableCell>{vehiculo.marca}</TableCell>
-                <TableCell>{vehiculo.modelo}</TableCell>
-                <TableCell>{vehiculo.tipo}</TableCell>
-                <TableCell>{vehiculo.kmTotales.toLocaleString('es-ES')} km</TableCell>
-                <TableCell>{vehiculo.alimentacion}</TableCell>
-                <TableCell><BadgeEstado estado={vehiculo.estado} /></TableCell>
-                <TableCell>
+      {/* Lista de Vehículos (Tarjetas) */}
+      <div className={estilos.listaTarjetas}>
+        {vehiculosFiltrados.map((vehiculo) => (
+          <Card
+            key={vehiculo.matricula}
+            className={estilos.tarjetaVehiculo}
+          >
+            <div className={estilos.contenedorImagen}>
+              {vehiculo.foto ? (
+                <img
+                  src={vehiculo.foto}
+                  alt={vehiculo.modelo}
+                  className={estilos.imagenVehiculo}
+                />
+              ) : (
+                <VehicleCar24Regular className={estilos.iconoPlaceholder} />
+              )}
+            </div>
+
+            <div className={estilos.contenidoTarjeta}>
+              <div className={estilos.cabeceraTarjeta}>
+                <div className={estilos.infoPrincipal}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <Text size={500} weight="bold">
+                      {vehiculo.marca} {vehiculo.modelo}
+                    </Text>
+                    {vehiculo.nuevo && (
+                      <Badge size="small" appearance="outline" style={{ color: tokens.colorPaletteGreenForeground1, borderColor: tokens.colorPaletteGreenForeground1 }}>
+                        NUEVO
+                      </Badge>
+                    )}
+                  </div>
+                  <Text size={300} style={{ color: tokens.colorBrandForeground1, fontWeight: 'bold' }}>
+                    {vehiculo.matricula}
+                  </Text>
+                </div>
+                <div className={estilos.accionesTarjeta}>
+                  <BadgeEstado estado={vehiculo.estado} />
                   {esAdmin && (
                     <>
-                      <Tooltip content="Editar" relationship="label">
+                      <Tooltip content="Editar vehículo" relationship="label">
                         <Button
                           icon={<Edit24Regular />}
                           appearance="subtle"
                           size="small"
                           onClick={(e) => { e.stopPropagation(); abrirDialogoEditar(vehiculo); }}
-                        />
+                        >
+                          Editar
+                        </Button>
                       </Tooltip>
-                      <Tooltip content="Eliminar" relationship="label">
+                      <Tooltip content="Borrar vehículo" relationship="label">
                         <Button
                           icon={<Delete24Regular />}
                           appearance="subtle"
                           size="small"
+                          className={estilos.botonBorrar}
                           onClick={(e) => { e.stopPropagation(); confirmarEliminar(vehiculo.matricula); }}
-                        />
+                        >
+                          Borrar
+                        </Button>
                       </Tooltip>
                     </>
                   )}
-                </TableCell>
-              </TableRow>
-            ))}
-            {vehiculosFiltrados.length === 0 && (
-              <TableRow>
-                <TableCell colSpan={columnas.length} style={{ textAlign: 'center', padding: '40px' }}>
-                  <Text size={300} style={{ color: tokens.colorNeutralForeground3 }}>
-                    {soloAveriados ? 'No hay vehículos averiados' : 'No hay vehículos registrados'}
-                  </Text>
-                </TableCell>
-              </TableRow>
-            )}
-          </TableBody>
-        </Table>
-      </Card>
+                </div>
+              </div>
+
+              <div className={estilos.gridDetalles}>
+                <div>
+                  <div className={estilos.datoEtiqueta}>Tipo</div>
+                  <div className={estilos.datoValor}>{vehiculo.tipo}</div>
+                </div>
+                <div>
+                  <div className={estilos.datoEtiqueta}>Kilometraje</div>
+                  <div className={estilos.datoValor}>{vehiculo.kmTotales.toLocaleString('es-ES')} km</div>
+                </div>
+                <div>
+                  <div className={estilos.datoEtiqueta}>Alimentación</div>
+                  <div className={estilos.datoValor}>{vehiculo.alimentacion}</div>
+                </div>
+                <div>
+                  <div className={estilos.datoEtiqueta}>Antigüedad</div>
+                  <div className={estilos.datoValor}>{vehiculo.aniosAntiguedad} años</div>
+                </div>
+                <div>
+                  <div className={estilos.datoEtiqueta}>Precio compra</div>
+                  <div className={estilos.datoValor}>
+                    {vehiculo.precioCompra.toLocaleString('es-ES', { style: 'currency', currency: 'EUR' })}
+                  </div>
+                </div>
+                <div>
+                  <div className={estilos.datoEtiqueta}>Fecha compra</div>
+                  <div className={estilos.datoValor}>
+                    {vehiculo.fechaCompra ? new Date(vehiculo.fechaCompra).toLocaleDateString('es-ES') : '—'}
+                  </div>
+                </div>
+                <div>
+                  <div className={estilos.datoEtiqueta}>Gasto/km</div>
+                  <div className={estilos.datoValor}>
+                    {vehiculo.gastoPorKm.toLocaleString('es-ES', { style: 'currency', currency: 'EUR', minimumFractionDigits: 2 })}
+                  </div>
+                </div>
+                <div>
+                  <div className={estilos.datoEtiqueta}>Viajes/Averías</div>
+                  <div className={estilos.datoValor}>
+                    {vehiculo.trayectos.length} Tr / {vehiculo.averias.length} Av / {vehiculo.revisiones.length} Rev
+                  </div>
+                </div>
+              </div>
+            </div>
+          </Card>
+        ))}
+
+        {vehiculosFiltrados.length === 0 && (
+          <Card style={{ padding: '40px', textAlign: 'center' }}>
+            <Text size={400} style={{ color: tokens.colorNeutralForeground3 }}>
+              {soloAveriados ? 'No hay vehículos averiados' : 'No hay vehículos registrados'}
+            </Text>
+          </Card>
+        )}
+      </div>
 
       {/* Diálogo crear/editar */}
       <Dialog open={dialogoAbierto} onOpenChange={(_, datos) => { if (!datos.open) setDialogoAbierto(false); }}>
@@ -446,6 +585,21 @@ const PaginaVehiculos = () => {
                     value={String(vehiculoActual.aniosAntiguedad)}
                     onChange={(_, d) => manejarCambio('aniosAntiguedad', Number(d.value))}
                   />
+                </Field>
+                <Field label="Foto">
+                  <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+                    <Input
+                      value={vehiculoActual.foto}
+                      onChange={(_, d) => manejarCambio('foto', d.value)}
+                      placeholder="/ToyotaHilux.jpg"
+                      style={{ flexGrow: 1 }}
+                    />
+                    {vehiculoActual.foto && (
+                      <div style={{ width: '48px', height: '48px', overflow: 'hidden', borderRadius: '4px', border: `1px solid ${tokens.colorNeutralStroke1}` }}>
+                        <img src={vehiculoActual.foto} style={{ width: '100%', height: '100%', objectFit: 'cover' }} alt="Preview" />
+                      </div>
+                    )}
+                  </div>
                 </Field>
               </div>
             </DialogContent>

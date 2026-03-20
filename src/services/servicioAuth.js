@@ -25,6 +25,26 @@ let usuarios = [
     email: 'carlos@empresa.com',
     rol: ROL_USUARIO.CONDUCTOR,
   },
+  {
+    dni: '87654321B',
+    nombre: 'María',
+    apellido: 'Fernández Ruiz',
+    telefono: '698765432',
+    direccion: 'Avenida del Sol 5, Barcelona',
+    contrasena: 'maria123',
+    email: 'maria@empresa.com',
+    rol: ROL_USUARIO.CONDUCTOR,
+  },
+  {
+    dni: '11223344C',
+    nombre: 'Pedro',
+    apellido: 'Martínez Sánchez',
+    telefono: '655112233',
+    direccion: 'Plaza España 3, Valencia',
+    contrasena: 'pedro123',
+    email: 'pedro@empresa.com',
+    rol: ROL_USUARIO.CONDUCTOR,
+  },
 ];
 
 const simularRetardo = () => new Promise((res) => setTimeout(res, 300));

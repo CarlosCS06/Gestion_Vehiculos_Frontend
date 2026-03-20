@@ -123,7 +123,7 @@ const PaginaLogin = () => {
             <Input
               value={dni}
               onChange={(_, d) => setDni(d.value)}
-              placeholder="00000000Z"
+              placeholder="Tu DNI"
               contentBefore={<Person24Regular />}
               size="large"
             />

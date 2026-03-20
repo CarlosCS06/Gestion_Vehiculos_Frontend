@@ -1,4 +1,4 @@
-﻿import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import {
   makeStyles,
   tokens,
@@ -27,6 +27,7 @@ import {
   Text,
   Toolbar,
   ToolbarButton,
+  Avatar,
 } from '@fluentui/react-components';
 import {
   Add24Regular,
@@ -80,10 +81,12 @@ const useEstilos = makeStyles({
 
 const columnas = [
   { nombre: 'DNI', campo: 'dni' },
+  { nombre: 'Foto', campo: 'foto' },
   { nombre: 'Nombre', campo: 'nombre' },
   { nombre: 'Apellidos', campo: 'apellidos' },
   { nombre: 'Teléfono', campo: 'telefono' },
   { nombre: 'Dirección', campo: 'direccion' },
+  { nombre: 'Fecha de nacimiento', campo: 'fecha_nacimiento' },
   { nombre: 'Trayectos', campo: 'trayectos' },
   { nombre: 'Acciones', campo: 'acciones' },
 ];
@@ -208,10 +211,18 @@ const PaginaConductores = () => {
             {conductores.map((conductor) => (
               <TableRow key={conductor.dni}>
                 <TableCell><strong>{conductor.dni}</strong></TableCell>
+                <TableCell>
+                  <Avatar
+                    image={{ src: conductor.foto }}
+                    name={`${conductor.nombre} ${conductor.apellidos}`}
+                    size={32}
+                  />
+                </TableCell>
                 <TableCell>{conductor.nombre}</TableCell>
                 <TableCell>{conductor.apellidos}</TableCell>
                 <TableCell>{conductor.telefono}</TableCell>
                 <TableCell>{conductor.direccion}</TableCell>
+                <TableCell>{new Date(conductor.fecha_nacimiento).toLocaleDateString('es-ES')}</TableCell>
                 <TableCell>{conductor.trayectos.length}</TableCell>
                 <TableCell>
                   {esAdmin && (
@@ -247,6 +258,23 @@ const PaginaConductores = () => {
                 <Field label="DNI" required>
                   <Input value={conductorActual.dni} onChange={(_, d) => manejarCambio('dni', d.value)} disabled={editando} placeholder="12345678A" />
                 </Field>
+                <Field label="Foto">
+                  <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+                    <Input
+                      value={conductorActual.foto}
+                      onChange={(_, d) => manejarCambio('foto', d.value)}
+                      placeholder="/fotoCarlos.png"
+                      style={{ flexGrow: 1 }}
+                    />
+                    {conductorActual.foto && (
+                      <Avatar
+                        image={{ src: conductorActual.foto }}
+                        name={`${conductorActual.nombre} ${conductorActual.apellidos}`}
+                        size={48}
+                      />
+                    )}
+                  </div>
+                </Field>
                 <div className={estilos.filaFormulario}>
                   <Field label="Nombre" required>
                     <Input value={conductorActual.nombre} onChange={(_, d) => manejarCambio('nombre', d.value)} placeholder="Carlos" />
@@ -261,6 +289,9 @@ const PaginaConductores = () => {
                   </Field>
                   <Field label="Dirección">
                     <Input value={conductorActual.direccion} onChange={(_, d) => manejarCambio('direccion', d.value)} placeholder="Calle Mayor 10" />
+                  </Field>
+                  <Field label="Fecha de nacimiento">
+                    <Input value={conductorActual.fecha_nacimiento} onChange={(_, d) => manejarCambio('fecha_nacimiento', d.value)} placeholder="2000-01-01" />
                   </Field>
                 </div>
               </div>

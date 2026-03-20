@@ -5,19 +5,38 @@ let averias = [
     id: 'A001',
     descripcion: 'Fallo en el sistema de frenos',
     vehiculosAveriados: ['5678-DEF'],
-    fechaReparacion: '',
-    lugarReparacion: '',
+    fechaAveria: '2026-02-19',
+    fechaComienzoReparacion: '2026-02-20',
+    fechaFinReparacion: '2026-02-20',
+    lugarReparacion: 'Taller Hermanos Ruiz, Sevilla',
+    enReparacion: false,
+    costeReparacion: '1000',
   },
   {
     id: 'A002',
     descripcion: 'Motor recalentado, necesita revisión completa',
     vehiculosAveriados: ['7890-MNO'],
-    fechaReparacion: '',
+    fechaAveria: '2026-02-18',
+    fechaComienzoReparacion: '2026-02-20',
+    fechaFinReparacion: '',
+    lugarReparacion: 'Taller de Pedro, Madrid',
+    enReparacion: true,
+    costeReparacion: '2000',
+  },
+  {
+    id: 'A003',
+    descripcion: 'Parabrisas agrietado',
+    vehiculosAveriados: ['1234-ABC'],
+    fechaAveria: '2026-02-20',
+    fechaComienzoReparacion: '',
+    fechaFinReparacion: '',
     lugarReparacion: '',
+    enReparacion: false,
+    costeReparacion: '',
   },
 ];
 
-let contadorId = 3;
+let contadorId = 4;
 
 const simularRetardo = () => new Promise((res) => setTimeout(res, 200));
 

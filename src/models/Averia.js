@@ -7,6 +7,10 @@ export const crearAveriaVacia = () => ({
   id: '',
   descripcion: '',
   vehiculosAveriados: [],
-  fechaReparacion: '',
+  fechaAveria: '',
+  fechaComienzoReparacion: '',
+  fechaFinReparacion: '',
   lugarReparacion: '',
+  costeReparacion: '',
+  enReparacion: false,
 });

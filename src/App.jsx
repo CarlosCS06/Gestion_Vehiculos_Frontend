@@ -4,10 +4,10 @@ import RutaProtegida from './components/layout/RutaProtegida.jsx';
 import PaginaLogin from './pages/PaginaLogin.jsx';
 import PaginaRegistro from './pages/PaginaRegistro.jsx';
 import PaginaVehiculos from './pages/PaginaVehiculos.jsx';
-import PaginaTrayectos from './pages/PaginaTrayectos.jsx';
 import PaginaRevisiones from './pages/PaginaRevisiones.jsx';
 import PaginaConductores from './pages/PaginaConductores.jsx';
 import PaginaAverias from './pages/PaginaAverias.jsx';
+import PaginaViajes from './pages/PaginaViajes.jsx';
 
 function App() {
   return (
@@ -27,7 +27,7 @@ function App() {
       >
         <Route index element={<Navigate to="/vehiculos" replace />} />
         <Route path="vehiculos" element={<PaginaVehiculos />} />
-        <Route path="trayectos" element={<PaginaTrayectos />} />
+        <Route path="viajes" element={<PaginaViajes />} />
         <Route path="revisiones" element={<PaginaRevisiones />} />
         <Route path="conductores" element={<PaginaConductores />} />
         <Route path="averias" element={<PaginaAverias />} />

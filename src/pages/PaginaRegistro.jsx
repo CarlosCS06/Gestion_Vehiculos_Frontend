@@ -239,6 +239,9 @@ const PaginaRegistro = () => {
         )}
 
         <div className={estilos.enlaceLogin}>
+          <Text size={200} style={{ display: 'block', marginBottom: '8px', color: tokens.colorNeutralForeground4 }}>
+            💡 Si eres administrador, usa directamente tu DNI y contraseña en la página de inicio.
+          </Text>
           <Text size={200}>
             ¿Ya tienes cuenta?{' '}
             <Link to="/login" style={{ color: tokens.colorBrandForeground1, textDecoration: 'none', fontWeight: 600 }}>
