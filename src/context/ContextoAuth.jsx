@@ -38,7 +38,9 @@ export const ProveedorAuth = ({ children }) => {
   const logout = () => {
     setUsuario(null);
     localStorage.removeItem('usuario_sesion');
+    localStorage.removeItem('token');
   };
+
 
   const verificarDni = async (dni) => {
     return await verificarDniConductor(dni);

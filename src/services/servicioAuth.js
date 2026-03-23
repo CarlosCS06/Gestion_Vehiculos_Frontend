@@ -4,60 +4,42 @@
 import { ROL_USUARIO } from '../models/Usuario.js';
 import { obtenerConductorPorDni } from './servicioConductores.js';
 
-const USUARIOS_INICIALES = [
-  {
-    dni: '00000000Z',
-    nombre: 'Administrador',
-    apellido: 'Sistema',
-    telefono: '600000000',
-    direccion: 'Oficina Central',
-    contrasena: 'admin123',
-    email: 'admin@empresa.com',
-    rol: ROL_USUARIO.ADMIN,
-  },
-  {
-    dni: '12345678A',
-    nombre: 'Carlos',
-    apellido: 'García López',
-    telefono: '612345678',
-    direccion: 'Calle Mayor 10, Madrid',
-    contrasena: 'carlos123',
-    email: 'carlos@empresa.com',
-    rol: ROL_USUARIO.CONDUCTOR,
-  },
-  {
-    dni: '87654321B',
-    nombre: 'María',
-    apellido: 'Fernández Ruiz',
-    telefono: '698765432',
-    direccion: 'Avenida del Sol 5, Barcelona',
-    contrasena: 'maria123',
-    email: 'maria@empresa.com',
-    rol: ROL_USUARIO.CONDUCTOR,
-  },
-  {
-    dni: '11223344C',
-    nombre: 'Pedro',
-    apellido: 'Martínez Sánchez',
-    telefono: '655112233',
-    direccion: 'Plaza España 3, Valencia',
-    contrasena: 'pedro123',
-    email: 'pedro@empresa.com',
-    rol: ROL_USUARIO.CONDUCTOR,
-  },
-];
+const AUTH_API_URL = 'https://gestion-vehiculos-backend.vercel.app/api/auth';
+
+// Helper para mapear el usuario del backend al formato del frontend
+const mapearUsuario = (data) => {
+  let nombre = data.fullName || '';
+  let apellido = '';
+
+  if (data.fullName && data.fullName.includes(' ')) {
+    const parts = data.fullName.split(' ');
+    nombre = parts[0];
+    apellido = parts.slice(1).join(' ');
+  }
+
+  const rol = data.roles && data.roles.includes('admin') ? ROL_USUARIO.ADMIN : ROL_USUARIO.CONDUCTOR;
+
+  return {
+    dni: data.dni,
+    email: data.email,
+    nombre,
+    apellido,
+    rol,
+    isActive: data.isActive
+  };
+};
 
 // Cargar usuarios de localStorage o usar iniciales
-const cargarUsuarios = () => {
+/*const cargarUsuarios = () => {
   const guardados = localStorage.getItem('usuarios_mock');
   return guardados ? JSON.parse(guardados) : USUARIOS_INICIALES;
-};
+};*/
 
-let usuarios = cargarUsuarios();
+//let usuarios = cargarUsuarios();
 
-const guardarUsuarios = () => {
+/*const guardarUsuarios = () => {
   localStorage.setItem('usuarios_mock', JSON.stringify(usuarios));
-};
+};*/
 
 const simularRetardo = () => new Promise((res) => setTimeout(res, 300));
 
@@ -65,9 +47,35 @@ const simularRetardo = () => new Promise((res) => setTimeout(res, 300));
  * Iniciar sesión con DNI y contraseña
  */
 export const iniciarSesion = async (dni, contrasena) => {
+  try {
+    const response = await fetch(`${AUTH_API_URL}/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ dni, password: contrasena }),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.message || 'Error en el inicio de sesión');
+    }
+
+    const data = await response.json();
+
+    // Almacenar el token
+    if (data.token) {
+      localStorage.setItem('token', data.token);
+    }
+
+    return mapearUsuario(data);
+  } catch (error) {
+    console.error('Login error:', error);
+    throw error;
+  }
+
+  /* CÓDIGO MOCK ANTERIOR
   await simularRetardo();
   const usuario = usuarios.find((u) => u.dni === dni);
-  
+
   if (!usuario) {
     throw new Error('DNI no encontrado');
   }
@@ -82,7 +90,9 @@ export const iniciarSesion = async (dni, contrasena) => {
   // Devuelve usuario sin contraseña
   const { contrasena: _, ...usuarioSeguro } = usuario;
   return usuarioSeguro;
+  */
 };
+
 
 /**
  * Registrar un conductor: el admin previamente ha dado de alta su DNI
@@ -108,13 +118,52 @@ export const verificarDniConductor = async (dni) => {
 };
 
 export const registrarConductor = async (dni, contrasena, email) => {
+  try {
+    const conductor = await obtenerConductorPorDni(dni);
+    if (!conductor) {
+      throw new Error('Conductor no encontrado. El admin debe darle de alta primero.');
+    }
+
+    const payload = {
+      dni,
+      email,
+      telefono: conductor.telefono || '',
+      password: contrasena,
+      fullName: `${conductor.nombre} ${conductor.apellidos}`.trim()
+    };
+
+    const response = await fetch(`${AUTH_API_URL}/register`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.message || 'Error en el registro');
+    }
+
+    const data = await response.json();
+
+    // Almacenar el token si viene en el registro
+    if (data.token) {
+      localStorage.setItem('token', data.token);
+    }
+
+    return mapearUsuario(data);
+  } catch (error) {
+    console.error('Registration error:', error);
+    throw error;
+  }
+
+  /* CÓDIGO MOCK ANTERIOR
   await simularRetardo();
   const conductor = await obtenerConductorPorDni(dni);
   if (!conductor) {
     throw new Error('Conductor no encontrado');
   }
   const usuarioExistente = usuarios.find((u) => u.dni === dni);
-  
+
   const datosUsuario = {
     dni: conductor.dni,
     nombre: conductor.nombre,
@@ -139,7 +188,9 @@ export const registrarConductor = async (dni, contrasena, email) => {
     const { contrasena: _, ...usuarioSeguro } = datosUsuario;
     return usuarioSeguro;
   }
+  */
 };
+
 
 /**
  * Pre-registrar un usuario (creado por admin)
@@ -147,10 +198,10 @@ export const registrarConductor = async (dni, contrasena, email) => {
 export const preRegistrarUsuario = async (conductor) => {
   await simularRetardo();
   // Evitar duplicados
-  if (usuarios.find((u) => u.dni === conductor.dni)) {
+  if (usuarios.find((u) => u.dni === conductor.dni)) { // usar endpoint obtener usuario por dni y usar el dni del conductor
     return;
   }
-  
+
   usuarios.push({
     dni: conductor.dni,
     nombre: conductor.nombre,
