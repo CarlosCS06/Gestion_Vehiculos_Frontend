@@ -120,7 +120,7 @@ const PaginaConductores = () => {
   }, [cargarConductores]);
 
   const abrirDialogoCrear = () => {
-    setConductorActual();
+    setConductorActual(crearConductorVacio());
     setEditando(false);
     setDialogoAbierto(true);
   };
