@@ -22,6 +22,8 @@ export const TIPO_VEHICULO = {
   CAMION: 'Camión',
   MOTOCICLETA: 'Motocicleta',
   AUTOBUS: 'Autobús',
+  CICLOMOTOR: 'Ciclomotor',
+  CARAVANA: 'Caravana',
 };
 
 /**

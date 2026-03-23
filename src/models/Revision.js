@@ -5,6 +5,7 @@
  */
 export const crearRevisionVacia = () => ({
   id: '',
+  matricula: '',
   fecha: '',
   lugar: '',
   activo: false,

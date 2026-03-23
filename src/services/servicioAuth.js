@@ -4,7 +4,7 @@
 import { ROL_USUARIO } from '../models/Usuario.js';
 import { obtenerConductorPorDni } from './servicioConductores.js';
 
-let usuarios = [
+const USUARIOS_INICIALES = [
   {
     dni: '00000000Z',
     nombre: 'Administrador',
@@ -47,6 +47,18 @@ let usuarios = [
   },
 ];
 
+// Cargar usuarios de localStorage o usar iniciales
+const cargarUsuarios = () => {
+  const guardados = localStorage.getItem('usuarios_mock');
+  return guardados ? JSON.parse(guardados) : USUARIOS_INICIALES;
+};
+
+let usuarios = cargarUsuarios();
+
+const guardarUsuarios = () => {
+  localStorage.setItem('usuarios_mock', JSON.stringify(usuarios));
+};
+
 const simularRetardo = () => new Promise((res) => setTimeout(res, 300));
 
 /**
@@ -54,11 +66,18 @@ const simularRetardo = () => new Promise((res) => setTimeout(res, 300));
  */
 export const iniciarSesion = async (dni, contrasena) => {
   await simularRetardo();
-  const usuario = usuarios.find(
-    (u) => u.dni === dni && u.contrasena === contrasena
-  );
+  const usuario = usuarios.find((u) => u.dni === dni);
+  
   if (!usuario) {
-    throw new Error('DNI o contraseña incorrectos');
+    throw new Error('DNI no encontrado');
+  }
+
+  if (usuario.contrasena === '') {
+    throw new Error('NUEVO_USUARIO_SIN_PASSWORD');
+  }
+
+  if (usuario.contrasena !== contrasena) {
+    throw new Error('Contraseña incorrecta');
   }
   // Devuelve usuario sin contraseña
   const { contrasena: _, ...usuarioSeguro } = usuario;
@@ -72,9 +91,8 @@ export const iniciarSesion = async (dni, contrasena) => {
  */
 export const verificarDniConductor = async (dni) => {
   await simularRetardo();
-  // Mirar si ya está registrado como usuario
-  const yaRegistrado = usuarios.find((u) => u.dni === dni);
-  if (yaRegistrado) {
+  const usuarioExistente = usuarios.find((u) => u.dni === dni);
+  if (usuarioExistente && usuarioExistente.contrasena !== '') {
     throw new Error('Este DNI ya tiene una cuenta registrada');
   }
   // Buscar en conductores dados de alta por el admin
@@ -95,7 +113,9 @@ export const registrarConductor = async (dni, contrasena, email) => {
   if (!conductor) {
     throw new Error('Conductor no encontrado');
   }
-  const nuevoUsuario = {
+  const usuarioExistente = usuarios.find((u) => u.dni === dni);
+  
+  const datosUsuario = {
     dni: conductor.dni,
     nombre: conductor.nombre,
     apellido: conductor.apellidos,
@@ -105,9 +125,43 @@ export const registrarConductor = async (dni, contrasena, email) => {
     email,
     rol: ROL_USUARIO.CONDUCTOR,
   };
-  usuarios.push(nuevoUsuario);
-  const { contrasena: _, ...usuarioSeguro } = nuevoUsuario;
-  return usuarioSeguro;
+
+  if (usuarioExistente) {
+    // Actualizar usuario pre-registrado
+    Object.assign(usuarioExistente, datosUsuario);
+    guardarUsuarios();
+    const { contrasena: _, ...usuarioSeguro } = usuarioExistente;
+    return usuarioSeguro;
+  } else {
+    // Caso de registro directo (si no fue pre-registrado por error)
+    usuarios.push(datosUsuario);
+    guardarUsuarios();
+    const { contrasena: _, ...usuarioSeguro } = datosUsuario;
+    return usuarioSeguro;
+  }
+};
+
+/**
+ * Pre-registrar un usuario (creado por admin)
+ */
+export const preRegistrarUsuario = async (conductor) => {
+  await simularRetardo();
+  // Evitar duplicados
+  if (usuarios.find((u) => u.dni === conductor.dni)) {
+    return;
+  }
+  
+  usuarios.push({
+    dni: conductor.dni,
+    nombre: conductor.nombre,
+    apellido: conductor.apellidos,
+    telefono: conductor.telefono,
+    direccion: conductor.direccion,
+    contrasena: '', // Sin contraseña inicialmente
+    email: '',
+    rol: ROL_USUARIO.CONDUCTOR,
+  });
+  guardarUsuarios();
 };
 
 /**

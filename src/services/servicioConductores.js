@@ -1,6 +1,6 @@
 // Servicio mock de Conductores
 
-let conductores = [
+const CONDUCTORES_INICIALES = [
   {
     dni: '12345678A',
     foto: '/fotoCarlos.png',
@@ -33,6 +33,17 @@ let conductores = [
   },
 ];
 
+const cargarConductores = () => {
+  const guardados = localStorage.getItem('conductores_mock');
+  return guardados ? JSON.parse(guardados) : CONDUCTORES_INICIALES;
+};
+
+let conductores = cargarConductores();
+
+const guardarConductores = () => {
+  localStorage.setItem('conductores_mock', JSON.stringify(conductores));
+};
+
 const simularRetardo = () => new Promise((res) => setTimeout(res, 200));
 
 export const obtenerConductores = async () => {
@@ -48,6 +59,7 @@ export const obtenerConductorPorDni = async (dni) => {
 export const crearConductor = async (conductor) => {
   await simularRetardo();
   conductores.push({ ...conductor, trayectos: conductor.trayectos || [] });
+  guardarConductores();
   return { ...conductor };
 };
 
@@ -56,11 +68,13 @@ export const actualizarConductor = async (dni, datosActualizados) => {
   const indice = conductores.findIndex((c) => c.dni === dni);
   if (indice === -1) throw new Error('Conductor no encontrado');
   conductores[indice] = { ...conductores[indice], ...datosActualizados };
+  guardarConductores();
   return { ...conductores[indice] };
 };
 
 export const eliminarConductor = async (dni) => {
   await simularRetardo();
   conductores = conductores.filter((c) => c.dni !== dni);
+  guardarConductores();
   return true;
 };

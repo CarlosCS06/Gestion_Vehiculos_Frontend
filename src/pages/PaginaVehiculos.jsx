@@ -47,6 +47,7 @@ import {
   crearVehiculo,
   actualizarVehiculo,
   eliminarVehiculo,
+  obtenerPeriodicidadITV,
 } from '../services/servicioVehiculos.js';
 import {
   ESTADO_VEHICULO,
@@ -132,9 +133,10 @@ const useEstilos = makeStyles({
     },
   },
   contenedorImagen: {
-    width: '200px',
-    minWidth: '200px',
-    backgroundColor: tokens.colorNeutralBackground3,
+    width: '250px',
+    minWidth: '250px',
+    aspectRatio: '1 / 1',
+    backgroundColor: '#ffffff',
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
@@ -143,7 +145,7 @@ const useEstilos = makeStyles({
   imagenVehiculo: {
     width: '100%',
     height: '100%',
-    objectFit: 'cover',
+    objectFit: 'contain',
   },
   iconoPlaceholder: {
     fontSize: '60px',
@@ -462,9 +464,15 @@ const PaginaVehiculos = () => {
                   </div>
                 </div>
                 <div>
-                  <div className={estilos.datoEtiqueta}>Viajes/Averías</div>
+                  <div className={estilos.datoEtiqueta}>Viajes / Averías / Revisiones</div>
                   <div className={estilos.datoValor}>
                     {vehiculo.trayectos.length} Tr / {vehiculo.averias.length} Av / {vehiculo.revisiones.length} Rev
+                  </div>
+                </div>
+                <div>
+                  <div className={estilos.datoEtiqueta}>Inspección ITV</div>
+                  <div className={estilos.datoValor} style={{ color: obtenerPeriodicidadITV(vehiculo.tipo, vehiculo.aniosAntiguedad) === 'Exento' ? tokens.colorPaletteGreenForeground1 : tokens.colorBrandForeground1 }}>
+                    {obtenerPeriodicidadITV(vehiculo.tipo, vehiculo.aniosAntiguedad)}
                   </div>
                 </div>
               </div>

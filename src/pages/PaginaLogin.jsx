@@ -90,7 +90,13 @@ const PaginaLogin = () => {
       await login(dni, contrasena);
       navegar('/vehiculos');
     } catch (err) {
-      setError(err.message);
+      if (err.message === 'NUEVO_USUARIO_SIN_PASSWORD') {
+        setError('¡Bienvenido! Es la primera vez que entras. Por favor, completa tu registro para establecer tu contraseña.');
+        // Opcionalmente podemos redirigir automáticamente después de unos segundos
+        setTimeout(() => navegar('/registro'), 3000);
+      } else {
+        setError(err.message);
+      }
     }
     setCargando(false);
   };

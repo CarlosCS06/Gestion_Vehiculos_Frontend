@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, useEffect } from 'react';
-import { iniciarSesion, verificarDniConductor, registrarConductor } from '../services/servicioAuth.js';
+import { iniciarSesion, verificarDniConductor, registrarConductor, preRegistrarUsuario as preRegistrar } from '../services/servicioAuth.js';
 
 const ContextoAuth = createContext(null);
 
@@ -51,6 +51,10 @@ export const ProveedorAuth = ({ children }) => {
     return nuevoUsuario;
   };
 
+  const preRegistrarUsuario = async (conductor) => {
+    return await preRegistrar(conductor);
+  };
+
   const estaAutenticado = !!usuario;
   const esAdmin = usuario?.rol === 'admin';
 
@@ -63,6 +67,7 @@ export const ProveedorAuth = ({ children }) => {
     logout,
     verificarDni,
     registro,
+    preRegistrarUsuario,
   };
 
   return (

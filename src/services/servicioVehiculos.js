@@ -15,7 +15,7 @@ let vehiculos = [
     foto: '/ToyotaHilux.jpg?v=20260323',
     kmTotales: 45200,
     trayectos: ['T001', 'T002'],
-    revisiones: ['R001'],
+    revisiones: ['M001 (15k)', 'ITV-2024', 'M002 (30k)', 'ITV-2026', 'M003 (45k)'],
     averias: [],
     alimentacion: TIPO_ALIMENTACION.DIESEL,
     nuevo: false,
@@ -33,7 +33,7 @@ let vehiculos = [
     foto: '/FordTransit.jpg',
     kmTotales: 32100,
     trayectos: ['T003'],
-    revisiones: ['R002'],
+    revisiones: ['M004 (15k)', 'ITV-2025', 'M005 (30k)'],
     averias: ['A001'],
     alimentacion: TIPO_ALIMENTACION.DIESEL,
     nuevo: false,
@@ -51,7 +51,7 @@ let vehiculos = [
     foto: '/RenaultKangoo_ETech.jpg',
     kmTotales: 8500,
     trayectos: ['T004'],
-    revisiones: [],
+    revisiones: ['M006 (Primer año)'],
     averias: [],
     alimentacion: TIPO_ALIMENTACION.ELECTRICO,
     nuevo: true,
@@ -69,7 +69,7 @@ let vehiculos = [
     foto: '/VolkswagenCaddy.jpg',
     kmTotales: 67800,
     trayectos: [],
-    revisiones: ['R003'],
+    revisiones: ['M007 (15k)', 'ITV-2023', 'M008 (30k)', 'ITV-2025', 'M009 (45k)', 'M010 (60k)'],
     averias: [],
     alimentacion: TIPO_ALIMENTACION.GASOLINA,
     nuevo: false,
@@ -87,7 +87,7 @@ let vehiculos = [
     foto: '/MercedesSprinter.jpg',
     kmTotales: 21300,
     trayectos: ['T005'],
-    revisiones: [],
+    revisiones: ['ITV-2025', 'M011 (20k)', 'ITV-2026'],
     averias: ['A002'],
     alimentacion: TIPO_ALIMENTACION.DIESEL,
     nuevo: false,
@@ -105,7 +105,7 @@ let vehiculos = [
     foto: '/Honda_PCX_Wave_110s.jpg',
     kmTotales: 21300,
     trayectos: ['T006'],
-    revisiones: [],
+    revisiones: ['M012 (5k)', 'M013 (10k)', 'M014 (15k)', 'M015 (20k)'],
     averias: [],
     alimentacion: TIPO_ALIMENTACION.GASOLINA,
     nuevo: false,
@@ -113,6 +113,42 @@ let vehiculos = [
     estado: ESTADO_VEHICULO.DISPONIBLE,
   },
 ];
+
+/**
+ * Calcula la periodicidad de la ITV según el tipo y antigüedad
+ */
+export const obtenerPeriodicidadITV = (tipo, antiguedad) => {
+  if (tipo === TIPO_VEHICULO.TURISMO || tipo === TIPO_VEHICULO.MOTOCICLETA) {
+    if (antiguedad < 4) return 'Exento';
+    if (antiguedad < 10) return 'Cada 2 años';
+    return 'Cada año';
+  }
+
+  if (tipo === TIPO_VEHICULO.CICLOMOTOR) {
+    if (antiguedad < 3) return 'Exento';
+    return 'Cada 2 años';
+  }
+
+  if (tipo === TIPO_VEHICULO.FURGONETA) {
+    if (antiguedad < 2) return 'Exento';
+    if (antiguedad < 6) return 'Cada 2 años';
+    if (antiguedad < 10) return 'Cada año';
+    return 'Cada 6 meses';
+  }
+
+  if (tipo === TIPO_VEHICULO.CARAVANA) {
+    if (antiguedad < 6) return 'Exento';
+    return 'Cada 2 años';
+  }
+
+  // Pesados (Camión, Autobús) - Regla general similar a furgonetas maduras
+  if (tipo === TIPO_VEHICULO.CAMION || tipo === TIPO_VEHICULO.AUTOBUS) {
+    if (antiguedad < 10) return 'Cada año';
+    return 'Cada 6 meses';
+  }
+
+  return 'No definida';
+};
 
 const simularRetardo = () => new Promise((res) => setTimeout(res, 200));
 

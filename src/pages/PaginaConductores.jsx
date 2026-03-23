@@ -93,7 +93,7 @@ const columnas = [
 
 const PaginaConductores = () => {
   const estilos = useEstilos();
-  const { esAdmin } = useAuth();
+  const { esAdmin, preRegistrarUsuario } = useAuth();
 
   const [conductores, setConductores] = useState([]);
   const [cargando, setCargando] = useState(true);
@@ -137,6 +137,7 @@ const PaginaConductores = () => {
         await actualizarConductor(conductorActual.dni, conductorActual);
       } else {
         await crearConductor(conductorActual);
+        await preRegistrarUsuario(conductorActual);
       }
       setDialogoAbierto(false);
       cargarConductores();

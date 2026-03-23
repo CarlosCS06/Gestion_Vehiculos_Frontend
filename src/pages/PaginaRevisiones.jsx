@@ -29,6 +29,7 @@ import {
   Switch,
   Toolbar,
   ToolbarButton,
+  Select,
 } from '@fluentui/react-components';
 import {
   Add24Regular,
@@ -44,6 +45,7 @@ import {
   actualizarRevision,
   eliminarRevision,
 } from '../services/servicioRevisiones.js';
+import { obtenerVehiculos } from '../services/servicioVehiculos.js';
 import { crearRevisionVacia } from '../models/Revision.js';
 
 const useEstilos = makeStyles({
@@ -82,6 +84,7 @@ const useEstilos = makeStyles({
 
 const columnas = [
   { nombre: 'ID', campo: 'id' },
+  { nombre: 'Vehículo', campo: 'matricula' },
   { nombre: 'Fecha', campo: 'fecha' },
   { nombre: 'Lugar', campo: 'lugar' },
   { nombre: 'Activa', campo: 'activo' },
@@ -94,6 +97,7 @@ const PaginaRevisiones = () => {
   const { esAdmin } = useAuth();
 
   const [revisiones, setRevisiones] = useState([]);
+  const [vehiculos, setVehiculos] = useState([]);
   const [cargando, setCargando] = useState(true);
   const [dialogoAbierto, setDialogoAbierto] = useState(false);
   const [confirmacionAbierta, setConfirmacionAbierta] = useState(false);
@@ -102,20 +106,24 @@ const PaginaRevisiones = () => {
   const [idEliminar, setIdEliminar] = useState('');
   const [error, setError] = useState('');
 
-  const cargarRevisiones = useCallback(async () => {
+  const cargarDatos = useCallback(async () => {
     setCargando(true);
     try {
-      const datos = await obtenerRevisiones();
-      setRevisiones(datos);
+      const [datosRevisiones, datosVehiculos] = await Promise.all([
+        obtenerRevisiones(),
+        obtenerVehiculos(),
+      ]);
+      setRevisiones(datosRevisiones);
+      setVehiculos(datosVehiculos);
     } catch {
-      setError('Error al cargar las revisiones');
+      setError('Error al cargar los datos');
     }
     setCargando(false);
   }, []);
 
   useEffect(() => {
-    cargarRevisiones();
-  }, [cargarRevisiones]);
+    cargarDatos();
+  }, [cargarDatos]);
 
   const abrirDialogoCrear = () => {
     setRevisionActual(crearRevisionVacia());
@@ -137,7 +145,7 @@ const PaginaRevisiones = () => {
         await crearRevision(revisionActual);
       }
       setDialogoAbierto(false);
-      cargarRevisiones();
+      cargarDatos();
       setError('');
     } catch (err) {
       setError(err.message);
@@ -153,7 +161,7 @@ const PaginaRevisiones = () => {
     try {
       await eliminarRevision(idEliminar);
       setConfirmacionAbierta(false);
-      cargarRevisiones();
+      cargarDatos();
     } catch (err) {
       setError(err.message);
     }
@@ -209,6 +217,11 @@ const PaginaRevisiones = () => {
             {revisiones.map((revision) => (
               <TableRow key={revision.id}>
                 <TableCell><strong>{revision.id}</strong></TableCell>
+                <TableCell>
+                  <Text weight="semibold" style={{ color: tokens.colorBrandForeground1 }}>
+                    {revision.matricula}
+                  </Text>
+                </TableCell>
                 <TableCell>{new Date(revision.fecha).toLocaleDateString('es-ES')}</TableCell>
                 <TableCell>{revision.lugar}</TableCell>
                 <TableCell>
@@ -252,6 +265,20 @@ const PaginaRevisiones = () => {
             <DialogTitle>{editando ? 'Editar revisión' : 'Nueva revisión'}</DialogTitle>
             <DialogContent>
               <div className={estilos.formulario}>
+                <Field label="Vehículo" required>
+                  <Select
+                    value={revisionActual.matricula}
+                    onChange={(_, d) => manejarCambio('matricula', d.value)}
+                    disabled={editando}
+                  >
+                    <option value="">Seleccionar vehículo...</option>
+                    {vehiculos.map((v) => (
+                      <option key={v.matricula} value={v.matricula}>
+                        {v.matricula} - {v.marca} {v.modelo}
+                      </option>
+                    ))}
+                  </Select>
+                </Field>
                 <Field label="Fecha" required>
                   <Input type="date" value={revisionActual.fecha} onChange={(_, d) => manejarCambio('fecha', d.value)} />
                 </Field>
