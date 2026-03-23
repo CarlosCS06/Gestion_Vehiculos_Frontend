@@ -12,7 +12,7 @@ let vehiculos = [
     aniosAntiguedad: 4,
     precioCompra: 32000,
     tipo: TIPO_VEHICULO.FURGONETA,
-    foto: '/ToyotaHilux.jpg',
+    foto: '/ToyotaHilux.jpg?v=20260323',
     kmTotales: 45200,
     trayectos: ['T001', 'T002'],
     revisiones: ['R001'],
