@@ -1,6 +1,67 @@
 // Servicio mock de Vehículos
 // Reemplazar la implementación interna por llamadas fetch cuando el backend esté listo
 
+const AUTH_API_URL = 'https://gestion-vehiculos-backend.vercel.app/api/vehiculos';
+
+export const obtenerVehiculos = async () => {
+  const response = await fetch(AUTH_API_URL);
+  if (!response.ok) {
+    throw new Error('Error al obtener los vehículos');
+  }
+  return response.json();
+};
+
+export const obtenerVehiculoPorMatricula = async (matricula) => {
+  const response = await fetch(`${AUTH_API_URL}/${matricula}`);
+  if (!response.ok) {
+    throw new Error('Error al obtener el vehículo');
+  }
+  return response.json();
+};
+
+export const crearVehiculo = async (vehiculo) => {
+  const response = await fetch(AUTH_API_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(vehiculo),
+  });
+  if (!response.ok) {
+    throw new Error('Error al crear el vehículo');
+  }
+  return response.json();
+};
+
+export const actualizarVehiculo = async (matricula, datosActualizados) => {
+  const response = await fetch(`${AUTH_API_URL}/${matricula}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(datosActualizados),
+  });
+  if (!response.ok) {
+    throw new Error('Error al actualizar el vehículo');
+  }
+  return response.json();
+};
+
+export const eliminarVehiculo = async (matricula) => {
+  const response = await fetch(`${AUTH_API_URL}/${matricula}`, {
+    method: 'DELETE',
+  });
+  if (!response.ok) {
+    throw new Error('Error al eliminar el vehículo');
+  }
+  return response.json();
+};
+
+export const obtenerVehiculosAveriados = async () => {
+  const response = await fetch(`${AUTH_API_URL}/avariados`);
+  if (!response.ok) {
+    throw new Error('Error al obtener los vehículos averiados');
+  }
+  return response.json();
+};
+
+/*
 import { ESTADO_VEHICULO, TIPO_ALIMENTACION, TIPO_VEHICULO } from '../models/Vehiculo.js';
 
 let vehiculos = [
@@ -149,7 +210,7 @@ export const obtenerPeriodicidadITV = (tipo, antiguedad) => {
 
   return 'No definida';
 };
-
+/*
 const simularRetardo = () => new Promise((res) => setTimeout(res, 200));
 
 export const obtenerVehiculos = async () => {
@@ -186,3 +247,4 @@ export const obtenerVehiculosAveriados = async () => {
   await simularRetardo();
   return vehiculos.filter((v) => v.estado === ESTADO_VEHICULO.AVERIADO);
 };
+*/

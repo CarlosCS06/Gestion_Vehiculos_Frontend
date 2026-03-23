@@ -1,5 +1,57 @@
 // Servicio mock de Revisiones
 
+const AUTH_API_URL = 'https://gestion-vehiculos-backend.vercel.app/api/revisiones';
+
+export const obtenerRevisiones = async () => {
+  const response = await fetch(AUTH_API_URL);
+  if (!response.ok) {
+    throw new Error('Error al obtener las revisiones');
+  }
+  return response.json();
+};
+
+export const obtenerRevisionPorId = async (id) => {
+  const response = await fetch(`${AUTH_API_URL}/${id}`);
+  if (!response.ok) {
+    throw new Error('Error al obtener la revisión');
+  }
+  return response.json();
+};
+
+export const crearRevision = async (revision) => {
+  const response = await fetch(AUTH_API_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(revision),
+  });
+  if (!response.ok) {
+    throw new Error('Error al crear la revisión');
+  }
+  return response.json();
+};
+
+export const actualizarRevision = async (id, datosActualizados) => {
+  const response = await fetch(`${AUTH_API_URL}/${id}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(datosActualizados),
+  });
+  if (!response.ok) {
+    throw new Error('Error al actualizar la revisión');
+  }
+  return response.json();
+};
+
+export const eliminarRevision = async (id) => {
+  const response = await fetch(`${AUTH_API_URL}/${id}`, {
+    method: 'DELETE',
+  });
+  if (!response.ok) {
+    throw new Error('Error al eliminar la revisión');
+  }
+  return response.json();
+};
+/*
 let revisiones = [
   // Toyota Hilux (1234-ABC)
   { id: 'M001 (15k)', matricula: '1234-ABC', fecha: '2023-03-15', lugar: 'Taller Central Madrid', activo: false, aprobada: true },
@@ -70,3 +122,4 @@ export const eliminarRevision = async (id) => {
   revisiones = revisiones.filter((r) => r.id !== id);
   return true;
 };
+*/

@@ -1,5 +1,58 @@
 // Servicio mock de Trayectos
 
+const AUTH_API_URL = 'https://gestion-vehiculos-backend.vercel.app/api/trayectos';
+
+export const obtenerTrayectos = async () => {
+  const response = await fetch(AUTH_API_URL);
+  if (!response.ok) {
+    throw new Error('Error al obtener los trayectos');
+  }
+  return response.json();
+};
+
+export const obtenerTrayectoPorId = async (id) => {
+  const response = await fetch(`${AUTH_API_URL}/${id}`);
+  if (!response.ok) {
+    throw new Error('Error al obtener el trayecto');
+  }
+  return response.json();
+};
+
+export const crearTrayecto = async (trayecto) => {
+  const response = await fetch(AUTH_API_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(trayecto),
+  });
+  if (!response.ok) {
+    throw new Error('Error al crear el trayecto');
+  }
+  return response.json();
+};
+
+export const actualizarTrayecto = async (id, datosActualizados) => {
+  const response = await fetch(`${AUTH_API_URL}/${id}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(datosActualizados),
+  });
+  if (!response.ok) {
+    throw new Error('Error al actualizar el trayecto');
+  }
+  return response.json();
+};
+
+export const eliminarTrayecto = async (id) => {
+  const response = await fetch(`${AUTH_API_URL}/${id}`, {
+    method: 'DELETE',
+  });
+  if (!response.ok) {
+    throw new Error('Error al eliminar el trayecto');
+  }
+  return response.json();
+};
+
+/*
 let trayectos = [
   {
     id: 'T001',
@@ -102,3 +155,4 @@ export const eliminarTrayecto = async (id) => {
   trayectos = trayectos.filter((t) => t.id !== id);
   return true;
 };
+*/

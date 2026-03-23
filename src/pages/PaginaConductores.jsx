@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+﻿import { useState, useEffect, useCallback } from 'react';
 import {
   makeStyles,
   tokens,
@@ -120,7 +120,7 @@ const PaginaConductores = () => {
   }, [cargarConductores]);
 
   const abrirDialogoCrear = () => {
-    setConductorActual();
+    setConductorActual(crearConductorVacio());
     setEditando(false);
     setDialogoAbierto(true);
   };

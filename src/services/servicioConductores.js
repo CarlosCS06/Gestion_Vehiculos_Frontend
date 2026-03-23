@@ -1,5 +1,57 @@
 // Servicio mock de Conductores
 
+const AUTH_API_URL = 'https://gestion-vehiculos-backend.vercel.app/api/conductores';
+
+export const obtenerConductores = async () => {
+  const response = await fetch(AUTH_API_URL);
+  if (!response.ok) {
+    throw new Error('Error al obtener los conductores');
+  }
+  return response.json();
+};
+
+export const obtenerConductorPorDni = async (dni) => {
+  const response = await fetch(`${AUTH_API_URL}/${dni}`);
+  if (!response.ok) {
+    throw new Error('Error al obtener el conductor');
+  }
+  return response.json();
+};
+
+export const crearConductor = async (conductor) => {
+  const response = await fetch(AUTH_API_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(conductor),
+  });
+  if (!response.ok) {
+    throw new Error('Error al crear el conductor');
+  }
+  return response.json();
+};
+
+export const actualizarConductor = async (dni, datosActualizados) => {
+  const response = await fetch(`${AUTH_API_URL}/${dni}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(datosActualizados),
+  });
+  if (!response.ok) {
+    throw new Error('Error al actualizar el conductor');
+  }
+  return response.json();
+};
+
+export const eliminarConductor = async (dni) => {
+  const response = await fetch(`${AUTH_API_URL}/${dni}`, {
+    method: 'DELETE',
+  });
+  if (!response.ok) {
+    throw new Error('Error al eliminar el conductor');
+  }
+  return response.json();
+};
+/*  
 const CONDUCTORES_INICIALES = [
   {
     dni: '12345678A',
@@ -78,3 +130,4 @@ export const eliminarConductor = async (dni) => {
   guardarConductores();
   return true;
 };
+*/

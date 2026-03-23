@@ -1,5 +1,58 @@
 // Servicio mock de Viajes
 
+const AUTH_API_URL = 'https://gestion-vehiculos-backend.vercel.app/api/viajes';
+
+export const obtenerViajes = async () => {
+  const response = await fetch(AUTH_API_URL);
+  if (!response.ok) {
+    throw new Error('Error al obtener los viajes');
+  }
+  return response.json();
+};
+
+export const obtenerViajePorId = async (id) => {
+  const response = await fetch(`${AUTH_API_URL}/${id}`);
+  if (!response.ok) {
+    throw new Error('Error al obtener el viaje');
+  }
+  return response.json();
+};
+
+export const crearViaje = async (viaje) => {
+  const response = await fetch(AUTH_API_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(viaje),
+  });
+  if (!response.ok) {
+    throw new Error('Error al crear el viaje');
+  }
+  return response.json();
+};
+
+export const actualizarViaje = async (id, datosActualizados) => {
+  const response = await fetch(`${AUTH_API_URL}/${id}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(datosActualizados),
+  });
+  if (!response.ok) {
+    throw new Error('Error al actualizar el viaje');
+  }
+  return response.json();
+};
+
+export const eliminarViaje = async (id) => {
+  const response = await fetch(`${AUTH_API_URL}/${id}`, {
+    method: 'DELETE',
+  });
+  if (!response.ok) {
+    throw new Error('Error al eliminar el viaje');
+  }
+  return response.json();
+};
+
+/*
 let viajes = [
   {
     id: 'V001',
@@ -129,3 +182,4 @@ export const eliminarViaje = async (id) => {
   viajes = viajes.filter((v) => v.id !== id);
   return true;
 };
+*/
