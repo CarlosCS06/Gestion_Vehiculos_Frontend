@@ -3,17 +3,27 @@ import { fetchWithLogging } from './apiUtils';
 const AUTH_API_URL = 'https://gestion-vehiculos-backend.vercel.app/api/conductores';
 
 export const obtenerConductores = async () => {
-  const response = await fetchWithLogging(AUTH_API_URL);
+  const token = sessionStorage.getItem('token');
+  const response = await fetchWithLogging(AUTH_API_URL, {
+    headers: {
+      'Authorization': `Bearer ${token}`
+    }
+  });
   return response.json();
 };
 
 export const obtenerConductorPorDni = async (dni) => {
-  const response = await fetchWithLogging(`${AUTH_API_URL}/${dni}`);
+  const token = sessionStorage.getItem('token');
+  const response = await fetchWithLogging(`${AUTH_API_URL}/${dni}`, {
+    headers: {
+      'Authorization': `Bearer ${token}`
+    }
+  });
   return response.json();
 };
 
 export const crearConductor = async (conductor) => {
-  const token = localStorage.getItem('token');
+  const token = sessionStorage.getItem('token');
   const response = await fetchWithLogging(AUTH_API_URL, {
     method: 'POST',
     headers: {

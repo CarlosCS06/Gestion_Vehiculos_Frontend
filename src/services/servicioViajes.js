@@ -3,36 +3,58 @@ import { fetchWithLogging } from './apiUtils';
 const AUTH_API_URL = 'https://gestion-vehiculos-backend.vercel.app/api/viajes';
 
 export const obtenerViajes = async () => {
-  const response = await fetchWithLogging(AUTH_API_URL);
+  const token = sessionStorage.getItem('token');
+  const response = await fetchWithLogging(AUTH_API_URL, {
+    headers: {
+      'Authorization': `Bearer ${token}`
+    }
+  });
   return response.json();
 };
 
 export const obtenerViajePorId = async (id) => {
-  const response = await fetchWithLogging(`${AUTH_API_URL}/${id}`);
+  const token = sessionStorage.getItem('token');
+  const response = await fetchWithLogging(`${AUTH_API_URL}/${id}`, {
+    headers: {
+      'Authorization': `Bearer ${token}`
+    }
+  });
   return response.json();
 };
 
 export const crearViaje = async (viaje) => {
+  const token = sessionStorage.getItem('token');
   const response = await fetchWithLogging(AUTH_API_URL, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${token}`
+    },
     body: JSON.stringify(viaje),
   });
   return response.json();
 };
 
 export const actualizarViaje = async (id, datosActualizados) => {
+  const token = sessionStorage.getItem('token');
   const response = await fetchWithLogging(`${AUTH_API_URL}/${id}`, {
     method: 'PUT',
-    headers: { 'Content-Type': 'application/json' },
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${token}`
+    },
     body: JSON.stringify(datosActualizados),
   });
   return response.json();
 };
 
 export const eliminarViaje = async (id) => {
+  const token = sessionStorage.getItem('token');
   const response = await fetchWithLogging(`${AUTH_API_URL}/${id}`, {
     method: 'DELETE',
+    headers: {
+      'Authorization': `Bearer ${token}`
+    }
   });
   return response.json();
 };

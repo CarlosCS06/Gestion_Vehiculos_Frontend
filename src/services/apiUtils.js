@@ -4,6 +4,7 @@
  */
 export const fetchWithLogging = async (url, options = {}) => {
   try {
+    const token = sessionStorage.getItem('token');
     const response = await fetch(url, options);
 
     if (!response.ok) {

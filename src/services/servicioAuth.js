@@ -86,9 +86,13 @@ export const verificarDniConductor = async (dni) => {
  * @param {Object} payload - Objeto con los datos del usuario (dni, email, password, fullName, telefono, etc.)
  */
 export const registrarUsuario = async (payload) => {
+  const token = sessionStorage.getItem('token');
   const response = await fetchWithLogging(`${AUTH_API_URL}/register`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${token}`
+    },
     body: JSON.stringify(payload),
   });
 

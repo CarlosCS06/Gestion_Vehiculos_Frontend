@@ -8,37 +8,59 @@ export const obtenerVehiculos = async () => {
 };
 
 export const obtenerVehiculoPorMatricula = async (matricula) => {
-  const response = await fetchWithLogging(`${AUTH_API_URL}/${matricula}`);
+  const token = sessionStorage.getItem('token');
+  const response = await fetchWithLogging(`${AUTH_API_URL}/${matricula}`, {
+    headers: {
+      'Authorization': `Bearer ${token}`
+    }
+  });
   return response.json();
 };
 
 export const crearVehiculo = async (vehiculo) => {
+  const token = sessionStorage.getItem('token');
   const response = await fetchWithLogging(AUTH_API_URL, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${token}`
+    },
     body: JSON.stringify(vehiculo),
   });
   return response.json();
 };
 
 export const actualizarVehiculo = async (matricula, datosActualizados) => {
+  const token = sessionStorage.getItem('token');
   const response = await fetchWithLogging(`${AUTH_API_URL}/${matricula}`, {
     method: 'PUT',
-    headers: { 'Content-Type': 'application/json' },
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${token}`
+    },
     body: JSON.stringify(datosActualizados),
   });
   return response.json();
 };
 
 export const eliminarVehiculo = async (matricula) => {
+  const token = sessionStorage.getItem('token');
   const response = await fetchWithLogging(`${AUTH_API_URL}/${matricula}`, {
     method: 'DELETE',
+    headers: {
+      'Authorization': `Bearer ${token}`
+    }
   });
   return response.json();
 };
 
 export const obtenerVehiculosAveriados = async () => {
-  const response = await fetchWithLogging(`${AUTH_API_URL}/avariados`);
+  const token = sessionStorage.getItem('token');
+  const response = await fetchWithLogging(`${AUTH_API_URL}/avariados`, {
+    headers: {
+      'Authorization': `Bearer ${token}`
+    }
+  });
   return response.json();
 };
 
