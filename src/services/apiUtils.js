@@ -10,7 +10,7 @@ export const fetchWithLogging = async (url, options = {}) => {
     if (!response.ok) {
       let errorMessage = `${response.status} ${response.statusText}`;
       let errorDetails = null;
-
+      console.log(token);
       try {
         const contentType = response.headers.get('content-type');
         if (contentType && contentType.includes('application/json')) {

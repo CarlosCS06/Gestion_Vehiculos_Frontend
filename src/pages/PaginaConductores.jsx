@@ -86,7 +86,7 @@ const columnas = [
   { nombre: 'Apellidos', campo: 'apellidos' },
   { nombre: 'Teléfono', campo: 'telefono' },
   { nombre: 'Dirección', campo: 'direccion' },
-  { nombre: 'Fecha de nacimiento', campo: 'fecha_nacimiento' },
+  { nombre: 'Fecha de nacimiento', campo: 'fechaNacimiento' },
   { nombre: 'Trayectos', campo: 'trayectos' },
   { nombre: 'Acciones', campo: 'acciones' },
 ];
@@ -223,8 +223,8 @@ const PaginaConductores = () => {
                 <TableCell>{conductor.apellidos}</TableCell>
                 <TableCell>{conductor.telefono}</TableCell>
                 <TableCell>{conductor.direccion}</TableCell>
-                <TableCell>{new Date(conductor.fecha_nacimiento).toLocaleDateString('es-ES')}</TableCell>
-                <TableCell>{conductor.trayectos.length}</TableCell>
+                <TableCell>{new Date(conductor.fechaNacimiento).toLocaleDateString('es-ES')}</TableCell>
+                <TableCell>{conductor.trayectos?.length || 0}</TableCell>
                 <TableCell>
                   {esAdmin && (
                     <>
@@ -292,7 +292,7 @@ const PaginaConductores = () => {
                     <Input value={conductorActual.direccion} onChange={(_, d) => manejarCambio('direccion', d.value)} placeholder="Calle Mayor 10" />
                   </Field>
                   <Field label="Fecha de nacimiento">
-                    <Input value={conductorActual.fecha_nacimiento} onChange={(_, d) => manejarCambio('fecha_nacimiento', d.value)} placeholder="2000-01-01" />
+                    <Input value={conductorActual.fechaNacimiento} onChange={(_, d) => manejarCambio('fechaNacimiento', d.value)} placeholder="2000-01-01" />
                   </Field>
                 </div>
               </div>

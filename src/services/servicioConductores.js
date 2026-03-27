@@ -2,6 +2,12 @@ import { fetchWithLogging } from './apiUtils';
 
 const AUTH_API_URL = 'https://gestion-vehiculos-backend.vercel.app/api/conductores';
 
+const mapearConductor = (data) => ({
+  ...data,
+  fechaNacimiento: data.fechaNacimiento || data.fecha_nacimiento || '',
+  trayectos: data.trayectos || data.infoEspecificaTrayectos || [],
+});
+
 export const obtenerConductores = async () => {
   const token = sessionStorage.getItem('token');
   const response = await fetchWithLogging(AUTH_API_URL, {
@@ -9,7 +15,8 @@ export const obtenerConductores = async () => {
       'Authorization': `Bearer ${token}`
     }
   });
-  return response.json();
+  const datos = await response.json();
+  return Array.isArray(datos) ? datos.map(mapearConductor) : (typeof datos === 'object' ? Object.values(datos).map(mapearConductor) : []);
 };
 
 export const obtenerConductorPorDni = async (dni) => {
@@ -19,7 +26,8 @@ export const obtenerConductorPorDni = async (dni) => {
       'Authorization': `Bearer ${token}`
     }
   });
-  return response.json();
+  const data = await response.json();
+  return data ? mapearConductor(data) : null;
 };
 
 export const crearConductor = async (conductor) => {
@@ -68,7 +76,7 @@ const CONDUCTORES_INICIALES = [
     apellidos: 'García López',
     telefono: '612345678',
     direccion: 'Calle Mayor 10, Madrid',
-    fecha_nacimiento: '1990-12-10',
+    fechaNacimiento: '1990-12-10',
     trayectos: ['T001', 'T002'],
   },
   {
@@ -78,7 +86,7 @@ const CONDUCTORES_INICIALES = [
     apellidos: 'Fernández Ruiz',
     telefono: '698765432',
     direccion: 'Avenida del Sol 5, Barcelona',
-    fecha_nacimiento: '1985-05-05',
+    fechaNacimiento: '1985-05-05',
     trayectos: ['T003', 'T005'],
   },
   {
@@ -88,7 +96,7 @@ const CONDUCTORES_INICIALES = [
     apellidos: 'Martínez Sánchez',
     telefono: '655112233',
     direccion: 'Plaza España 3, Valencia',
-    fecha_nacimiento: '1988-01-01',
+    fechaNacimiento: '1988-01-01',
     trayectos: ['T004'],
   },
 ];
