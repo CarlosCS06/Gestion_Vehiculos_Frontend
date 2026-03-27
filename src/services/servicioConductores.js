@@ -26,7 +26,7 @@ export const crearConductor = async (conductor) => {
 };
 
 export const actualizarConductor = async (dni, datosActualizados) => {
-  const token = localStorage.getItem('token');
+  const token = sessionStorage.getItem('token');
   const response = await fetchWithLogging(`${AUTH_API_URL}/${dni}`, {
     method: 'PUT',
     headers: {
@@ -39,7 +39,7 @@ export const actualizarConductor = async (dni, datosActualizados) => {
 };
 
 export const eliminarConductor = async (dni) => {
-  const token = localStorage.getItem('token');
+  const token = sessionStorage.getItem('token');
   const response = await fetchWithLogging(`${AUTH_API_URL}/${dni}`, {
     method: 'DELETE',
     headers: {

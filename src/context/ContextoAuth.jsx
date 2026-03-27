@@ -17,12 +17,12 @@ export const ProveedorAuth = ({ children }) => {
 
   // Recuperar sesión del localStorage al cargar
   useEffect(() => {
-    const usuarioGuardado = localStorage.getItem('usuario_sesion');
+    const usuarioGuardado = sessionStorage.getItem('usuario_sesion');
     if (usuarioGuardado) {
       try {
         setUsuario(JSON.parse(usuarioGuardado));
       } catch {
-        localStorage.removeItem('usuario_sesion');
+        sessionStorage.removeItem('usuario_sesion');
       }
     }
     setCargando(false);
@@ -31,14 +31,14 @@ export const ProveedorAuth = ({ children }) => {
   const login = async (dni, contrasena) => {
     const usuarioAuth = await iniciarSesion(dni, contrasena);
     setUsuario(usuarioAuth);
-    localStorage.setItem('usuario_sesion', JSON.stringify(usuarioAuth));
+    sessionStorage.setItem('usuario_sesion', JSON.stringify(usuarioAuth));
     return usuarioAuth;
   };
 
   const logout = () => {
     setUsuario(null);
-    localStorage.removeItem('usuario_sesion');
-    localStorage.removeItem('token');
+    sessionStorage.removeItem('usuario_sesion');
+    sessionStorage.removeItem('token');
   };
 
 
@@ -49,7 +49,7 @@ export const ProveedorAuth = ({ children }) => {
   const registro = async (dni, contrasena, email) => {
     const nuevoUsuario = await registrarConductor(dni, contrasena, email);
     setUsuario(nuevoUsuario);
-    localStorage.setItem('usuario_sesion', JSON.stringify(nuevoUsuario));
+    sessionStorage.setItem('usuario_sesion', JSON.stringify(nuevoUsuario));
     return nuevoUsuario;
   };
 

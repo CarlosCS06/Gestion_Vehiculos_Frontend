@@ -48,7 +48,7 @@ export const iniciarSesion = async (dni, contrasena) => {
 
     // Almacenar el token
     if (data.token) {
-      localStorage.setItem('token', data.token);
+      sessionStorage.setItem('token', data.token);
     }
 
     return mapearUsuario(data);
@@ -101,7 +101,7 @@ export const registrarUsuario = async (payload) => {
 
   // Almacenar el token si viene en el registro
   if (data.token) {
-    localStorage.setItem('token', data.token);
+    sessionStorage.setItem('token', data.token);
   }
 
   return mapearUsuario(data);
@@ -180,7 +180,7 @@ export const preRegistrarUsuario = async (conductor) => {
  */
 export const obtenerUsuarios = async () => {
   try {
-    const token = localStorage.getItem('token');
+    const token = sessionStorage.getItem('token');
     if (!token) {
       throw new Error('No se encontró el token de autenticación');
     }
