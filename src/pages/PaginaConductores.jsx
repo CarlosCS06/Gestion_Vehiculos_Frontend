@@ -93,7 +93,7 @@ const columnas = [
 
 const PaginaConductores = () => {
   const estilos = useEstilos();
-  const { esAdmin, preRegistrarUsuario } = useAuth();
+  const { esAdmin, preRegistrarUsuario, usuario } = useAuth();
 
   const [conductores, setConductores] = useState([]);
   const [cargando, setCargando] = useState(true);
@@ -226,15 +226,15 @@ const PaginaConductores = () => {
                 <TableCell>{new Date(conductor.fechaNacimiento).toLocaleDateString('es-ES')}</TableCell>
                 <TableCell>{conductor.trayectos?.length || 0}</TableCell>
                 <TableCell>
+                  {(esAdmin || (usuario && usuario.dni === conductor.dni)) && (
+                    <Tooltip content="Editar" relationship="label">
+                      <Button icon={<Edit24Regular />} appearance="subtle" size="small" onClick={() => abrirDialogoEditar(conductor)} />
+                    </Tooltip>
+                  )}
                   {esAdmin && (
-                    <>
-                      <Tooltip content="Editar" relationship="label">
-                        <Button icon={<Edit24Regular />} appearance="subtle" size="small" onClick={() => abrirDialogoEditar(conductor)} />
-                      </Tooltip>
-                      <Tooltip content="Eliminar" relationship="label">
-                        <Button icon={<Delete24Regular />} appearance="subtle" size="small" onClick={() => confirmarEliminar(conductor.dni)} />
-                      </Tooltip>
-                    </>
+                    <Tooltip content="Eliminar" relationship="label">
+                      <Button icon={<Delete24Regular />} appearance="subtle" size="small" onClick={() => confirmarEliminar(conductor.dni)} />
+                    </Tooltip>
                   )}
                 </TableCell>
               </TableRow>
@@ -253,7 +253,11 @@ const PaginaConductores = () => {
       <Dialog open={dialogoAbierto} onOpenChange={(_, d) => { if (!d.open) setDialogoAbierto(false); }}>
         <DialogSurface style={{ maxWidth: '550px' }}>
           <DialogBody>
-            <DialogTitle>{editando ? 'Editar conductor' : 'Dar de alta conductor'}</DialogTitle>
+            <DialogTitle>
+              {editando
+                ? (usuario && usuario.dni === conductorActual.dni && !esAdmin ? 'Mi perfil' : 'Editar conductor')
+                : 'Dar de alta conductor'}
+            </DialogTitle>
             <DialogContent>
               <div className={estilos.formulario}>
                 <Field label="DNI" required>
@@ -278,21 +282,46 @@ const PaginaConductores = () => {
                 </Field>
                 <div className={estilos.filaFormulario}>
                   <Field label="Nombre" required>
-                    <Input value={conductorActual.nombre} onChange={(_, d) => manejarCambio('nombre', d.value)} placeholder="Carlos" />
+                    <Input
+                      value={conductorActual.nombre}
+                      onChange={(_, d) => manejarCambio('nombre', d.value)}
+                      placeholder="Carlos"
+                      disabled={!esAdmin && usuario && usuario.dni === conductorActual.dni}
+                    />
                   </Field>
                   <Field label="Apellidos" required>
-                    <Input value={conductorActual.apellidos} onChange={(_, d) => manejarCambio('apellidos', d.value)} placeholder="García López" />
+                    <Input
+                      value={conductorActual.apellidos}
+                      onChange={(_, d) => manejarCambio('apellidos', d.value)}
+                      placeholder="García López"
+                      disabled={!esAdmin && usuario && usuario.dni === conductorActual.dni}
+                    />
                   </Field>
                 </div>
                 <div className={estilos.filaFormulario}>
                   <Field label="Teléfono">
-                    <Input value={conductorActual.telefono} onChange={(_, d) => manejarCambio('telefono', d.value)} placeholder="612345678" />
+                    <Input
+                      value={conductorActual.telefono}
+                      onChange={(_, d) => manejarCambio('telefono', d.value)}
+                      placeholder="612345678"
+                      disabled={!esAdmin && usuario && usuario.dni === conductorActual.dni}
+                    />
                   </Field>
                   <Field label="Dirección">
-                    <Input value={conductorActual.direccion} onChange={(_, d) => manejarCambio('direccion', d.value)} placeholder="Calle Mayor 10" />
+                    <Input
+                      value={conductorActual.direccion}
+                      onChange={(_, d) => manejarCambio('direccion', d.value)}
+                      placeholder="Calle Mayor 10"
+                      disabled={!esAdmin && usuario && usuario.dni === conductorActual.dni}
+                    />
                   </Field>
                   <Field label="Fecha de nacimiento">
-                    <Input value={conductorActual.fechaNacimiento} onChange={(_, d) => manejarCambio('fechaNacimiento', d.value)} placeholder="2000-01-01" />
+                    <Input
+                      value={conductorActual.fechaNacimiento}
+                      onChange={(_, d) => manejarCambio('fechaNacimiento', d.value)}
+                      placeholder="2000-01-01"
+                      disabled={!esAdmin && usuario && usuario.dni === conductorActual.dni}
+                    />
                   </Field>
                 </div>
               </div>

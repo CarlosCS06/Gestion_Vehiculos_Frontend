@@ -24,26 +24,36 @@ export const obtenerVehiculoPorMatricula = async (matricula) => {
 
 export const crearVehiculo = async (vehiculo) => {
   const token = sessionStorage.getItem('token');
+  const normalizedVehiculo = {
+    ...vehiculo,
+    fechaCompra: vehiculo.fechaCompra || null,
+    foto: vehiculo.foto || null,
+  };
   const response = await fetchWithLogging(AUTH_API_URL, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
       'Authorization': `Bearer ${token}`
     },
-    body: JSON.stringify(vehiculo),
+    body: JSON.stringify(normalizedVehiculo),
   });
   return response.json();
 };
 
 export const actualizarVehiculo = async (matricula, datosActualizados) => {
   const token = sessionStorage.getItem('token');
+  const normalizedDatos = {
+    ...datosActualizados,
+    fechaCompra: datosActualizados.fechaCompra || null,
+    foto: datosActualizados.foto || null,
+  };
   const response = await fetchWithLogging(`${AUTH_API_URL}/${matricula}`, {
     method: 'PUT',
     headers: {
       'Content-Type': 'application/json',
       'Authorization': `Bearer ${token}`
     },
-    body: JSON.stringify(datosActualizados),
+    body: JSON.stringify(normalizedDatos),
   });
   return response.json();
 };
