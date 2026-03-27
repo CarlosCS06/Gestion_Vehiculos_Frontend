@@ -1,26 +1,20 @@
-// Servicio mock de Conductores
+import { fetchWithLogging } from './apiUtils';
 
 const AUTH_API_URL = 'https://gestion-vehiculos-backend.vercel.app/api/conductores';
 
 export const obtenerConductores = async () => {
-  const response = await fetch(AUTH_API_URL);
-  if (!response.ok) {
-    throw new Error('Error al obtener los conductores');
-  }
+  const response = await fetchWithLogging(AUTH_API_URL);
   return response.json();
 };
 
 export const obtenerConductorPorDni = async (dni) => {
-  const response = await fetch(`${AUTH_API_URL}/${dni}`);
-  if (!response.ok) {
-    throw new Error('Error al obtener el conductor');
-  }
+  const response = await fetchWithLogging(`${AUTH_API_URL}/${dni}`);
   return response.json();
 };
 
 export const crearConductor = async (conductor) => {
   const token = localStorage.getItem('token');
-  const response = await fetch(AUTH_API_URL, {
+  const response = await fetchWithLogging(AUTH_API_URL, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -28,15 +22,12 @@ export const crearConductor = async (conductor) => {
     },
     body: JSON.stringify(conductor),
   });
-  if (!response.ok) {
-    throw new Error('Error al crear el conductor');
-  }
   return response.json();
 };
 
 export const actualizarConductor = async (dni, datosActualizados) => {
   const token = localStorage.getItem('token');
-  const response = await fetch(`${AUTH_API_URL}/${dni}`, {
+  const response = await fetchWithLogging(`${AUTH_API_URL}/${dni}`, {
     method: 'PUT',
     headers: {
       'Content-Type': 'application/json',
@@ -44,24 +35,18 @@ export const actualizarConductor = async (dni, datosActualizados) => {
     },
     body: JSON.stringify(datosActualizados),
   });
-  if (!response.ok) {
-    throw new Error('Error al actualizar el conductor');
-  }
   return response.json();
 };
 
 export const eliminarConductor = async (dni) => {
   const token = localStorage.getItem('token');
-  const response = await fetch(`${AUTH_API_URL}/${dni}`, {
+  const response = await fetchWithLogging(`${AUTH_API_URL}/${dni}`, {
     method: 'DELETE',
     headers: {
       'Content-Type': 'application/json',
       'Authorization': `Bearer ${token}`
     },
   });
-  if (!response.ok) {
-    throw new Error('Error al eliminar el conductor');
-  }
   return response.json();
 };
 /*  

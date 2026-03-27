@@ -203,8 +203,8 @@ const PaginaViajes = () => {
     try {
       const datos = await obtenerViajes();
       setViajes(datos);
-    } catch {
-      setError('Error al cargar los viajes');
+    } catch (err) {
+      setError(err.message || 'Error al cargar los viajes');
     }
     setCargando(false);
   }, []);

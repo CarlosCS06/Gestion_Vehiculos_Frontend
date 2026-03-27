@@ -115,8 +115,8 @@ const PaginaRevisiones = () => {
       ]);
       setRevisiones(datosRevisiones);
       setVehiculos(datosVehiculos);
-    } catch {
-      setError('Error al cargar los datos');
+    } catch (err) {
+      setError(err.message || 'Error al cargar los datos');
     }
     setCargando(false);
   }, []);

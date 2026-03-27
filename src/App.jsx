@@ -8,24 +8,40 @@ import PaginaRevisiones from './pages/PaginaRevisiones.jsx';
 import PaginaConductores from './pages/PaginaConductores.jsx';
 import PaginaAverias from './pages/PaginaAverias.jsx';
 import PaginaViajes from './pages/PaginaViajes.jsx';
+import { useAuth } from './context/ContextoAuth.jsx';
+import { Spinner } from '@fluentui/react-components';
 
 function App() {
+  const { estaAutenticado, cargando } = useAuth();
+
+  if (cargando) {
+    return (
+      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
+        <Spinner size="large" label="Iniciando..." />
+      </div>
+    );
+  }
+
   return (
     <Routes>
-      {/* Rutas públicas */}
-      <Route path="/login" element={<PaginaLogin />} />
+      {/* Ruta raíz: Login o Dashboard */}
+      <Route 
+        path="/" 
+        element={estaAutenticado ? <Navigate to="/vehiculos" replace /> : <PaginaLogin />} 
+      />
+      
+      {/* Compatibilidad y registro */}
+      <Route path="/login" element={<Navigate to="/" replace />} />
       <Route path="/registro" element={<PaginaRegistro />} />
 
       {/* Rutas protegidas */}
       <Route
-        path="/"
         element={
           <RutaProtegida>
             <LayoutPrincipal />
           </RutaProtegida>
         }
       >
-        <Route index element={<Navigate to="/vehiculos" replace />} />
         <Route path="vehiculos" element={<PaginaVehiculos />} />
         <Route path="viajes" element={<PaginaViajes />} />
         <Route path="revisiones" element={<PaginaRevisiones />} />
@@ -34,7 +50,7 @@ function App() {
       </Route>
 
       {/* Ruta por defecto */}
-      <Route path="*" element={<Navigate to="/vehiculos" replace />} />
+      <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );
 }

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import {
   makeStyles,
@@ -71,12 +71,11 @@ const useEstilos = makeStyles({
 const PaginaLogin = () => {
   const estilos = useEstilos();
   const navegar = useNavigate();
-  const { login } = useAuth();
-
   const [dni, setDni] = useState('');
   const [contrasena, setContrasena] = useState('');
   const [cargando, setCargando] = useState(false);
   const [error, setError] = useState('');
+  const { login } = useAuth();
 
   const manejarLogin = async (e) => {
     e.preventDefault();

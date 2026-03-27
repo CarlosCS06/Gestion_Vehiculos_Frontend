@@ -1,8 +1,6 @@
-// Servicio mock de Autenticación
-// Simula login, registro y gestión de roles sin backend
-
 import { ROL_USUARIO } from '../models/Usuario.js';
 import { obtenerConductorPorDni } from './servicioConductores.js';
+import { fetchWithLogging } from './apiUtils';
 
 const AUTH_API_URL = 'https://gestion-vehiculos-backend.vercel.app/api/auth';
 const USERS_API_URL = 'https://gestion-vehiculos-backend.vercel.app/api/users';
@@ -35,7 +33,7 @@ const mapearUsuario = (data) => {
  */
 export const iniciarSesion = async (dni, contrasena) => {
   try {
-    const response = await fetch(`${AUTH_API_URL}/login`, {
+    const response = await fetchWithLogging(`${AUTH_API_URL}/login`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ dni, password: contrasena }),
@@ -88,7 +86,7 @@ export const verificarDniConductor = async (dni) => {
  * @param {Object} payload - Objeto con los datos del usuario (dni, email, password, fullName, telefono, etc.)
  */
 export const registrarUsuario = async (payload) => {
-  const response = await fetch(`${AUTH_API_URL}/register`, {
+  const response = await fetchWithLogging(`${AUTH_API_URL}/register`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload),
@@ -139,7 +137,7 @@ export const registrarConductor = async (dni, contrasena, email) => {
  */
 export const obtenerUsuarioPorDni = async (dni) => {
   try {
-    const response = await fetch(`${USERS_API_URL}/${dni}`);
+    const response = await fetchWithLogging(`${USERS_API_URL}/${dni}`);
     if (!response.ok) {
       if (response.status === 404) return null;
       const errorData = await response.json().catch(() => ({}));
@@ -187,7 +185,7 @@ export const obtenerUsuarios = async () => {
       throw new Error('No se encontró el token de autenticación');
     }
 
-    const response = await fetch(USERS_API_URL, {
+    const response = await fetchWithLogging(USERS_API_URL, {
       method: 'GET',
       headers: {
         'Content-Type': 'application/json',

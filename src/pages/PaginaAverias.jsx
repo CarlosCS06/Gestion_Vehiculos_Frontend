@@ -1,4 +1,4 @@
-﻿import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import {
   makeStyles,
   tokens,
@@ -112,8 +112,8 @@ const PaginaAverias = () => {
     try {
       const datos = await obtenerAverias();
       setAverias(datos);
-    } catch {
-      setError('Error al cargar las averías');
+    } catch (err) {
+      setError(err.message || 'Error al cargar las averías');
     }
     setCargando(false);
   }, []);

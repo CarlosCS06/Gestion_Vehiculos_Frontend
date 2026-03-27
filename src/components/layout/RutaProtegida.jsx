@@ -14,7 +14,7 @@ const RutaProtegida = ({ children, soloAdmin = false }) => {
   }
 
   if (!estaAutenticado) {
-    return <Navigate to="/login" replace />;
+    return <Navigate to="/" replace />;
   }
 
   if (soloAdmin && !esAdmin) {

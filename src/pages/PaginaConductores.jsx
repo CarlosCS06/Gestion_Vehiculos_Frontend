@@ -1,4 +1,4 @@
-﻿import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import {
   makeStyles,
   tokens,
@@ -109,8 +109,8 @@ const PaginaConductores = () => {
     try {
       const datos = await obtenerConductores();
       setConductores(datos);
-    } catch {
-      setError('Error al cargar los conductores');
+    } catch (err) {
+      setError(err.message || 'Error al cargar los conductores');
     }
     setCargando(false);
   }, []);

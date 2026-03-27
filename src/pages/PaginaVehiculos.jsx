@@ -228,7 +228,7 @@ const PaginaVehiculos = () => {
       const datos = await obtenerVehiculos();
       setVehiculos(datos);
     } catch (err) {
-      setError('Error al cargar los vehículos');
+      setError(err.message || 'Error al cargar los vehículos');
     }
     setCargando(false);
   }, []);
@@ -356,7 +356,7 @@ const PaginaVehiculos = () => {
       {error && (
         <MessageBar intent="error">
           <MessageBarBody>
-            <MessageBarTitle>Error</MessageBarTitle>
+            <MessageBarTitle>Error del servidor</MessageBarTitle>
             {error}
           </MessageBarBody>
         </MessageBar>

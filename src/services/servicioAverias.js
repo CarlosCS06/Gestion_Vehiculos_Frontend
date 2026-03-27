@@ -1,54 +1,39 @@
-// Servicio mock de Averías
+import { fetchWithLogging } from './apiUtils';
 
 const AUTH_API_URL = 'https://gestion-vehiculos-backend.vercel.app/api/averias';
 
 export const obtenerAverias = async () => {
-  const response = await fetch(AUTH_API_URL);
-  if (!response.ok) {
-    throw new Error('Error al obtener las averías');
-  }
+  const response = await fetchWithLogging(AUTH_API_URL);
   return response.json();
 };
 
 export const obtenerAveriaPorId = async (id) => {
-  const response = await fetch(`${AUTH_API_URL}/${id}`);
-  if (!response.ok) {
-    throw new Error('Error al obtener la avería');
-  }
+  const response = await fetchWithLogging(`${AUTH_API_URL}/${id}`);
   return response.json();
 };
 
 export const crearAveria = async (averia) => {
-  const response = await fetch(AUTH_API_URL, {
+  const response = await fetchWithLogging(AUTH_API_URL, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(averia),
   });
-  if (!response.ok) {
-    throw new Error('Error al crear la avería');
-  }
   return response.json();
 };
 
 export const actualizarAveria = async (id, datosActualizados) => {
-  const response = await fetch(`${AUTH_API_URL}/${id}`, {
+  const response = await fetchWithLogging(`${AUTH_API_URL}/${id}`, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(datosActualizados),
   });
-  if (!response.ok) {
-    throw new Error('Error al actualizar la avería');
-  }
   return response.json();
 };
 
 export const eliminarAveria = async (id) => {
-  const response = await fetch(`${AUTH_API_URL}/${id}`, {
+  const response = await fetchWithLogging(`${AUTH_API_URL}/${id}`, {
     method: 'DELETE',
   });
-  if (!response.ok) {
-    throw new Error('Error al eliminar la avería');
-  }
   return response.json();
 };
 /*
