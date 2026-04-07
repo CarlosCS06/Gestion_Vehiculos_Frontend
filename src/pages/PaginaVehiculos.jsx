@@ -12,6 +12,7 @@ import {
   TableRow,
   TableCell,
   Switch,
+  Checkbox,
   Dialog,
   DialogSurface,
   DialogTitle,
@@ -49,6 +50,7 @@ import {
   eliminarVehiculo,
   obtenerPeriodicidadITV,
 } from '../services/servicioVehiculos.js';
+import { subirImagen } from '../services/servicioImagenes.js';
 import {
   ESTADO_VEHICULO,
   TIPO_VEHICULO,
@@ -75,7 +77,10 @@ const useEstilos = makeStyles({
     gap: tokens.spacingHorizontalS,
   },
   tarjetaTabla: {
-    padding: tokens.spacingHorizontalL,
+    paddingTop: tokens.spacingHorizontalL,
+    paddingBottom: tokens.spacingHorizontalL,
+    paddingLeft: tokens.spacingHorizontalL,
+    paddingRight: tokens.spacingHorizontalL,
     overflow: 'auto',
   },
   tabla: {
@@ -107,45 +112,120 @@ const useEstilos = makeStyles({
     gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))',
     gap: tokens.spacingHorizontalM,
   },
-  tarjetaResumen: {
-    padding: tokens.spacingHorizontalM,
-    textAlign: 'center',
-  },
-  valorResumen: {
-    fontSize: tokens.fontSizeHero700,
-    fontWeight: tokens.fontWeightBold,
-  },
-  listaTarjetas: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: tokens.spacingVerticalM,
-  },
   tarjetaVehiculo: {
     display: 'flex',
     flexDirection: 'row',
     alignItems: 'stretch',
-    padding: '0',
+    paddingTop: '0',
+    paddingBottom: '0',
+    paddingLeft: '0',
+    paddingRight: '0',
     overflow: 'hidden',
-    transition: 'transform 0.2s ease, box-shadow 0.2s ease',
+    borderRadius: tokens.borderRadiusXLarge,
+    background: tokens.colorNeutralBackground1,
+    boxShadow: '0 4px 20px rgba(0,0,0,0.08)',
+    transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+    borderTopColor: tokens.colorNeutralStroke2,
+    borderBottomColor: tokens.colorNeutralStroke2,
+    borderLeftColor: tokens.colorNeutralStroke2,
+    borderRightColor: tokens.colorNeutralStroke2,
+    borderTopStyle: 'solid',
+    borderBottomStyle: 'solid',
+    borderLeftStyle: 'solid',
+    borderRightStyle: 'solid',
+    borderTopWidth: '1px',
+    borderBottomWidth: '1px',
+    borderLeftWidth: '1px',
+    borderRightWidth: '1px',
     ':hover': {
-      transform: 'translateY(-2px)',
-      boxShadow: tokens.shadow8,
+      transform: 'translateY(-4px)',
+      boxShadow: '0 12px 30px rgba(0,0,0,0.12)',
+      borderTopColor: tokens.colorBrandStroke1,
+      borderBottomColor: tokens.colorBrandStroke1,
+      borderLeftColor: tokens.colorBrandStroke1,
+      borderRightColor: tokens.colorBrandStroke1,
     },
   },
   contenedorImagen: {
-    width: '250px',
-    minWidth: '250px',
-    aspectRatio: '1 / 1',
-    backgroundColor: '#ffffff',
+    width: '280px',
+    minWidth: '280px',
+    backgroundColor: tokens.colorNeutralBackground2,
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
-    borderRight: `1px solid ${tokens.colorNeutralStroke1}`,
+    position: 'relative',
+    overflow: 'hidden',
   },
   imagenVehiculo: {
     width: '100%',
     height: '100%',
-    objectFit: 'contain',
+    objectFit: 'cover',
+    transition: 'scale 0.5s ease',
+    ':hover': {
+      scale: '1.05',
+    },
+  },
+  overlayCarga: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(255,255,255,0.7)',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 1,
+  },
+  valorResumen: {
+    fontSize: tokens.fontSizeHero700,
+    fontWeight: tokens.fontWeightBold,
+    background: 'linear-gradient(135deg, #0078d4 0%, #00bcf2 100%)',
+    WebkitBackgroundClip: 'text',
+    WebkitTextFillColor: 'transparent',
+  },
+  tarjetaResumen: {
+    paddingTop: tokens.spacingHorizontalM,
+    paddingBottom: tokens.spacingHorizontalM,
+    paddingLeft: tokens.spacingHorizontalM,
+    paddingRight: tokens.spacingHorizontalM,
+    textAlign: 'center',
+    borderRadius: tokens.borderRadiusLarge,
+    borderTopStyle: 'none',
+    borderBottomStyle: 'none',
+    borderLeftStyle: 'none',
+    borderRightStyle: 'none',
+    boxShadow: tokens.shadow4,
+  },
+  uploadZone: {
+    borderTopWidth: '2px',
+    borderBottomWidth: '2px',
+    borderLeftWidth: '2px',
+    borderRightWidth: '2px',
+    borderTopStyle: 'dashed',
+    borderBottomStyle: 'dashed',
+    borderLeftStyle: 'dashed',
+    borderRightStyle: 'dashed',
+    borderTopColor: tokens.colorNeutralStroke1,
+    borderBottomColor: tokens.colorNeutralStroke1,
+    borderLeftColor: tokens.colorNeutralStroke1,
+    borderRightColor: tokens.colorNeutralStroke1,
+    borderRadius: tokens.borderRadiusLarge,
+    paddingTop: tokens.spacingVerticalL,
+    paddingBottom: tokens.spacingVerticalL,
+    paddingLeft: tokens.spacingVerticalL,
+    paddingRight: tokens.spacingVerticalL,
+    textAlign: 'center',
+    cursor: 'pointer',
+    backgroundColor: tokens.colorNeutralBackground2,
+    transition: 'all 0.3s ease',
+    ':hover': {
+      borderTopColor: tokens.colorBrandStroke1,
+      borderBottomColor: tokens.colorBrandStroke1,
+      borderLeftColor: tokens.colorBrandStroke1,
+      borderRightColor: tokens.colorBrandStroke1,
+      backgroundColor: tokens.colorBrandBackground2,
+    },
   },
   iconoPlaceholder: {
     fontSize: '60px',
@@ -172,7 +252,9 @@ const useEstilos = makeStyles({
     gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))',
     gap: tokens.spacingHorizontalM,
     paddingTop: tokens.spacingVerticalS,
-    borderTop: `1px solid ${tokens.colorNeutralStroke2}`,
+    borderTopColor: tokens.colorNeutralStroke2,
+    borderTopStyle: 'solid',
+    borderTopWidth: '1px',
     marginTop: tokens.spacingVerticalS,
   },
   datoEtiqueta: {
@@ -221,6 +303,8 @@ const PaginaVehiculos = () => {
   const [editando, setEditando] = useState(false);
   const [matriculaEliminar, setMatriculaEliminar] = useState('');
   const [error, setError] = useState('');
+  const [archivoFoto, setArchivoFoto] = useState(null);
+  const [subiendoImagen, setSubiendoImagen] = useState(false);
 
   const cargarVehiculos = useCallback(async () => {
     setCargando(true);
@@ -260,6 +344,43 @@ const PaginaVehiculos = () => {
     setDialogoAbierto(true);
   };
 
+  const manejarSubidaArchivo = async (archivo) => {
+    if (!archivo) return;
+    setSubiendoImagen(true);
+    setError('');
+    try {
+      const resp = await subirImagen(archivo);
+      // Guardamos la URL para la vista previa, el ID y el Nombre para el backend
+      manejarCambio('foto', resp.url);
+      manejarCambio('idImagen', resp.id);
+      manejarCambio('nombreImagen', resp.nombre || resp.display_name || 'vehiculo_archivo');
+    } catch (err) {
+      setError('Error al subir imagen local: ' + err.message);
+    } finally {
+      setSubiendoImagen(false);
+    }
+  };
+
+  const manejarSubidaUrl = async (url) => {
+    if (!url || !url.startsWith('http')) return;
+    setSubiendoImagen(true);
+    setError('');
+    try {
+      const response = await fetch(url);
+      const blob = await response.blob();
+      const file = new File([blob], "imagen_internet.webp", { type: blob.type });
+      const resp = await subirImagen(file);
+      // Guardamos la URL para la vista previa, el ID y el Nombre para el backend
+      manejarCambio('foto', resp.url);
+      manejarCambio('idImagen', resp.id);
+      manejarCambio('nombreImagen', resp.nombre || resp.display_name || 'vehiculo_internet');
+    } catch (err) {
+      setError('Error al procesar imagen de internet: ' + err.message);
+    } finally {
+      setSubiendoImagen(false);
+    }
+  };
+
   const manejarGuardar = async () => {
     try {
       if (editando) {
@@ -268,6 +389,7 @@ const PaginaVehiculos = () => {
         await crearVehiculo(vehiculoActual);
       }
       setDialogoAbierto(false);
+      setArchivoFoto(null);
       cargarVehiculos();
       setError('');
     } catch (err) {
@@ -587,24 +709,64 @@ const PaginaVehiculos = () => {
                     </Select>
                   </Field>
                 </div>
-                <Field label="Años de antigüedad">
-                  <Input
-                    type="number"
-                    value={String(vehiculoActual.aniosAntiguedad)}
-                    onChange={(_, d) => manejarCambio('aniosAntiguedad', Number(d.value))}
-                  />
-                </Field>
-                <Field label="Foto">
-                  <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+                <div className={estilos.filaFormulario}>
+                  <Field label="Años de antigüedad">
                     <Input
-                      value={vehiculoActual.foto}
-                      onChange={(_, d) => manejarCambio('foto', d.value)}
-                      placeholder="/ToyotaHilux.jpg"
-                      style={{ flexGrow: 1 }}
+                      type="number"
+                      value={String(vehiculoActual.aniosAntiguedad)}
+                      onChange={(_, d) => manejarCambio('aniosAntiguedad', Number(d.value))}
                     />
+                  </Field>
+                  <Field label="Vehículo Nuevo">
+                     <Checkbox 
+                       label={vehiculoActual.nuevo ? "Sí (Kilómetro 0)" : "No (De ocasión)"}
+                       checked={vehiculoActual.nuevo}
+                       onChange={(_, d) => manejarCambio('nuevo', d.checked)}
+                     />
+                  </Field>
+                </div>
+                <Field label="Imagen del vehículo (Cloudinary)" hint="Se subirá automáticamente al seleccionar archivo o pegar URL">
+                  <div className={estilos.formulario}>
+                    <div 
+                      className={estilos.uploadZone}
+                      onClick={() => document.getElementById('file-input').click()}
+                    >
+                      {subiendoImagen ? (
+                        <Spinner label="Subiendo a Cloudinary..." />
+                      ) : (
+                        <>
+                          <Title2 size={400}>Haz clic o arrastra una imagen</Title2>
+                          <Text size={200} block>Formatos sugeridos: JPG, PNG, WEBP</Text>
+                        </>
+                      )}
+                      <input 
+                        id="file-input"
+                        type="file" 
+                        hidden 
+                        accept="image/*"
+                        onChange={(e) => manejarSubidaArchivo(e.target.files[0])}
+                      />
+                    </div>
+
+                    <div style={{ display: 'flex', gap: '8px', alignItems: 'flex-end' }}>
+                      <Field label="O pega una URL de internet" style={{ flexGrow: 1 }}>
+                        <Input
+                          placeholder="https://ejemplo.com/foto.jpg"
+                          onBlur={(e) => manejarSubidaUrl(e.target.value)}
+                        />
+                      </Field>
+                    </div>
+
                     {vehiculoActual.foto && (
-                      <div style={{ width: '48px', height: '48px', overflow: 'hidden', borderRadius: '4px', border: `1px solid ${tokens.colorNeutralStroke1}` }}>
-                        <img src={vehiculoActual.foto} style={{ width: '100%', height: '100%', objectFit: 'cover' }} alt="Preview" />
+                      <div style={{ position: 'relative', height: '200px', borderRadius: tokens.borderRadiusLarge, overflow: 'hidden', border: `1px solid ${tokens.colorNeutralStroke1}` }}>
+                        <img 
+                          src={vehiculoActual.foto} 
+                          alt="Vista previa" 
+                          style={{ width: '100%', height: '100%', objectFit: 'cover' }} 
+                        />
+                        <div style={{ position: 'absolute', bottom: 8, right: 8 }}>
+                          <Badge appearance="filled" color="success">Cloudinary Ready</Badge>
+                        </div>
                       </div>
                     )}
                   </div>
@@ -615,7 +777,7 @@ const PaginaVehiculos = () => {
               <Button appearance="secondary" onClick={() => setDialogoAbierto(false)}>
                 Cancelar
               </Button>
-              <Button appearance="primary" onClick={manejarGuardar}>
+              <Button appearance="primary" onClick={manejarGuardar} disabled={subiendoImagen}>
                 {editando ? 'Guardar cambios' : 'Crear vehículo'}
               </Button>
             </DialogActions>

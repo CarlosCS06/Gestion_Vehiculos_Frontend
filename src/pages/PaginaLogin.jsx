@@ -167,7 +167,7 @@ const PaginaLogin = () => {
           <Text size={100} style={{ color: tokens.colorNeutralForeground3 }}>
             <strong>Credenciales de prueba:</strong><br />
             Admin: DNI <code>00000000Z</code> / Contraseña <code>admin123</code><br />
-            Conductor: DNI <code>12345678A</code> / Contraseña <code>carlos123</code>
+            Conductor: DNI <code>12478784R</code> / Contraseña <code>alfredo123</code>
           </Text>
         </div>
       </Card>

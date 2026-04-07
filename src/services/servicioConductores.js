@@ -20,14 +20,20 @@ export const obtenerConductores = async () => {
 };
 
 export const obtenerConductorPorDni = async (dni) => {
-  const token = sessionStorage.getItem('token');
-  const response = await fetchWithLogging(`${AUTH_API_URL}/${dni}`, {
-    headers: {
-      'Authorization': `Bearer ${token}`
-    }
-  });
-  const data = await response.json();
-  return data ? mapearConductor(data) : null;
+  try {
+    const token = sessionStorage.getItem('token');
+    const response = await fetchWithLogging(`${AUTH_API_URL}/${dni}`, {
+      headers: {
+        'Authorization': `Bearer ${token}`
+      }
+    });
+
+    const data = await response.json();
+    return data ? mapearConductor(data) : null;
+  } catch (error) {
+    if (error.status === 404) return null;
+    throw error;
+  }
 };
 
 export const crearConductor = async (conductor) => {

@@ -2,6 +2,18 @@ import { fetchWithLogging } from './apiUtils';
 
 const AUTH_API_URL = 'https://gestion-vehiculos-backend.vercel.app/api/vehiculos';
 
+const mapearVehiculo = (v) => ({
+  ...v,
+  kmTotales: v.kilometrosTotales || 0,
+  aniosAntiguedad: Number(v.anyosAntiguedad || 0),
+  precioCompra: v.precio || 0,
+  gastoPorKm: v.gastoPorKm || 0,
+  foto: v.imagenes && v.imagenes.length > 0 ? v.imagenes[0].url : (v.foto || ''),
+  trayectos: v.trayectos || [],
+  revisiones: v.revisiones || [],
+  averias: v.averias || [],
+});
+
 export const obtenerVehiculos = async () => {
   const token = sessionStorage.getItem('token');
   const response = await fetchWithLogging(AUTH_API_URL, {
@@ -9,7 +21,8 @@ export const obtenerVehiculos = async () => {
       'Authorization': `Bearer ${token}`
     }
   });
-  return response.json();
+  const datos = await response.json();
+  return Array.isArray(datos) ? datos.map(mapearVehiculo) : [];
 };
 
 export const obtenerVehiculoPorMatricula = async (matricula) => {
@@ -19,16 +32,33 @@ export const obtenerVehiculoPorMatricula = async (matricula) => {
       'Authorization': `Bearer ${token}`
     }
   });
-  return response.json();
+  const dato = await response.json();
+  return dato ? mapearVehiculo(dato) : null;
 };
 
 export const crearVehiculo = async (vehiculo) => {
   const token = sessionStorage.getItem('token');
+
+  // Normalizar para el backend (Prisma schema)
   const normalizedVehiculo = {
-    ...vehiculo,
-    fechaCompra: vehiculo.fechaCompra || null,
-    foto: vehiculo.foto || null,
+    matricula: vehiculo.matricula,
+    marca: vehiculo.marca,
+    modelo: vehiculo.modelo,
+    fechaCompra: vehiculo.fechaCompra ? new Date(vehiculo.fechaCompra).toISOString() : new Date().toISOString(),
+    anyosAntiguedad: Number(vehiculo.aniosAntiguedad || 0),
+    tipo: vehiculo.tipo,
+    kilometrosTotales: Number(vehiculo.kmTotales || 0),
+    alimentacion: vehiculo.alimentacion,
+    precio: Number(vehiculo.precioCompra || 0),
+    nuevo: Boolean(vehiculo.nuevo),
+    gastoPorKm: Number(vehiculo.gastoPorKm || 0),
   };
+
+  // Manejar imágenes si existe el ID de la imagen
+  if (vehiculo.idImagen) {
+    normalizedVehiculo.imagenes = [{ id: Number(vehiculo.idImagen) }]; // El backend espera un array de objetos { id }
+  }
+
   const response = await fetchWithLogging(AUTH_API_URL, {
     method: 'POST',
     headers: {
@@ -42,13 +72,33 @@ export const crearVehiculo = async (vehiculo) => {
 
 export const actualizarVehiculo = async (matricula, datosActualizados) => {
   const token = sessionStorage.getItem('token');
+
+  // Normalizar para el backend (Prisma schema)
   const normalizedDatos = {
-    ...datosActualizados,
-    fechaCompra: datosActualizados.fechaCompra || null,
-    foto: datosActualizados.foto || null,
+    matricula: datosActualizados.matricula,
+    marca: datosActualizados.marca,
+    modelo: datosActualizados.modelo,
+    fechaCompra: datosActualizados.fechaCompra ? new Date(datosActualizados.fechaCompra).toISOString() : undefined,
+    anyosAntiguedad: datosActualizados.aniosAntiguedad !== undefined ? Number(datosActualizados.aniosAntiguedad) : undefined,
+    tipo: datosActualizados.tipo,
+    kilometrosTotales: datosActualizados.kmTotales !== undefined ? Number(datosActualizados.kmTotales) : undefined,
+    alimentacion: datosActualizados.alimentacion,
+    precio: datosActualizados.precioCompra !== undefined ? Number(datosActualizados.precioCompra) : undefined,
+    nuevo: datosActualizados.nuevo !== undefined ? Boolean(datosActualizados.nuevo) : undefined,
+    gastoPorKm: datosActualizados.gastoPorKm !== undefined ? Number(datosActualizados.gastoPorKm) : undefined,
   };
+
+  // Manejar imágenes en la actualización si hay datos (id, url, nombre) para connectOrCreate
+  if (datosActualizados.idImagen) {
+    normalizedDatos.imagenes = [{ 
+      id: Number(datosActualizados.idImagen),
+      url: datosActualizados.foto || '',
+      nombre: datosActualizados.nombreImagen || 'vehiculo_imagen'
+    }];
+  }
+
   const response = await fetchWithLogging(`${AUTH_API_URL}/${matricula}`, {
-    method: 'PUT',
+    method: 'PATCH',
     headers: {
       'Content-Type': 'application/json',
       'Authorization': `Bearer ${token}`

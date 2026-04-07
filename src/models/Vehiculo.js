@@ -38,6 +38,8 @@ export const crearVehiculoVacio = () => ({
   precioCompra: 0,
   tipo: TIPO_VEHICULO.TURISMO,
   foto: '',
+  idImagen: null,
+  nombreImagen: '',
   kmTotales: 0,
   trayectos: [],
   revisiones: [],

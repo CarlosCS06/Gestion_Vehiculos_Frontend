@@ -317,9 +317,9 @@ const PaginaConductores = () => {
                   </Field>
                   <Field label="Fecha de nacimiento">
                     <Input
+                      type="date"
                       value={conductorActual.fechaNacimiento}
                       onChange={(_, d) => manejarCambio('fechaNacimiento', d.value)}
-                      placeholder="2000-01-01"
                       disabled={!esAdmin && usuario && usuario.dni === conductorActual.dni}
                     />
                   </Field>

@@ -1,6 +1,4 @@
 /**
- * Helper to perform fetch calls with enhanced logging for debugging purposes.
- * Especially useful for 500 Internal Server Errors.
  */
 export const fetchWithLogging = async (url, options = {}) => {
   try {

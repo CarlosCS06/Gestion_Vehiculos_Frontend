@@ -39,11 +39,6 @@ export const iniciarSesion = async (dni, contrasena) => {
       body: JSON.stringify({ dni, password: contrasena }),
     });
 
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.message || 'Error en el inicio de sesión');
-    }
-
     const data = await response.json();
 
     // Almacenar el token
@@ -53,6 +48,13 @@ export const iniciarSesion = async (dni, contrasena) => {
 
     return mapearUsuario(data);
   } catch (error) {
+    // Mensaje claro cuando el usuario no existe en el sistema de auth
+    if (error.status === 404) {
+      throw new Error('Usuario no encontrado. Si eres conductor, debes registrarte primero.');
+    }
+    if (error.status === 401) {
+      throw new Error('Contraseña incorrecta.');
+    }
     console.error('Login error:', error);
     throw error;
   }
@@ -142,14 +144,10 @@ export const registrarConductor = async (dni, contrasena, email) => {
 export const obtenerUsuarioPorDni = async (dni) => {
   try {
     const response = await fetchWithLogging(`${USERS_API_URL}/${dni}`);
-    if (!response.ok) {
-      if (response.status === 404) return null;
-      const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.message || 'Error al obtener el usuario');
-    }
     const data = await response.json();
     return mapearUsuario(data);
   } catch (error) {
+    if (error.status === 404) return null;
     console.error('Error fetching user by DNI:', error);
     throw error;
   }
@@ -160,23 +158,28 @@ export const obtenerUsuarioPorDni = async (dni) => {
  * Pre-registrar un usuario (creado por admin)
  */
 export const preRegistrarUsuario = async (conductor) => {
-  // Evitar duplicados
-  if (await obtenerUsuarioPorDni(conductor.dni)) {
-    return;
+  try {
+    // Evitar duplicados
+    if (await obtenerUsuarioPorDni(conductor.dni)) {
+      console.log('El usuario ya está pre-registrado');
+      return;
+    }
+
+    const payload = {
+      dni: conductor.dni,
+      email: '', // Se completará en el registro real
+      password: '', // Sin contraseña inicialmente, se pondrá en el registro
+      fullName: `${conductor.nombre} ${conductor.apellidos}`.trim(),
+      roles: ['conductor'],
+      isActive: true
+    };
+
+    await registrarUsuario(payload);
+  } catch (error) {
+    console.error('Error in pre-registration:', error);
+    // No lanzamos el error para no bloquear la creación del conductor físico
+    // si el sistema de auth falla temporalmente, pero informamos en consola.
   }
-
-  const payload = {
-    dni: conductor.dni,
-    nombre: conductor.nombre,
-    apellido: conductor.apellidos,
-    telefono: conductor.telefono,
-    direccion: conductor.direccion,
-    contrasena: '', // Sin contraseña inicialmente
-    email: '',
-    rol: ROL_USUARIO.CONDUCTOR,
-  };
-
-  registrarUsuario(payload);
 };
 
 /**
