@@ -28,6 +28,7 @@ import {
   Toolbar,
   ToolbarButton,
   Avatar,
+  Badge,
 } from '@fluentui/react-components';
 import {
   Add24Regular,
@@ -43,7 +44,9 @@ import {
   actualizarConductor,
   eliminarConductor,
 } from '../services/servicioConductores.js';
+import { subirImagen, subirImagenPorUrl } from '../services/servicioImagenes.js';
 import { crearConductorVacio } from '../models/Conductor.js';
+import { crearImagenVacia } from '../models/Imagenes.js';
 
 const useEstilos = makeStyles({
   pagina: {
@@ -77,11 +80,41 @@ const useEstilos = makeStyles({
     gridTemplateColumns: '1fr 1fr',
     gap: tokens.spacingHorizontalM,
   },
+  uploadZone: {
+    borderTopWidth: '2px',
+    borderBottomWidth: '2px',
+    borderLeftWidth: '2px',
+    borderRightWidth: '2px',
+    borderTopStyle: 'dashed',
+    borderBottomStyle: 'dashed',
+    borderLeftStyle: 'dashed',
+    borderRightStyle: 'dashed',
+    borderTopColor: tokens.colorNeutralStroke1,
+    borderBottomColor: tokens.colorNeutralStroke1,
+    borderLeftColor: tokens.colorNeutralStroke1,
+    borderRightColor: tokens.colorNeutralStroke1,
+    borderRadius: tokens.borderRadiusLarge,
+    paddingTop: tokens.spacingVerticalL,
+    paddingBottom: tokens.spacingVerticalL,
+    paddingLeft: tokens.spacingVerticalL,
+    paddingRight: tokens.spacingVerticalL,
+    textAlign: 'center',
+    cursor: 'pointer',
+    backgroundColor: tokens.colorNeutralBackground2,
+    transition: 'all 0.3s ease',
+    ':hover': {
+      borderTopColor: tokens.colorBrandStroke1,
+      borderBottomColor: tokens.colorBrandStroke1,
+      borderLeftColor: tokens.colorBrandStroke1,
+      borderRightColor: tokens.colorBrandStroke1,
+      backgroundColor: tokens.colorBrandBackground2,
+    },
+  },
 });
 
 const columnas = [
   { nombre: 'DNI', campo: 'dni' },
-  { nombre: 'Foto', campo: 'foto' },
+  { nombre: 'Imagen', campo: 'image' },
   { nombre: 'Nombre', campo: 'nombre' },
   { nombre: 'Apellidos', campo: 'apellidos' },
   { nombre: 'Teléfono', campo: 'telefono' },
@@ -103,6 +136,7 @@ const PaginaConductores = () => {
   const [editando, setEditando] = useState(false);
   const [dniEliminar, setDniEliminar] = useState('');
   const [error, setError] = useState('');
+  const [subiendoImagen, setSubiendoImagen] = useState(false);
 
   const cargarConductores = useCallback(async () => {
     setCargando(true);
@@ -133,17 +167,65 @@ const PaginaConductores = () => {
 
   const manejarGuardar = async () => {
     try {
+      // Extraemos el objeto image (solo se usa en la UI para preview)
+      // El backend asigna la imagen al conductor automáticamente al subirla con conductorDni
+      const { image, vehiculo, trayectos, ...datosConductor } = conductorActual;
+
       if (editando) {
-        await actualizarConductor(conductorActual.dni, conductorActual);
+        await actualizarConductor(conductorActual.dni, datosConductor);
       } else {
-        await crearConductor(conductorActual);
+        await crearConductor(datosConductor);
         await preRegistrarUsuario(conductorActual);
       }
       setDialogoAbierto(false);
+      setSubiendoImagen(false);
       cargarConductores();
       setError('');
     } catch (err) {
       setError(err.message);
+    }
+  };
+
+  const manejarSubidaArchivo = async (archivo) => {
+    if (!archivo) return;
+    setSubiendoImagen(true);
+    setError('');
+    try {
+      const resp = await subirImagen(archivo);
+      manejarCambio('image', { 
+        id: resp.id,
+        url: resp.url, 
+        nombre: resp.nombre || resp.display_name || 'conductor_archivo',
+        conductorDni: conductorActual.dni 
+      });
+    } catch (err) {
+      setError('Error al subir imagen local: ' + err.message);
+    } finally {
+      setSubiendoImagen(false);
+    }
+  };
+
+  const manejarSubidaUrl = async (url) => {
+    if (!url || !url.startsWith('http')) return;
+    setSubiendoImagen(true);
+    setError('');
+    try {
+      const datosImagen = crearImagenVacia();
+      datosImagen.url = url;
+      datosImagen.nombre = `conductor_${conductorActual.dni || 'nuevo'}`;
+      datosImagen.conductorDni = conductorActual.dni;
+
+      const resp = await subirImagenPorUrl(datosImagen);
+      manejarCambio('image', { 
+        id: resp.id,
+        url: resp.url, 
+        nombre: resp.nombre || resp.display_name || 'conductor_url',
+        conductorDni: conductorActual.dni 
+      });
+    } catch (err) {
+      setError('Error al procesar imagen de internet: ' + err.message);
+    } finally {
+      setSubiendoImagen(false);
     }
   };
 
@@ -214,7 +296,7 @@ const PaginaConductores = () => {
                 <TableCell><strong>{conductor.dni}</strong></TableCell>
                 <TableCell>
                   <Avatar
-                    image={{ src: conductor.foto }}
+                    image={{ src: conductor.image?.url }}
                     name={`${conductor.nombre} ${conductor.apellidos}`}
                     size={32}
                   />
@@ -263,20 +345,52 @@ const PaginaConductores = () => {
                 <Field label="DNI" required>
                   <Input value={conductorActual.dni} onChange={(_, d) => manejarCambio('dni', d.value)} disabled={editando} placeholder="12345678A" />
                 </Field>
-                <Field label="Foto">
-                  <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
-                    <Input
-                      value={conductorActual.foto}
-                      onChange={(_, d) => manejarCambio('foto', d.value)}
-                      placeholder="/fotoCarlos.png"
-                      style={{ flexGrow: 1 }}
-                    />
-                    {conductorActual.foto && (
-                      <Avatar
-                        image={{ src: conductorActual.foto }}
-                        name={`${conductorActual.nombre} ${conductorActual.apellidos}`}
-                        size={48}
+                <Field label="Foto de perfil (Cloudinary)" hint="Se subirá automáticamente al seleccionar archivo o pegar URL">
+                  <div className={estilos.formulario}>
+                    <div
+                      className={estilos.uploadZone}
+                      onClick={() => document.getElementById('conductor-file-input').click()}
+                    >
+                      {subiendoImagen ? (
+                        <Spinner label="Subiendo a Cloudinary..." />
+                      ) : (
+                        <>
+                          <Title2 size={400}>Haz clic o arrastra una imagen</Title2>
+                          <Text size={200} block>La foto oficial del conductor</Text>
+                        </>
+                      )}
+                      <input
+                        id="conductor-file-input"
+                        type="file"
+                        hidden
+                        accept="image/*"
+                        onChange={(e) => manejarSubidaArchivo(e.target.files[0])}
                       />
+                    </div>
+
+                    <div style={{ display: 'flex', gap: '8px', alignItems: 'flex-end' }}>
+                      <Field label="O pega una URL de internet" style={{ flexGrow: 1 }}>
+                        <Input
+                          placeholder="https://ejemplo.com/foto_conductor.jpg"
+                          onBlur={(e) => manejarSubidaUrl(e.target.value)}
+                        />
+                      </Field>
+                    </div>
+
+                    {conductorActual.image?.url && (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '16px', padding: '12px', borderRadius: tokens.borderRadiusLarge, border: `1px solid ${tokens.colorNeutralStroke1}` }}>
+                        <Avatar
+                          image={{ src: conductorActual.image.url }}
+                          name={`${conductorActual.nombre} ${conductorActual.apellidos}`}
+                          size={96}
+                        />
+                        <div>
+                          <Badge appearance="filled" color="success">Imagen verificada</Badge>
+                          <Text size={200} block style={{ marginTop: '4px', color: tokens.colorNeutralForeground4 }}>
+                            {conductorActual.image.nombre || 'Cloudinary Hosting'}
+                          </Text>
+                        </div>
+                      </div>
                     )}
                   </div>
                 </Field>
@@ -328,7 +442,9 @@ const PaginaConductores = () => {
             </DialogContent>
             <DialogActions>
               <Button appearance="secondary" onClick={() => setDialogoAbierto(false)}>Cancelar</Button>
-              <Button appearance="primary" onClick={manejarGuardar}>{editando ? 'Guardar cambios' : 'Dar de alta'}</Button>
+              <Button appearance="primary" onClick={manejarGuardar} disabled={subiendoImagen}>
+                {editando ? 'Guardar cambios' : 'Dar de alta'}
+              </Button>
             </DialogActions>
           </DialogBody>
         </DialogSurface>

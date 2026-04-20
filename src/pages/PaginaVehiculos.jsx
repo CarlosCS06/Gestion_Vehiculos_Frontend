@@ -49,6 +49,7 @@ import {
   actualizarVehiculo,
   eliminarVehiculo,
   obtenerPeriodicidadITV,
+  calcularProximaItvSugerida,
 } from '../services/servicioVehiculos.js';
 import { subirImagen } from '../services/servicioImagenes.js';
 import {
@@ -107,6 +108,11 @@ const useEstilos = makeStyles({
     alignItems: 'center',
     gap: tokens.spacingHorizontalS,
   },
+  listaTarjetas: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: tokens.spacingVerticalL, // Espacio suficiente para evitar solapamiento en hover
+  },
   resumen: {
     display: 'grid',
     gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))',
@@ -147,22 +153,51 @@ const useEstilos = makeStyles({
     },
   },
   contenedorImagen: {
-    width: '280px',
-    minWidth: '280px',
-    backgroundColor: tokens.colorNeutralBackground2,
+    width: '420px',
+    minWidth: '420px',
+    height: '260px',
+    backgroundColor: '#ffffff',
+    position: 'relative',
+    overflow: 'hidden',
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
-    position: 'relative',
-    overflow: 'hidden',
+    paddingTop: tokens.spacingVerticalS,
+    paddingBottom: tokens.spacingVerticalS,
+    paddingLeft: tokens.spacingHorizontalS,
+    paddingRight: tokens.spacingHorizontalS,
+    boxSizing: 'border-box',
   },
   imagenVehiculo: {
-    width: '100%',
-    height: '100%',
-    objectFit: 'cover',
-    transition: 'scale 0.5s ease',
-    ':hover': {
-      scale: '1.05',
+    width: 'calc(100% - 16px)',
+    height: 'calc(100% - 16px)',
+    objectFit: 'contain',
+    backgroundColor: 'transparent',
+    transition: 'opacity 0.6s ease-in-out',
+    position: 'absolute',
+    top: '8px',
+    left: '8px',
+    opacity: 1,
+    zIndex: 1,
+  },
+  imagenHover: {
+    width: 'calc(100% - 16px)',
+    height: 'calc(100% - 16px)',
+    objectFit: 'contain',
+    backgroundColor: 'transparent',
+    transition: 'opacity 0.6s ease-in-out',
+    position: 'absolute',
+    top: '8px',
+    left: '8px',
+    opacity: 0,
+    zIndex: 2,
+  },
+  contenedorImagenActive: {
+    '&:hover .imagen-primaria': {
+      opacity: 0,
+    },
+    '&:hover .imagen-secundaria': {
+      opacity: 1,
     },
   },
   overlayCarga: {
@@ -284,7 +319,7 @@ const columnas = [
   { nombre: 'Marca', campo: 'marca' },
   { nombre: 'Modelo', campo: 'modelo' },
   { nombre: 'Tipo', campo: 'tipo' },
-  { nombre: 'Km Totales', campo: 'kmTotales' },
+  { nombre: 'Km Totales', campo: 'kilometrosTotales' },
   { nombre: 'Alimentación', campo: 'alimentacion' },
   { nombre: 'Estado', campo: 'estado' },
   { nombre: 'Acciones', campo: 'acciones' },
@@ -320,6 +355,14 @@ const PaginaVehiculos = () => {
   useEffect(() => {
     cargarVehiculos();
   }, [cargarVehiculos]);
+
+  // Efecto para auto-calcular la próxima ITV cuando cambian tipo o antigüedad en el modo creación
+  useEffect(() => {
+    if (!editando && dialogoAbierto) {
+      const sugerencia = calcularProximaItvSugerida(vehiculoActual.tipo, vehiculoActual.anyosAntiguedad);
+      setVehiculoActual(prev => ({ ...prev, proximaItv: sugerencia }));
+    }
+  }, [vehiculoActual.tipo, vehiculoActual.anyosAntiguedad, editando, dialogoAbierto]);
 
   const vehiculosFiltrados = soloAveriados
     ? vehiculos.filter((v) => v.estado === ESTADO_VEHICULO.AVERIADO)
@@ -366,10 +409,12 @@ const PaginaVehiculos = () => {
     setSubiendoImagen(true);
     setError('');
     try {
-      const response = await fetch(url);
-      const blob = await response.blob();
-      const file = new File([blob], "imagen_internet.webp", { type: blob.type });
-      const resp = await subirImagen(file);
+      const datosImagen = crearImagenVacia();
+      datosImagen.url = url;
+      datosImagen.nombre = `vehiculo_${vehiculoActual.matricula || 'nuevo'}`;
+      datosImagen.vehiculoMatricula = vehiculoActual.matricula;
+
+      const resp = await subirImagenPorUrl(datosImagen);
       // Guardamos la URL para la vista previa, el ID y el Nombre para el backend
       manejarCambio('foto', resp.url);
       manejarCambio('idImagen', resp.id);
@@ -414,7 +459,14 @@ const PaginaVehiculos = () => {
   };
 
   const manejarCambio = (campo, valor) => {
-    setVehiculoActual((prev) => ({ ...prev, [campo]: valor }));
+    setVehiculoActual((prev) => {
+      const nuevoEstado = { ...prev, [campo]: valor };
+      // Si cambia el kilometraje total, determinar automáticamente si es nuevo
+      if (campo === 'kilometrosTotales') {
+        nuevoEstado.nuevo = valor === 0;
+      }
+      return nuevoEstado;
+    });
   };
 
   if (cargando) {
@@ -484,22 +536,33 @@ const PaginaVehiculos = () => {
         </MessageBar>
       )}
 
-      {/* Lista de Vehículos (Tarjetas) */}
       <div className={estilos.listaTarjetas}>
         {vehiculosFiltrados.map((vehiculo) => (
+
           <Card
             key={vehiculo.matricula}
             className={estilos.tarjetaVehiculo}
           >
-            <div className={estilos.contenedorImagen}>
+            <div className={`${estilos.contenedorImagen} ${vehiculo.fotoHover ? estilos.contenedorImagenActive : ''}`}>
               {vehiculo.foto ? (
-                <img
-                  src={vehiculo.foto}
-                  alt={vehiculo.modelo}
-                  className={estilos.imagenVehiculo}
-                />
+                <>
+                  <img
+                    src={vehiculo.foto}
+                    alt={vehiculo.modelo}
+                    className={`${estilos.imagenVehiculo} imagen-primaria`}
+                  />
+                  {vehiculo.fotoHover && (
+                    <img
+                      src={vehiculo.fotoHover}
+                      alt={`${vehiculo.modelo} vista secundaria`}
+                      className={`${estilos.imagenHover} imagen-secundaria`}
+                    />
+                  )}
+                </>
               ) : (
-                <VehicleCar24Regular className={estilos.iconoPlaceholder} />
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%' }}>
+                  <VehicleCar24Regular className={estilos.iconoPlaceholder} />
+                </div>
               )}
             </div>
 
@@ -557,7 +620,7 @@ const PaginaVehiculos = () => {
                 </div>
                 <div>
                   <div className={estilos.datoEtiqueta}>Kilometraje</div>
-                  <div className={estilos.datoValor}>{vehiculo.kmTotales.toLocaleString('es-ES')} km</div>
+                  <div className={estilos.datoValor}>{vehiculo.kilometrosTotales.toLocaleString('es-ES')} km</div>
                 </div>
                 <div>
                   <div className={estilos.datoEtiqueta}>Alimentación</div>
@@ -565,12 +628,12 @@ const PaginaVehiculos = () => {
                 </div>
                 <div>
                   <div className={estilos.datoEtiqueta}>Antigüedad</div>
-                  <div className={estilos.datoValor}>{vehiculo.aniosAntiguedad} años</div>
+                  <div className={estilos.datoValor}>{vehiculo.anyosAntiguedad} años</div>
                 </div>
                 <div>
                   <div className={estilos.datoEtiqueta}>Precio compra</div>
                   <div className={estilos.datoValor}>
-                    {vehiculo.precioCompra.toLocaleString('es-ES', { style: 'currency', currency: 'EUR' })}
+                    {vehiculo.precio.toLocaleString('es-ES', { style: 'currency', currency: 'EUR' })}
                   </div>
                 </div>
                 <div>
@@ -592,9 +655,15 @@ const PaginaVehiculos = () => {
                   </div>
                 </div>
                 <div>
-                  <div className={estilos.datoEtiqueta}>Inspección ITV</div>
-                  <div className={estilos.datoValor} style={{ color: obtenerPeriodicidadITV(vehiculo.tipo, vehiculo.aniosAntiguedad) === 'Exento' ? tokens.colorPaletteGreenForeground1 : tokens.colorBrandForeground1 }}>
-                    {obtenerPeriodicidadITV(vehiculo.tipo, vehiculo.aniosAntiguedad)}
+                  <div className={estilos.datoEtiqueta}>Próxima ITV</div>
+                  <div className={estilos.datoValor} style={{ color: tokens.colorBrandForeground1, fontWeight: 'bold' }}>
+                    {vehiculo.proximaItv || 'No definida'}
+                  </div>
+                </div>
+                <div>
+                  <div className={estilos.datoEtiqueta}>Periodicidad</div>
+                  <div className={estilos.datoValor} style={{ color: obtenerPeriodicidadITV(vehiculo.tipo, vehiculo.anyosAntiguedad).texto === 'Exento' ? tokens.colorPaletteGreenForeground1 : tokens.colorNeutralForeground3 }}>
+                    {obtenerPeriodicidadITV(vehiculo.tipo, vehiculo.anyosAntiguedad).texto}
                   </div>
                 </div>
               </div>
@@ -677,15 +746,15 @@ const PaginaVehiculos = () => {
                   <Field label="Precio de compra (€)">
                     <Input
                       type="number"
-                      value={String(vehiculoActual.precioCompra)}
-                      onChange={(_, d) => manejarCambio('precioCompra', Number(d.value))}
+                      value={String(vehiculoActual.precio)}
+                      onChange={(_, d) => manejarCambio('precio', Number(d.value))}
                     />
                   </Field>
                   <Field label="Km totales">
                     <Input
                       type="number"
-                      value={String(vehiculoActual.kmTotales)}
-                      onChange={(_, d) => manejarCambio('kmTotales', Number(d.value))}
+                      value={String(vehiculoActual.kilometrosTotales)}
+                      onChange={(_, d) => manejarCambio('kilometrosTotales', Number(d.value))}
                     />
                   </Field>
                 </div>
@@ -713,21 +782,21 @@ const PaginaVehiculos = () => {
                   <Field label="Años de antigüedad">
                     <Input
                       type="number"
-                      value={String(vehiculoActual.aniosAntiguedad)}
-                      onChange={(_, d) => manejarCambio('aniosAntiguedad', Number(d.value))}
+                      value={String(vehiculoActual.anyosAntiguedad)}
+                      onChange={(_, d) => manejarCambio('anyosAntiguedad', Number(d.value))}
                     />
                   </Field>
-                  <Field label="Vehículo Nuevo">
-                     <Checkbox 
-                       label={vehiculoActual.nuevo ? "Sí (Kilómetro 0)" : "No (De ocasión)"}
-                       checked={vehiculoActual.nuevo}
-                       onChange={(_, d) => manejarCambio('nuevo', d.checked)}
-                     />
+                  <Field label="Próxima ITV (Año o fecha)" hint="Se calcula automáticamente pero puedes editarlo">
+                    <Input
+                      value={vehiculoActual.proximaItv}
+                      onChange={(_, d) => manejarCambio('proximaItv', d.value)}
+                      placeholder="2028 (Pendiente)"
+                    />
                   </Field>
                 </div>
                 <Field label="Imagen del vehículo (Cloudinary)" hint="Se subirá automáticamente al seleccionar archivo o pegar URL">
                   <div className={estilos.formulario}>
-                    <div 
+                    <div
                       className={estilos.uploadZone}
                       onClick={() => document.getElementById('file-input').click()}
                     >
@@ -739,10 +808,10 @@ const PaginaVehiculos = () => {
                           <Text size={200} block>Formatos sugeridos: JPG, PNG, WEBP</Text>
                         </>
                       )}
-                      <input 
+                      <input
                         id="file-input"
-                        type="file" 
-                        hidden 
+                        type="file"
+                        hidden
                         accept="image/*"
                         onChange={(e) => manejarSubidaArchivo(e.target.files[0])}
                       />
@@ -759,10 +828,10 @@ const PaginaVehiculos = () => {
 
                     {vehiculoActual.foto && (
                       <div style={{ position: 'relative', height: '200px', borderRadius: tokens.borderRadiusLarge, overflow: 'hidden', border: `1px solid ${tokens.colorNeutralStroke1}` }}>
-                        <img 
-                          src={vehiculoActual.foto} 
-                          alt="Vista previa" 
-                          style={{ width: '100%', height: '100%', objectFit: 'cover' }} 
+                        <img
+                          src={vehiculoActual.foto}
+                          alt="Vista previa"
+                          style={{ width: '100%', height: '100%', objectFit: 'contain', backgroundColor: '#ffffff' }}
                         />
                         <div style={{ position: 'absolute', bottom: 8, right: 8 }}>
                           <Badge appearance="filled" color="success">Cloudinary Ready</Badge>

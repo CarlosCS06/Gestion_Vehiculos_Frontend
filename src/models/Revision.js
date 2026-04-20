@@ -5,9 +5,11 @@
  */
 export const crearRevisionVacia = () => ({
   id: '',
-  matricula: '',
+  vehiculoMatricula: '',
   fecha: '',
   lugar: '',
   activo: false,
   aprobada: false,
+  costo: 0,
+  viajeId: null,
 });

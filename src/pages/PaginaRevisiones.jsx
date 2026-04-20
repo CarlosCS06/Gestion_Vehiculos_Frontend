@@ -80,13 +80,52 @@ const useEstilos = makeStyles({
     gridTemplateColumns: '1fr 1fr',
     gap: tokens.spacingHorizontalM,
   },
+  panelItv: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: tokens.spacingVerticalS,
+    marginBottom: tokens.spacingVerticalL,
+  },
+  contenedorTarjetasItv: {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
+    gap: tokens.spacingHorizontalM,
+  },
+  tarjetaItv: {
+    padding: tokens.spacingHorizontalM,
+    borderLeftWidth: '4px',
+    borderLeftStyle: 'solid',
+    transition: 'all 0.2s ease',
+    ':hover': {
+      transform: 'translateY(-2px)',
+      boxShadow: tokens.shadow8,
+    },
+  },
+  vencida: {
+    borderLeftColor: tokens.colorPaletteRedBorderActive,
+    backgroundColor: tokens.colorPaletteRedBackground1,
+  },
+  proxima: {
+    borderLeftColor: tokens.colorPaletteYellowBorderActive,
+    backgroundColor: tokens.colorPaletteYellowBackground1,
+  },
+  alDia: {
+    borderLeftColor: tokens.colorPaletteGreenBorderActive,
+    backgroundColor: tokens.colorPaletteGreenBackground1,
+  },
+  infoItv: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
 });
 
 const columnas = [
   { nombre: 'ID', campo: 'id' },
-  { nombre: 'Vehículo', campo: 'matricula' },
+  { nombre: 'Vehículo', campo: 'vehiculoMatricula' },
   { nombre: 'Fecha', campo: 'fecha' },
   { nombre: 'Lugar', campo: 'lugar' },
+  { nombre: 'Coste', campo: 'costo' },
   { nombre: 'Activa', campo: 'activo' },
   { nombre: 'Aprobada', campo: 'aprobada' },
   { nombre: 'Acciones', campo: 'acciones' },
@@ -140,9 +179,9 @@ const PaginaRevisiones = () => {
   const manejarGuardar = async () => {
     try {
       if (editando) {
-        await actualizarRevision(revisionActual.id, revisionActual);
+        await actualizarRevision(revisionActual.id, { ...revisionActual, aprobada: false });
       } else {
-        await crearRevision(revisionActual);
+        await crearRevision({ ...revisionActual, aprobada: false });
       }
       setDialogoAbierto(false);
       cargarDatos();
@@ -174,22 +213,56 @@ const PaginaRevisiones = () => {
   if (cargando) {
     return (
       <div style={{ display: 'flex', justifyContent: 'center', padding: '60px' }}>
-        <Spinner size="large" label="Cargando revisiones..." />
+        <Spinner size="large" label="Cargando inspecciones..." />
       </div>
     );
   }
+
+  // Identificar vehículos con ITV próxima o vencida
+  const obtenerEstadoItv = (proximaItv) => {
+    if (!proximaItv) return { estado: 'desconocido', color: 'subtle', texto: 'No definida' };
+    
+    // Si incluye (Pendiente), es una sugerencia basada en el año
+    if (proximaItv.includes('(Pendiente)')) {
+      const anio = parseInt(proximaItv);
+      const anioActual = new Date().getFullYear();
+      if (anio < anioActual) return { estado: 'vencida', color: 'danger', texto: 'Atrasada' };
+      if (anio === anioActual) return { estado: 'proxima', color: 'warning', texto: 'Este año' };
+      return { estado: 'alDia', color: 'success', texto: 'Al día' };
+    }
+
+    // Si es una fecha ISO
+    const hoy = new Date();
+    const fecha = new Date(proximaItv);
+    if (isNaN(fecha.getTime())) return { estado: 'desconocido', color: 'subtle', texto: proximaItv };
+
+    const diferenciaDias = Math.ceil((fecha - hoy) / (1000 * 60 * 60 * 24));
+    if (diferenciaDias < 0) return { estado: 'vencida', color: 'danger', texto: 'VENCIDA' };
+    if (diferenciaDias < 30) return { estado: 'proxima', color: 'warning', texto: `En ${diferenciaDias} días` };
+    return { estado: 'alDia', color: 'success', texto: 'Al día' };
+  };
+
+  const vehiculosConItv = vehiculos
+    .map(v => ({ ...v, infoItv: obtenerEstadoItv(v.proximaItv) }))
+    .sort((a, b) => {
+      // Priorizar vencidas y próximas
+      const prioridad = { 'vencida': 0, 'proxima': 1, 'alDia': 2, 'desconocido': 3 };
+      return prioridad[a.infoItv.estado] - prioridad[b.infoItv.estado];
+    });
+
+  const itvsUrgentes = vehiculosConItv.filter(v => v.infoItv.estado !== 'alDia' && v.infoItv.estado !== 'desconocido');
 
   return (
     <div className={estilos.pagina}>
       <div className={estilos.cabecera}>
         <div className={estilos.tituloConIcono}>
           <Wrench24Regular style={{ fontSize: '28px', color: tokens.colorBrandForeground1 }} />
-          <Title2>Revisiones</Title2>
+          <Title2>Gestión de Inspecciones ITV</Title2>
         </div>
         {esAdmin && (
           <Toolbar>
             <ToolbarButton appearance="primary" icon={<Add24Regular />} onClick={abrirDialogoCrear}>
-              Añadir revisión
+              Registrar ITV pasada
             </ToolbarButton>
           </Toolbar>
         )}
@@ -203,6 +276,40 @@ const PaginaRevisiones = () => {
           </MessageBarBody>
         </MessageBar>
       )}
+
+      {/* Panel de Seguimiento ITV */}
+      <div className={estilos.panelItv}>
+        <Title2 size={400}>Seguimiento de Próximas Inspecciones</Title2>
+        <div className={estilos.contenedorTarjetasItv}>
+          {itvsUrgentes.length > 0 ? (
+            itvsUrgentes.map(v => (
+              <Card 
+                key={v.matricula} 
+                className={`${estilos.tarjetaItv} ${estilos[v.infoItv.estado]}`}
+              >
+                <div className={estilos.infoItv}>
+                  <div>
+                    <Text weight="bold" size={400}>{v.matricula}</Text>
+                    <Text size={200} block>{v.marca} {v.modelo}</Text>
+                  </div>
+                  <Badge color={v.infoItv.color} appearance="filled">
+                    {v.infoItv.texto}
+                  </Badge>
+                </div>
+                <div style={{ marginTop: '8px' }}>
+                  <Text size={300} italic color="neutralTertiary">Próxima: {v.proximaItv}</Text>
+                </div>
+              </Card>
+            ))
+          ) : (
+            <MessageBar intent="success">
+              <MessageBarBody>Todas las inspecciones ITV están al día.</MessageBarBody>
+            </MessageBar>
+          )}
+        </div>
+      </div>
+
+      <Title2 size={500}>Historial de Inspecciones Pasadas</Title2>
 
       <Card className={estilos.tarjetaTabla}>
         <Table style={{ minWidth: '600px' }}>
@@ -219,11 +326,16 @@ const PaginaRevisiones = () => {
                 <TableCell><strong>{revision.id}</strong></TableCell>
                 <TableCell>
                   <Text weight="semibold" style={{ color: tokens.colorBrandForeground1 }}>
-                    {revision.matricula}
+                    {revision.vehiculoMatricula}
                   </Text>
                 </TableCell>
                 <TableCell>{new Date(revision.fecha).toLocaleDateString('es-ES')}</TableCell>
                 <TableCell>{revision.lugar}</TableCell>
+                <TableCell>
+                  <Text weight="semibold">
+                    {new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR' }).format(revision.costo || 0)}
+                  </Text>
+                </TableCell>
                 <TableCell>
                   <Badge appearance="filled" color={revision.activo ? 'warning' : 'subtle'}>
                     {revision.activo ? 'Sí' : 'No'}
@@ -262,13 +374,13 @@ const PaginaRevisiones = () => {
       <Dialog open={dialogoAbierto} onOpenChange={(_, d) => { if (!d.open) setDialogoAbierto(false); }}>
         <DialogSurface style={{ maxWidth: '500px' }}>
           <DialogBody>
-            <DialogTitle>{editando ? 'Editar revisión' : 'Nueva revisión'}</DialogTitle>
+            <DialogTitle>{editando ? 'Editar registro ITV' : 'Nuevo registro ITV'}</DialogTitle>
             <DialogContent>
               <div className={estilos.formulario}>
                 <Field label="Vehículo" required>
                   <Select
-                    value={revisionActual.matricula}
-                    onChange={(_, d) => manejarCambio('matricula', d.value)}
+                    value={revisionActual.vehiculoMatricula}
+                    onChange={(_, d) => manejarCambio('vehiculoMatricula', d.value)}
                     disabled={editando}
                   >
                     <option value="">Seleccionar vehículo...</option>
@@ -286,11 +398,16 @@ const PaginaRevisiones = () => {
                   <Input value={revisionActual.lugar} onChange={(_, d) => manejarCambio('lugar', d.value)} placeholder="Taller Central Madrid" />
                 </Field>
                 <div className={estilos.filaFormulario}>
+                  <Field label="Coste (€)" required>
+                    <Input 
+                      type="number" 
+                      value={revisionActual.costo} 
+                      onChange={(_, d) => manejarCambio('costo', parseFloat(d.value) || 0)} 
+                      contentBefore="€"
+                    />
+                  </Field>
                   <Field label="Activa">
                     <Switch checked={revisionActual.activo} onChange={(_, d) => manejarCambio('activo', d.checked)} />
-                  </Field>
-                  <Field label="Aprobada">
-                    <Switch checked={revisionActual.aprobada} onChange={(_, d) => manejarCambio('aprobada', d.checked)} />
                   </Field>
                 </div>
               </div>

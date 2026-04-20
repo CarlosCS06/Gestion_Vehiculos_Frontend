@@ -6,7 +6,8 @@ export const fetchWithLogging = async (url, options = {}) => {
     const response = await fetch(url, options);
 
     if (!response.ok) {
-      let errorMessage = `${response.status} ${response.statusText}`;
+      const JSON = await response.json();
+      let errorMessage = `${response.status} ${JSON.error}`;
       let errorDetails = null;
       console.log(token);
       try {

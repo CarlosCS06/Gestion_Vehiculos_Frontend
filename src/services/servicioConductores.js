@@ -52,7 +52,7 @@ export const crearConductor = async (conductor) => {
 export const actualizarConductor = async (dni, datosActualizados) => {
   const token = sessionStorage.getItem('token');
   const response = await fetchWithLogging(`${AUTH_API_URL}/${dni}`, {
-    method: 'PUT',
+    method: 'PATCH',
     headers: {
       'Content-Type': 'application/json',
       'Authorization': `Bearer ${token}`

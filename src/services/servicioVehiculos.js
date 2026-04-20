@@ -2,17 +2,49 @@ import { fetchWithLogging } from './apiUtils';
 
 const AUTH_API_URL = 'https://gestion-vehiculos-backend.vercel.app/api/vehiculos';
 
-const mapearVehiculo = (v) => ({
-  ...v,
-  kmTotales: v.kilometrosTotales || 0,
-  aniosAntiguedad: Number(v.anyosAntiguedad || 0),
-  precioCompra: v.precio || 0,
-  gastoPorKm: v.gastoPorKm || 0,
-  foto: v.imagenes && v.imagenes.length > 0 ? v.imagenes[0].url : (v.foto || ''),
-  trayectos: v.trayectos || [],
-  revisiones: v.revisiones || [],
-  averias: v.averias || [],
-});
+const mapearVehiculo = (v) => {
+  // Mapeo de imágenes: primera para principal, segunda para hover (si existe)
+  const imagenes = v.imagenes || [];
+  let fotoUrl = imagenes.length > 0 ? imagenes[0].url : (v.foto || '');
+  let hoverUrl = imagenes.length > 1 ? imagenes[1].url : '';
+
+  // Intercambio específico para la Toyota Hilux solicitado por el usuario
+  if (v.marca === 'Toyota' && v.modelo === 'Hilux' && imagenes.length >= 2) {
+    [fotoUrl, hoverUrl] = [hoverUrl, fotoUrl];
+  }
+
+  const vehiculo = {
+    ...v,
+    kilometrosTotales: v.kilometrosTotales || 0,
+    anyosAntiguedad: Number(v.anyosAntiguedad || 0),
+    precio: v.precio || 0,
+    gastoPorKm: v.gastoPorKm || 0,
+    foto: fotoUrl,
+    fotoHover: hoverUrl,
+    trayectos: v.trayectos || [],
+    revisiones: v.revisiones || [],
+    averias: v.averias || [],
+    proximaItv: v.proximaItv || '',
+  };
+
+  // Lógica de Autocorrección Automática al recibir datos
+  if (vehiculo.proximaItv && vehiculo.proximaItv.includes('-')) {
+    const hoy = new Date();
+    const fechaItv = new Date(vehiculo.proximaItv);
+
+    // Si la fecha ya ha pasado (ayer o antes)
+    if (fechaItv < hoy.setHours(0, 0, 0, 0)) {
+      const periodicidad = obtenerPeriodicidadITV(vehiculo.tipo, vehiculo.anyosAntiguedad);
+      if (periodicidad.años > 0) {
+        // Calculamos el próximo año estimado
+        const proximoAnio = new Date().getFullYear() + periodicidad.años;
+        vehiculo.proximaItv = `${proximoAnio} (Pendiente)`;
+      }
+    }
+  }
+
+  return vehiculo;
+};
 
 export const obtenerVehiculos = async () => {
   const token = sessionStorage.getItem('token');
@@ -45,19 +77,16 @@ export const crearVehiculo = async (vehiculo) => {
     marca: vehiculo.marca,
     modelo: vehiculo.modelo,
     fechaCompra: vehiculo.fechaCompra ? new Date(vehiculo.fechaCompra).toISOString() : new Date().toISOString(),
-    anyosAntiguedad: Number(vehiculo.aniosAntiguedad || 0),
+    anyosAntiguedad: Number(vehiculo.anyosAntiguedad || 0),
     tipo: vehiculo.tipo,
-    kilometrosTotales: Number(vehiculo.kmTotales || 0),
+    kilometrosTotales: Number(vehiculo.kilometrosTotales || 0),
     alimentacion: vehiculo.alimentacion,
-    precio: Number(vehiculo.precioCompra || 0),
+    precio: Number(vehiculo.precio || 0),
     nuevo: Boolean(vehiculo.nuevo),
     gastoPorKm: Number(vehiculo.gastoPorKm || 0),
+    proximaItv: vehiculo.proximaItv,
+    fotoHover: vehiculo.fotoHover,
   };
-
-  // Manejar imágenes si existe el ID de la imagen
-  if (vehiculo.idImagen) {
-    normalizedVehiculo.imagenes = [{ id: Number(vehiculo.idImagen) }]; // El backend espera un array de objetos { id }
-  }
 
   const response = await fetchWithLogging(AUTH_API_URL, {
     method: 'POST',
@@ -79,23 +108,16 @@ export const actualizarVehiculo = async (matricula, datosActualizados) => {
     marca: datosActualizados.marca,
     modelo: datosActualizados.modelo,
     fechaCompra: datosActualizados.fechaCompra ? new Date(datosActualizados.fechaCompra).toISOString() : undefined,
-    anyosAntiguedad: datosActualizados.aniosAntiguedad !== undefined ? Number(datosActualizados.aniosAntiguedad) : undefined,
+    anyosAntiguedad: datosActualizados.anyosAntiguedad !== undefined ? Number(datosActualizados.anyosAntiguedad) : undefined,
     tipo: datosActualizados.tipo,
-    kilometrosTotales: datosActualizados.kmTotales !== undefined ? Number(datosActualizados.kmTotales) : undefined,
+    kilometrosTotales: datosActualizados.kilometrosTotales !== undefined ? Number(datosActualizados.kilometrosTotales) : undefined,
     alimentacion: datosActualizados.alimentacion,
-    precio: datosActualizados.precioCompra !== undefined ? Number(datosActualizados.precioCompra) : undefined,
+    precio: datosActualizados.precio !== undefined ? Number(datosActualizados.precio) : undefined,
     nuevo: datosActualizados.nuevo !== undefined ? Boolean(datosActualizados.nuevo) : undefined,
     gastoPorKm: datosActualizados.gastoPorKm !== undefined ? Number(datosActualizados.gastoPorKm) : undefined,
+    proximaItv: datosActualizados.proximaItv,
+    fotoHover: datosActualizados.fotoHover,
   };
-
-  // Manejar imágenes en la actualización si hay datos (id, url, nombre) para connectOrCreate
-  if (datosActualizados.idImagen) {
-    normalizedDatos.imagenes = [{ 
-      id: Number(datosActualizados.idImagen),
-      url: datosActualizados.foto || '',
-      nombre: datosActualizados.nombreImagen || 'vehiculo_imagen'
-    }];
-  }
 
   const response = await fetchWithLogging(`${AUTH_API_URL}/${matricula}`, {
     method: 'PATCH',
@@ -134,32 +156,45 @@ export const obtenerVehiculosAveriados = async () => {
  */
 export const obtenerPeriodicidadITV = (tipo, antiguedad) => {
   if (tipo === 'Turismo' || tipo === 'Motocicleta') {
-    if (antiguedad < 4) return 'Exento';
-    if (antiguedad < 10) return 'Cada 2 años';
-    return 'Cada año';
+    if (antiguedad < 4) return { texto: 'Exento', años: 4 - antiguedad };
+    if (antiguedad < 10) return { texto: 'Cada 2 años', años: 2 };
+    return { texto: 'Cada año', años: 1 };
   }
 
   if (tipo === 'Ciclomotor') {
-    if (antiguedad < 3) return 'Exento';
-    return 'Cada 2 años';
+    if (antiguedad < 3) return { texto: 'Exento', años: 3 - antiguedad };
+    return { texto: 'Cada 2 años', años: 2 };
   }
 
   if (tipo === 'Furgoneta') {
-    if (antiguedad < 2) return 'Exento';
-    if (antiguedad < 6) return 'Cada 2 años';
-    if (antiguedad < 10) return 'Cada año';
-    return 'Cada 6 meses';
+    if (antiguedad < 2) return { texto: 'Exento', años: 2 - antiguedad };
+    if (antiguedad < 6) return { texto: 'Cada 2 años', años: 2 };
+    if (antiguedad < 10) return { texto: 'Cada año', años: 1 };
+    return { texto: 'Cada 6 meses', años: 0.5 };
   }
 
   if (tipo === 'Caravana') {
-    if (antiguedad < 6) return 'Exento';
-    return 'Cada 2 años';
+    if (antiguedad < 6) return { texto: 'Exento', años: 6 - antiguedad };
+    return { texto: 'Cada 2 años', años: 2 };
   }
 
   if (tipo === 'Camión' || tipo === 'Autobús') {
-    if (antiguedad < 10) return 'Cada año';
-    return 'Cada 6 meses';
+    if (antiguedad < 10) return { texto: 'Cada año', años: 1 };
+    return { texto: 'Cada 6 meses', años: 0.5 };
   }
 
-  return 'No definida';
+  return { texto: 'No definida', años: 0 };
+};
+
+/**
+ * Calcula el año sugerido de la próxima ITV
+ */
+export const calcularProximaItvSugerida = (tipo, antiguedad) => {
+  const periodicidad = obtenerPeriodicidadITV(tipo, antiguedad);
+  if (periodicidad.años === 0) return 'Por especificar';
+
+  const anyoActual = new Date().getFullYear();
+  const proximoAnyo = anyoActual + periodicidad.años;
+
+  return `${Math.floor(proximoAnyo)} (Pendiente)`;
 };
