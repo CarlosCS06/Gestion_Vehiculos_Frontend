@@ -51,13 +51,14 @@ import {
   obtenerPeriodicidadITV,
   calcularProximaItvSugerida,
 } from '../services/servicioVehiculos.js';
-import { subirImagen } from '../services/servicioImagenes.js';
+import { subirImagen, subirImagenPorUrl } from '../services/servicioImagenes.js';
 import {
   ESTADO_VEHICULO,
   TIPO_VEHICULO,
   TIPO_ALIMENTACION,
   crearVehiculoVacio,
 } from '../models/Vehiculo.js';
+import { crearImagenVacia } from '../models/Imagenes.js';
 
 const useEstilos = makeStyles({
   pagina: {
@@ -392,7 +393,7 @@ const PaginaVehiculos = () => {
     setSubiendoImagen(true);
     setError('');
     try {
-      const resp = await subirImagen(archivo);
+      const resp = await subirImagen(archivo, vehiculoActual.matricula);
       // Guardamos la URL para la vista previa, el ID y el Nombre para el backend
       manejarCambio('foto', resp.url);
       manejarCambio('idImagen', resp.id);
@@ -766,16 +767,6 @@ const PaginaVehiculos = () => {
                       value={String(vehiculoActual.gastoPorKm)}
                       onChange={(_, d) => manejarCambio('gastoPorKm', Number(d.value))}
                     />
-                  </Field>
-                  <Field label="Estado">
-                    <Select
-                      value={vehiculoActual.estado}
-                      onChange={(_, d) => manejarCambio('estado', d.value)}
-                    >
-                      <option value={ESTADO_VEHICULO.DISPONIBLE}>Disponible</option>
-                      <option value={ESTADO_VEHICULO.EN_TRAYECTO}>En trayecto</option>
-                      <option value={ESTADO_VEHICULO.AVERIADO}>Averiado</option>
-                    </Select>
                   </Field>
                 </div>
                 <div className={estilos.filaFormulario}>

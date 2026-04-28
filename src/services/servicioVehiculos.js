@@ -25,6 +25,8 @@ const mapearVehiculo = (v) => {
     revisiones: v.revisiones || [],
     averias: v.averias || [],
     proximaItv: v.proximaItv || '',
+    estado: v.estado ? v.estado.toLowerCase() : 'disponible',
+    idImagen: v.idImagen || null,
   };
 
   // Lógica de Autocorrección Automática al recibir datos
@@ -84,7 +86,10 @@ export const crearVehiculo = async (vehiculo) => {
     precio: Number(vehiculo.precio || 0),
     nuevo: Boolean(vehiculo.nuevo),
     gastoPorKm: Number(vehiculo.gastoPorKm || 0),
+    estado: vehiculo.estado,
     proximaItv: vehiculo.proximaItv,
+    foto: vehiculo.foto,
+    idImagen: vehiculo.idImagen,
     fotoHover: vehiculo.fotoHover,
   };
 
@@ -115,7 +120,10 @@ export const actualizarVehiculo = async (matricula, datosActualizados) => {
     precio: datosActualizados.precio !== undefined ? Number(datosActualizados.precio) : undefined,
     nuevo: datosActualizados.nuevo !== undefined ? Boolean(datosActualizados.nuevo) : undefined,
     gastoPorKm: datosActualizados.gastoPorKm !== undefined ? Number(datosActualizados.gastoPorKm) : undefined,
+    estado: datosActualizados.estado,
     proximaItv: datosActualizados.proximaItv,
+    foto: datosActualizados.foto,
+    idImagen: datosActualizados.idImagen,
     fotoHover: datosActualizados.fotoHover,
   };
 

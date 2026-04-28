@@ -110,6 +110,14 @@ const useEstilos = makeStyles({
       backgroundColor: tokens.colorBrandBackground2,
     },
   },
+  uploadZoneActive: {
+    borderTopColor: tokens.colorBrandStroke1,
+    borderBottomColor: tokens.colorBrandStroke1,
+    borderLeftColor: tokens.colorBrandStroke1,
+    borderRightColor: tokens.colorBrandStroke1,
+    backgroundColor: tokens.colorBrandBackground2,
+    transform: 'scale(1.01)',
+  },
 });
 
 const columnas = [
@@ -136,7 +144,17 @@ const PaginaConductores = () => {
   const [editando, setEditando] = useState(false);
   const [dniEliminar, setDniEliminar] = useState('');
   const [error, setError] = useState('');
+  const [guardando, setGuardando] = useState(false);
   const [subiendoImagen, setSubiendoImagen] = useState(false);
+  const [previewUrl, setPreviewUrl] = useState(null);
+  const [isDragging, setIsDragging] = useState(false);
+
+  useEffect(() => {
+    // Cleanup preview URL
+    return () => {
+      if (previewUrl) URL.revokeObjectURL(previewUrl);
+    };
+  }, [previewUrl]);
 
   const cargarConductores = useCallback(async () => {
     setCargando(true);
@@ -166,43 +184,31 @@ const PaginaConductores = () => {
   };
 
   const manejarGuardar = async () => {
+    setGuardando(true);
     try {
-      // Extraemos el objeto image (solo se usa en la UI para preview)
-      // El backend asigna la imagen al conductor automáticamente al subirla con conductorDni
-      const { image, vehiculo, trayectos, ...datosConductor } = conductorActual;
-
       if (editando) {
-        await actualizarConductor(conductorActual.dni, datosConductor);
+        await actualizarConductor(conductorActual.dni, conductorActual);
       } else {
-        await crearConductor(datosConductor);
+        await crearConductor(conductorActual);
         await preRegistrarUsuario(conductorActual);
       }
       setDialogoAbierto(false);
-      setSubiendoImagen(false);
       cargarConductores();
       setError('');
     } catch (err) {
       setError(err.message);
+    } finally {
+      setGuardando(false);
     }
   };
 
-  const manejarSubidaArchivo = async (archivo) => {
+  const manejarSubidaArchivo = (archivo) => {
     if (!archivo) return;
-    setSubiendoImagen(true);
-    setError('');
-    try {
-      const resp = await subirImagen(archivo);
-      manejarCambio('image', { 
-        id: resp.id,
-        url: resp.url, 
-        nombre: resp.nombre || resp.display_name || 'conductor_archivo',
-        conductorDni: conductorActual.dni 
-      });
-    } catch (err) {
-      setError('Error al subir imagen local: ' + err.message);
-    } finally {
-      setSubiendoImagen(false);
-    }
+    manejarCambio('image', archivo);
+    
+    // Crear URL de previsualización local
+    if (previewUrl) URL.revokeObjectURL(previewUrl);
+    setPreviewUrl(URL.createObjectURL(archivo));
   };
 
   const manejarSubidaUrl = async (url) => {
@@ -210,22 +216,53 @@ const PaginaConductores = () => {
     setSubiendoImagen(true);
     setError('');
     try {
-      const datosImagen = crearImagenVacia();
-      datosImagen.url = url;
-      datosImagen.nombre = `conductor_${conductorActual.dni || 'nuevo'}`;
-      datosImagen.conductorDni = conductorActual.dni;
+      const datosImagen = {
+        url: url,
+        name: `conductor_${conductorActual.dni || 'nuevo'}`,
+        nombre: `conductor_${conductorActual.dni || 'nuevo'}`,
+        conductorDni: conductorActual.dni
+      };
 
       const resp = await subirImagenPorUrl(datosImagen);
+      
+      // Guardamos la URL para la vista previa y el ID para el backend
       manejarCambio('image', { 
-        id: resp.id,
-        url: resp.url, 
-        nombre: resp.nombre || resp.display_name || 'conductor_url',
-        conductorDni: conductorActual.dni 
+        name: resp.name || resp.nombre || `conductor_${conductorActual.dni || 'nuevo'}`,
+        url: resp.url 
       });
+      manejarCambio('imageId', resp.id);
+      
+      // Si había una previsualización de archivo, la quitamos
+      if (previewUrl) {
+        URL.revokeObjectURL(previewUrl);
+        setPreviewUrl(null);
+      }
     } catch (err) {
       setError('Error al procesar imagen de internet: ' + err.message);
     } finally {
       setSubiendoImagen(false);
+    }
+  };
+
+  const onDragOver = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(true);
+  };
+
+  const onDragLeave = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+  };
+
+  const onDrop = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+    
+    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+      manejarSubidaArchivo(e.dataTransfer.files[0]);
     }
   };
 
@@ -348,15 +385,23 @@ const PaginaConductores = () => {
                 <Field label="Foto de perfil (Cloudinary)" hint="Se subirá automáticamente al seleccionar archivo o pegar URL">
                   <div className={estilos.formulario}>
                     <div
-                      className={estilos.uploadZone}
+                      className={`${estilos.uploadZone} ${isDragging ? estilos.uploadZoneActive : ''}`}
                       onClick={() => document.getElementById('conductor-file-input').click()}
+                      onDragOver={onDragOver}
+                      onDragEnter={onDragOver}
+                      onDragLeave={onDragLeave}
+                      onDrop={onDrop}
                     >
-                      {subiendoImagen ? (
-                        <Spinner label="Subiendo a Cloudinary..." />
+                      {guardando || subiendoImagen ? (
+                        <Spinner label={subiendoImagen ? "Procesando imagen..." : "Guardando conductor..."} />
                       ) : (
                         <>
-                          <Title2 size={400}>Haz clic o arrastra una imagen</Title2>
-                          <Text size={200} block>La foto oficial del conductor</Text>
+                          <Title2 size={400}>
+                            {isDragging ? '¡Suelta la imagen aquí!' : 'Haz clic o arrastra una imagen'}
+                          </Title2>
+                          <Text size={200} block>
+                            {isDragging ? 'Cualquier imagen es bienvenida' : 'La foto oficial del conductor'}
+                          </Text>
                         </>
                       )}
                       <input
@@ -377,17 +422,19 @@ const PaginaConductores = () => {
                       </Field>
                     </div>
 
-                    {conductorActual.image?.url && (
+                    {(previewUrl || conductorActual.image?.url) && (
                       <div style={{ display: 'flex', alignItems: 'center', gap: '16px', padding: '12px', borderRadius: tokens.borderRadiusLarge, border: `1px solid ${tokens.colorNeutralStroke1}` }}>
                         <Avatar
-                          image={{ src: conductorActual.image.url }}
+                          image={{ src: previewUrl || conductorActual.image?.url }}
                           name={`${conductorActual.nombre} ${conductorActual.apellidos}`}
                           size={96}
                         />
                         <div>
-                          <Badge appearance="filled" color="success">Imagen verificada</Badge>
+                          <Badge appearance="filled" color={previewUrl ? 'warning' : 'success'}>
+                            {previewUrl ? 'Pendiente de subir' : 'Imagen verificada'}
+                          </Badge>
                           <Text size={200} block style={{ marginTop: '4px', color: tokens.colorNeutralForeground4 }}>
-                            {conductorActual.image.nombre || 'Cloudinary Hosting'}
+                            {previewUrl ? 'Archivo local seleccionado' : (conductorActual.image?.nombre || 'Cloudinary Hosting')}
                           </Text>
                         </div>
                       </div>
@@ -441,8 +488,8 @@ const PaginaConductores = () => {
               </div>
             </DialogContent>
             <DialogActions>
-              <Button appearance="secondary" onClick={() => setDialogoAbierto(false)}>Cancelar</Button>
-              <Button appearance="primary" onClick={manejarGuardar} disabled={subiendoImagen}>
+              <Button appearance="secondary" onClick={() => setDialogoAbierto(false)} disabled={guardando}>Cancelar</Button>
+              <Button appearance="primary" onClick={manejarGuardar} disabled={guardando}>
                 {editando ? 'Guardar cambios' : 'Dar de alta'}
               </Button>
             </DialogActions>

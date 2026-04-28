@@ -52,6 +52,8 @@ import {
   actualizarViaje,
   eliminarViaje,
 } from '../services/servicioViajes.js';
+import { obtenerVehiculos, actualizarVehiculo } from '../services/servicioVehiculos.js';
+import { ESTADO_VEHICULO } from '../models/Vehiculo.js';
 import { crearViajeVacio, crearTrayectoDeViajeVacio, ESTADO_VIAJE } from '../models/Viaje.js';
 
 const useEstilos = makeStyles({
@@ -170,6 +172,7 @@ const columnas = [
   { nombre: '', campo: 'expandir' },
   { nombre: 'ID', campo: 'id' },
   { nombre: 'Nombre', campo: 'nombre' },
+  { nombre: 'Vehículo', campo: 'matricula' },
   { nombre: 'Conductor', campo: 'conductor' },
   { nombre: 'Fecha', campo: 'fecha' },
   { nombre: 'Trayectos', campo: 'numTrayectos' },
@@ -197,6 +200,7 @@ const PaginaViajes = () => {
   const [trayectoInline, setTrayectoInline] = useState({ viajeId: '', indice: -1, datos: null });
   const [confirmacionTrayectoAbierta, setConfirmacionTrayectoAbierta] = useState(false);
   const [trayectoEliminarInfo, setTrayectoEliminarInfo] = useState({ viajeId: '', indice: -1 });
+  const [listaVehiculos, setListaVehiculos] = useState([]);
 
   const cargarViajes = useCallback(async () => {
     setCargando(true);
@@ -211,6 +215,8 @@ const PaginaViajes = () => {
 
   useEffect(() => {
     cargarViajes();
+    // Cargamos lista de vehículos para el desplegable
+    obtenerVehiculos().then(setListaVehiculos).catch(console.error);
   }, [cargarViajes]);
 
   const toggleExpandir = (id) => {
@@ -239,6 +245,23 @@ const PaginaViajes = () => {
       } else {
         await crearViaje(viajeActual);
       }
+
+      // Lógica de automatización de estado del vehículo
+      if (viajeActual.matricula) {
+        let nuevoEstadoVehiculo = ESTADO_VEHICULO.DISPONIBLE;
+        
+        if (viajeActual.estado === ESTADO_VIAJE.EN_CURSO) {
+          nuevoEstadoVehiculo = ESTADO_VEHICULO.EN_TRAYECTO;
+        } else if (viajeActual.estado === ESTADO_VIAJE.COMPLETADO) {
+          nuevoEstadoVehiculo = ESTADO_VEHICULO.DISPONIBLE;
+        } else if (viajeActual.estado === ESTADO_VIAJE.PENDIENTE) {
+          // Si está pendiente, solemos dejarlo disponible a menos que ya estuviera en otra cosa
+          nuevoEstadoVehiculo = ESTADO_VEHICULO.DISPONIBLE;
+        }
+
+        await actualizarVehiculo(viajeActual.matricula, { estado: nuevoEstadoVehiculo });
+      }
+
       setDialogoAbierto(false);
       cargarViajes();
       setError('');
@@ -419,6 +442,7 @@ const PaginaViajes = () => {
                     </TableCell>
                     <TableCell><strong>{viaje.id}</strong></TableCell>
                     <TableCell>{viaje.nombre}</TableCell>
+                    <TableCell><strong>{viaje.matricula}</strong></TableCell>
                     <TableCell>{viaje.conductor}</TableCell>
                     <TableCell>{viaje.fecha}</TableCell>
                     <TableCell>
@@ -560,6 +584,19 @@ const PaginaViajes = () => {
                       onChange={(_, d) => manejarCambioViaje('conductor', d.value)}
                       placeholder="12345678A"
                     />
+                  </Field>
+                  <Field label="Vehículo (Matrícula)" required>
+                    <Select
+                      value={viajeActual.matricula}
+                      onChange={(_, d) => manejarCambioViaje('matricula', d.value)}
+                    >
+                      <option value="">Selecciona un vehículo...</option>
+                      {listaVehiculos.map(v => (
+                        <option key={v.matricula} value={v.matricula}>
+                          {v.matricula} - {v.marca} {v.modelo}
+                        </option>
+                      ))}
+                    </Select>
                   </Field>
                 </div>
                 <div className={estilos.filaFormulario}>

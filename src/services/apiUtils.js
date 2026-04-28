@@ -6,15 +6,16 @@ export const fetchWithLogging = async (url, options = {}) => {
     const response = await fetch(url, options);
 
     if (!response.ok) {
-      const JSON = await response.json();
-      let errorMessage = `${response.status} ${JSON.error}`;
+      let errorMessage = response.statusText || 'Error desconocido';
       let errorDetails = null;
-      console.log(token);
+      
       try {
         const contentType = response.headers.get('content-type');
         if (contentType && contentType.includes('application/json')) {
           errorDetails = await response.json();
-          if (errorDetails.message) {
+          if (errorDetails.error) {
+            errorMessage = errorDetails.error;
+          } else if (errorDetails.message) {
             errorMessage = errorDetails.message;
           }
         } else {

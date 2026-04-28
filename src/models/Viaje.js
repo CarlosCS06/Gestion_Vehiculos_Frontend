@@ -26,6 +26,7 @@ export const crearViajeVacio = () => ({
   id: '',
   nombre: '',
   conductor: '',
+  matricula: '',
   fecha: '',
   estado: ESTADO_VIAJE.PENDIENTE,
   trayectos: [crearTrayectoDeViajeVacio()],

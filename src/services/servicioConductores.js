@@ -2,11 +2,59 @@ import { fetchWithLogging } from './apiUtils';
 
 const AUTH_API_URL = 'https://gestion-vehiculos-backend.vercel.app/api/conductores';
 
-const mapearConductor = (data) => ({
-  ...data,
-  fechaNacimiento: data.fechaNacimiento || data.fecha_nacimiento || '',
-  trayectos: data.trayectos || data.infoEspecificaTrayectos || [],
-});
+const mapearConductor = (data) => {
+  let fechaFormat = '';
+  if (data.fechaNacimiento || data.fecha_nacimiento) {
+    const d = new Date(data.fechaNacimiento || data.fecha_nacimiento);
+    if (!isNaN(d.getTime())) {
+      fechaFormat = d.toISOString().split('T')[0];
+    }
+  }
+
+  return {
+    ...data,
+    fechaNacimiento: fechaFormat,
+    // Si viene imageId pero no el objeto image completo, lo preparamos para evitar errores en UI
+    image: data.image || (data.imageId ? { id: data.imageId } : null),
+    trayectos: data.trayectos || data.infoEspecificaTrayectos || [],
+  };
+};
+
+const normalizarConductor = (c) => {
+  let fechaIso = undefined;
+  if (c.fechaNacimiento) {
+    const d = new Date(c.fechaNacimiento);
+    if (!isNaN(d.getTime())) {
+      fechaIso = d.toISOString();
+    }
+  }
+
+  const normalized = {
+    dni: c.dni,
+    nombre: c.nombre,
+    apellidos: c.apellidos,
+    telefono: c.telefono,
+    direccion: c.direccion,
+    fechaNacimiento: fechaIso,
+    vehiculo: Array.isArray(c.vehiculo) 
+      ? c.vehiculo.map(v => typeof v === 'object' ? (v.matricula || v.id) : v).filter(Boolean)
+      : [c.vehiculo].map(v => typeof v === 'object' ? (v.matricula || v.id) : v).filter(Boolean),
+  };
+
+  // Si tenemos imageId (de una subida previa por URL o similar), lo incluimos
+  // Y NO incluimos el objeto image para evitar conflictos en el backend (Prisma)
+  if (c.imageId) {
+    normalized.imageId = c.imageId;
+  } else if (c.image && !(c.image instanceof File)) {
+    // Solo si no hay imageId, intentamos mandar el objeto (compatibilidad)
+    normalized.image = {
+      name: c.image.name || c.image.nombre || `conductor_${c.dni}`,
+      url: c.image.url || ''
+    };
+  }
+
+  return normalized;
+};
 
 export const obtenerConductores = async () => {
   const token = sessionStorage.getItem('token');
@@ -36,29 +84,74 @@ export const obtenerConductorPorDni = async (dni) => {
   }
 };
 
+/**
+ * Prepara los datos para ser enviados como FormData (multipart/form-data)
+ */
+const prepararFormData = (conductor) => {
+  const formData = new FormData();
+  formData.append('dni', conductor.dni);
+  formData.append('nombre', conductor.nombre);
+  formData.append('apellidos', conductor.apellidos);
+  if (conductor.telefono) formData.append('telefono', conductor.telefono);
+  if (conductor.direccion) formData.append('direccion', conductor.direccion);
+  if (conductor.fechaNacimiento) {
+    formData.append('fechaNacimiento', new Date(conductor.fechaNacimiento).toISOString());
+  }
+
+  if (Array.isArray(conductor.vehiculo)) {
+    conductor.vehiculo.forEach(v => formData.append('vehiculo', v));
+  } else if (conductor.vehiculo) {
+    formData.append('vehiculo', conductor.vehiculo);
+  }
+
+  if (conductor.image instanceof File) {
+    formData.append('image', conductor.image);
+  }
+
+  if (conductor.imageId) {
+    formData.append('imageId', conductor.imageId);
+  }
+
+  return formData;
+};
+
 export const crearConductor = async (conductor) => {
   const token = sessionStorage.getItem('token');
-  const response = await fetchWithLogging(AUTH_API_URL, {
+  const esMultipart = conductor.image instanceof File;
+
+  const config = {
     method: 'POST',
     headers: {
-      'Content-Type': 'application/json',
       'Authorization': `Bearer ${token}`
     },
-    body: JSON.stringify(conductor),
-  });
+    body: esMultipart ? prepararFormData(conductor) : JSON.stringify(normalizarConductor(conductor)),
+  };
+
+  if (!esMultipart) {
+    config.headers['Content-Type'] = 'application/json';
+  }
+
+  const response = await fetchWithLogging(AUTH_API_URL, config);
   return response.json();
 };
 
 export const actualizarConductor = async (dni, datosActualizados) => {
   const token = sessionStorage.getItem('token');
-  const response = await fetchWithLogging(`${AUTH_API_URL}/${dni}`, {
+  const esMultipart = datosActualizados.image instanceof File;
+
+  const config = {
     method: 'PATCH',
     headers: {
-      'Content-Type': 'application/json',
       'Authorization': `Bearer ${token}`
     },
-    body: JSON.stringify(datosActualizados),
-  });
+    body: esMultipart ? prepararFormData(datosActualizados) : JSON.stringify(normalizarConductor(datosActualizados)),
+  };
+
+  if (!esMultipart) {
+    config.headers['Content-Type'] = 'application/json';
+  }
+  console.log(datosActualizados);
+  const response = await fetchWithLogging(`${AUTH_API_URL}/${dni}`, config);
   return response.json();
 };
 

@@ -44,6 +44,8 @@ import {
   actualizarAveria,
   eliminarAveria,
 } from '../services/servicioAverias.js';
+import { actualizarVehiculo } from '../services/servicioVehiculos.js';
+import { ESTADO_VEHICULO } from '../models/Vehiculo.js';
 import { crearAveriaVacia } from '../models/Averia.js';
 
 const useEstilos = makeStyles({
@@ -147,6 +149,19 @@ const PaginaAverias = () => {
       } else {
         await crearAveria(datosGuardar);
       }
+
+      // Lógica de automatización de estado del vehículo
+      const nuevoEstado = (datosGuardar.fechaFinReparacion || !datosGuardar.enReparacion && datosGuardar.fechaFinReparacion) 
+        ? ESTADO_VEHICULO.DISPONIBLE 
+        : ESTADO_VEHICULO.AVERIADO;
+
+      // Si tiene fecha de fin de reparación, vuelve a estar disponible
+      const estadoFinal = datosGuardar.fechaFinReparacion ? ESTADO_VEHICULO.DISPONIBLE : ESTADO_VEHICULO.AVERIADO;
+
+      for (const matricula of datosGuardar.vehiculosAveriados) {
+        await actualizarVehiculo(matricula, { estado: estadoFinal });
+      }
+
       setDialogoAbierto(false);
       cargarAverias();
       setError('');
@@ -162,7 +177,16 @@ const PaginaAverias = () => {
 
   const manejarEliminar = async () => {
     try {
+      const averiaAEliminar = averias.find(a => a.id === idEliminar);
       await eliminarAveria(idEliminar);
+      
+      // Al eliminar la avería, los vehículos vuelven a estar disponibles (según petición usuario)
+      if (averiaAEliminar) {
+        for (const matricula of averiaAEliminar.vehiculosAveriados) {
+          await actualizarVehiculo(matricula, { estado: ESTADO_VEHICULO.DISPONIBLE });
+        }
+      }
+
       setConfirmacionAbierta(false);
       cargarAverias();
     } catch (err) {

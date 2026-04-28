@@ -8,7 +8,9 @@ const mapaEstado = {
 };
 
 const BadgeEstado = ({ estado }) => {
-  const config = mapaEstado[estado] || mapaEstado[ESTADO_VEHICULO.DISPONIBLE];
+  // Aseguramos que el estado sea comparable (minúsculas y no nulo)
+  const estadoNormalizado = (estado || '').toLowerCase();
+  const config = mapaEstado[estadoNormalizado] || mapaEstado[ESTADO_VEHICULO.DISPONIBLE];
 
   return (
     <Badge
