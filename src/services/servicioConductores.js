@@ -36,7 +36,7 @@ const normalizarConductor = (c) => {
     telefono: c.telefono,
     direccion: c.direccion,
     fechaNacimiento: fechaIso,
-    vehiculo: Array.isArray(c.vehiculo) 
+    vehiculo: Array.isArray(c.vehiculo)
       ? c.vehiculo.map(v => typeof v === 'object' ? (v.matricula || v.id) : v).filter(Boolean)
       : [c.vehiculo].map(v => typeof v === 'object' ? (v.matricula || v.id) : v).filter(Boolean),
   };
@@ -150,7 +150,6 @@ export const actualizarConductor = async (dni, datosActualizados) => {
   if (!esMultipart) {
     config.headers['Content-Type'] = 'application/json';
   }
-  console.log(datosActualizados);
   const response = await fetchWithLogging(`${AUTH_API_URL}/${dni}`, config);
   return response.json();
 };

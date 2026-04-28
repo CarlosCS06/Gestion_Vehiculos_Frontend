@@ -205,7 +205,7 @@ const PaginaConductores = () => {
   const manejarSubidaArchivo = (archivo) => {
     if (!archivo) return;
     manejarCambio('image', archivo);
-    
+
     // Crear URL de previsualización local
     if (previewUrl) URL.revokeObjectURL(previewUrl);
     setPreviewUrl(URL.createObjectURL(archivo));
@@ -219,19 +219,14 @@ const PaginaConductores = () => {
       const datosImagen = {
         url: url,
         name: `conductor_${conductorActual.dni || 'nuevo'}`,
-        nombre: `conductor_${conductorActual.dni || 'nuevo'}`,
-        conductorDni: conductorActual.dni
       };
 
-      const resp = await subirImagenPorUrl(datosImagen);
-      
       // Guardamos la URL para la vista previa y el ID para el backend
-      manejarCambio('image', { 
-        name: resp.name || resp.nombre || `conductor_${conductorActual.dni || 'nuevo'}`,
-        url: resp.url 
+      manejarCambio('image', {
+        name: datosImagen.name,
+        url: datosImagen.url
       });
-      manejarCambio('imageId', resp.id);
-      
+
       // Si había una previsualización de archivo, la quitamos
       if (previewUrl) {
         URL.revokeObjectURL(previewUrl);
@@ -260,7 +255,7 @@ const PaginaConductores = () => {
     e.preventDefault();
     e.stopPropagation();
     setIsDragging(false);
-    
+
     if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
       manejarSubidaArchivo(e.dataTransfer.files[0]);
     }
