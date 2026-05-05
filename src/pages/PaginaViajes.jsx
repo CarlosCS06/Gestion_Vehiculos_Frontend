@@ -184,7 +184,7 @@ const columnas = [
 
 const PaginaViajes = () => {
   const estilos = useEstilos();
-  const { esAdmin } = useAuth();
+  const { esAdmin, usuario } = useAuth();
 
   const [viajes, setViajes] = useState([]);
   const [cargando, setCargando] = useState(true);
@@ -206,12 +206,13 @@ const PaginaViajes = () => {
     setCargando(true);
     try {
       const datos = await obtenerViajes();
-      setViajes(datos);
+      const filtrados = esAdmin ? datos : datos.filter(v => v.conductor === usuario?.dni);
+      setViajes(filtrados);
     } catch (err) {
       setError(err.message || 'Error al cargar los viajes');
     }
     setCargando(false);
-  }, []);
+  }, [esAdmin, usuario?.dni]);
 
   useEffect(() => {
     cargarViajes();
@@ -280,6 +281,24 @@ const PaginaViajes = () => {
       await eliminarViaje(idEliminar);
       setConfirmacionAbierta(false);
       cargarViajes();
+      setError('');
+    } catch (err) {
+      setError(err.message);
+    }
+  };
+
+  const manejarCompletarViaje = async (viaje) => {
+    try {
+      const viajeActualizado = { ...viaje, estado: ESTADO_VIAJE.COMPLETADO };
+      await actualizarViaje(viaje.id, viajeActualizado);
+      
+      // Actualizar vehículo a disponible
+      if (viaje.matricula) {
+        await actualizarVehiculo(viaje.matricula, { estado: ESTADO_VEHICULO.DISPONIBLE });
+      }
+      
+      cargarViajes();
+      setError('');
     } catch (err) {
       setError(err.message);
     }
@@ -452,7 +471,7 @@ const PaginaViajes = () => {
                     <TableCell>{gastoTotal.toFixed(2)} €</TableCell>
                     <TableCell>{obtenerBadgeEstadoViaje(viaje.estado)}</TableCell>
                     <TableCell>
-                      {esAdmin && (
+                      {esAdmin ? (
                         <>
                           <Tooltip content="Editar" relationship="label">
                             <Button
@@ -471,6 +490,19 @@ const PaginaViajes = () => {
                             />
                           </Tooltip>
                         </>
+                      ) : (
+                        viaje.estado !== ESTADO_VIAJE.COMPLETADO && (
+                          <Tooltip content="Marcar como completado" relationship="label">
+                            <Button
+                              icon={<Badge color="success" size="extra-small" style={{ minWidth: 0, padding: 0 }} />}
+                              appearance="subtle"
+                              size="small"
+                              onClick={(e) => { e.stopPropagation(); manejarCompletarViaje(viaje); }}
+                            >
+                              Completar
+                            </Button>
+                          </Tooltip>
+                        )
                       )}
                     </TableCell>
                   </TableRow>

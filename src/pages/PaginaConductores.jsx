@@ -44,6 +44,7 @@ import {
   actualizarConductor,
   eliminarConductor,
 } from '../services/servicioConductores.js';
+import { actualizarUsuario } from '../services/servicioAuth.js';
 import { subirImagen, subirImagenPorUrl } from '../services/servicioImagenes.js';
 import { crearConductorVacio } from '../models/Conductor.js';
 import { crearImagenVacia } from '../models/Imagenes.js';
@@ -188,6 +189,20 @@ const PaginaConductores = () => {
     try {
       if (editando) {
         await actualizarConductor(conductorActual.dni, conductorActual);
+        
+        // Sincronizar con la cuenta de usuario
+        const datosUsuario = {
+          fullName: `${conductorActual.nombre} ${conductorActual.apellidos}`.trim()
+        };
+        if (conductorActual.telefono) {
+          const telLimpio = conductorActual.telefono.replace(/\s+/g, '');
+          if (!isNaN(telLimpio)) {
+            datosUsuario.telefono = Number(telLimpio);
+          }
+        }
+        await actualizarUsuario(conductorActual.dni, datosUsuario).catch(err => {
+          console.warn('No se pudo sincronizar la cuenta de usuario:', err);
+        });
       } else {
         await crearConductor(conductorActual);
         await preRegistrarUsuario(conductorActual);

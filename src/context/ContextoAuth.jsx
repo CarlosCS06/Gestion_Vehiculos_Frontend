@@ -60,6 +60,12 @@ export const ProveedorAuth = ({ children }) => {
   const estaAutenticado = !!usuario;
   const esAdmin = usuario?.rol === 'admin';
 
+  const actualizarDatosUsuario = (nuevosDatos) => {
+    const usuarioActualizado = { ...usuario, ...nuevosDatos };
+    setUsuario(usuarioActualizado);
+    sessionStorage.setItem('usuario_sesion', JSON.stringify(usuarioActualizado));
+  };
+
   const valor = {
     usuario,
     cargando,
@@ -70,6 +76,7 @@ export const ProveedorAuth = ({ children }) => {
     verificarDni,
     registro,
     preRegistrarUsuario,
+    actualizarDatosUsuario,
   };
 
   return (

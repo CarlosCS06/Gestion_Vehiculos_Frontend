@@ -3,32 +3,21 @@ import { fetchWithLogging } from './apiUtils';
 const AUTH_API_URL = 'https://gestion-vehiculos-backend.vercel.app/api/viajes';
 
 export const obtenerViajes = async () => {
-  const token = sessionStorage.getItem('token');
-  const response = await fetchWithLogging(AUTH_API_URL, {
-    headers: {
-      'Authorization': `Bearer ${token}`
-    }
-  });
-  return response.json();
+  const response = await fetchWithLogging(AUTH_API_URL);
+  const data = await response.json();
+  return Array.isArray(data) ? data : (data && typeof data === 'object' ? Object.values(data) : []);
 };
 
 export const obtenerViajePorId = async (id) => {
-  const token = sessionStorage.getItem('token');
-  const response = await fetchWithLogging(`${AUTH_API_URL}/${id}`, {
-    headers: {
-      'Authorization': `Bearer ${token}`
-    }
-  });
+  const response = await fetchWithLogging(`${AUTH_API_URL}/${id}`);
   return response.json();
 };
 
 export const crearViaje = async (viaje) => {
-  const token = sessionStorage.getItem('token');
   const response = await fetchWithLogging(AUTH_API_URL, {
     method: 'POST',
     headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${token}`
+      'Content-Type': 'application/json'
     },
     body: JSON.stringify(viaje),
   });
@@ -36,12 +25,10 @@ export const crearViaje = async (viaje) => {
 };
 
 export const actualizarViaje = async (id, datosActualizados) => {
-  const token = sessionStorage.getItem('token');
   const response = await fetchWithLogging(`${AUTH_API_URL}/${id}`, {
     method: 'PUT',
     headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${token}`
+      'Content-Type': 'application/json'
     },
     body: JSON.stringify(datosActualizados),
   });
@@ -49,12 +36,9 @@ export const actualizarViaje = async (id, datosActualizados) => {
 };
 
 export const eliminarViaje = async (id) => {
-  const token = sessionStorage.getItem('token');
   const response = await fetchWithLogging(`${AUTH_API_URL}/${id}`, {
     method: 'DELETE',
-    headers: {
-      'Authorization': `Bearer ${token}`
-    }
+    headers: {}
   });
   return response.json();
 };

@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../context/ContextoAuth.jsx';
 import {
@@ -19,7 +20,9 @@ import {
   Warning24Regular,
   SignOut24Regular,
   ShieldCheckmark24Regular,
+  Navigation24Regular,
 } from '@fluentui/react-icons';
+import MenuPerfilConductor from './MenuPerfilConductor.jsx';
 
 const useEstilos = makeStyles({
   navbar: {
@@ -78,6 +81,7 @@ const pestanas = [
 
 const BarraNavegacion = () => {
   const { usuario, logout, esAdmin } = useAuth();
+  const [perfilAbierto, setPerfilAbierto] = useState(false);
   const navegar = useNavigate();
   const ubicacion = useLocation();
 
@@ -102,15 +106,17 @@ const BarraNavegacion = () => {
         onTabSelect={manejarCambioTab}
         size="medium"
       >
-        {pestanas.map((pestana) => (
-          <Tab
-            key={pestana.valor}
-            value={pestana.valor}
-            icon={pestana.icono}
-          >
-            {pestana.etiqueta}
-          </Tab>
-        ))}
+        {pestanas
+          .filter(p => esAdmin || p.valor !== '/conductores')
+          .map((pestana) => (
+            <Tab
+              key={pestana.valor}
+              value={pestana.valor}
+              icon={pestana.icono}
+            >
+              {pestana.etiqueta}
+            </Tab>
+          ))}
       </TabList>
 
       <div className={estilos.usuarioContenedor}>
@@ -128,6 +134,7 @@ const BarraNavegacion = () => {
         )}
         <Avatar
           name={usuario?.nombre || 'Usuario'}
+          image={{ src: usuario?.fotoUrl }}
           size={32}
           color="brand"
         />
@@ -141,7 +148,22 @@ const BarraNavegacion = () => {
             onClick={logout}
           />
         </Tooltip>
+
+        {!esAdmin && (
+          <Tooltip content="Mi Perfil" relationship="label">
+            <Button
+              icon={<Navigation24Regular />}
+              appearance="subtle"
+              onClick={() => setPerfilAbierto(true)}
+            />
+          </Tooltip>
+        )}
       </div>
+
+      <MenuPerfilConductor 
+        abierto={perfilAbierto} 
+        alCerrar={() => setPerfilAbierto(false)} 
+      />
     </nav>
   );
 };

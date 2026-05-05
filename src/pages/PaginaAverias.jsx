@@ -29,6 +29,7 @@ import {
   ToolbarButton,
   Badge,
   Checkbox,
+  Select,
 } from '@fluentui/react-components';
 import {
   Add24Regular,
@@ -44,7 +45,7 @@ import {
   actualizarAveria,
   eliminarAveria,
 } from '../services/servicioAverias.js';
-import { actualizarVehiculo } from '../services/servicioVehiculos.js';
+import { obtenerVehiculos, actualizarVehiculo } from '../services/servicioVehiculos.js';
 import { ESTADO_VEHICULO } from '../models/Vehiculo.js';
 import { crearAveriaVacia } from '../models/Averia.js';
 
@@ -86,6 +87,7 @@ const columnas = [
   { nombre: 'ID', campo: 'id' },
   { nombre: 'Descripción', campo: 'descripcion' },
   { nombre: 'Vehículos afectados', campo: 'vehiculosAveriados' },
+  { nombre: 'Conductor', campo: 'conductorDNI' },
   { nombre: 'Fecha avería', campo: 'fechaAveria' },
   { nombre: 'Fecha comienzo reparación', campo: 'fechaComienzoReparacion' },
   { nombre: 'Fecha fin reparación', campo: 'fechaFinReparacion' },
@@ -97,7 +99,7 @@ const columnas = [
 
 const PaginaAverias = () => {
   const estilos = useEstilos();
-  const { esAdmin } = useAuth();
+  const { esAdmin, usuario } = useAuth();
 
   const [averias, setAverias] = useState([]);
   const [cargando, setCargando] = useState(true);
@@ -108,6 +110,7 @@ const PaginaAverias = () => {
   const [idEliminar, setIdEliminar] = useState('');
   const [error, setError] = useState('');
   const [vehiculosTexto, setVehiculosTexto] = useState('');
+  const [listaVehiculos, setListaVehiculos] = useState([]);
 
   const cargarAverias = useCallback(async () => {
     setCargando(true);
@@ -122,10 +125,16 @@ const PaginaAverias = () => {
 
   useEffect(() => {
     cargarAverias();
+    obtenerVehiculos().then(setListaVehiculos).catch(console.error);
   }, [cargarAverias]);
 
   const abrirDialogoCrear = () => {
-    setAveriaActual(crearAveriaVacia());
+    const nueva = crearAveriaVacia();
+    if (!esAdmin) {
+      nueva.conductorDNI = usuario.dni;
+      nueva.fechaAveria = new Date().toISOString().split('T')[0];
+    }
+    setAveriaActual(nueva);
     setVehiculosTexto('');
     setEditando(false);
     setDialogoAbierto(true);
@@ -213,13 +222,11 @@ const PaginaAverias = () => {
           <Warning24Regular style={{ fontSize: '28px', color: '#d13438' }} />
           <Title2>Averías</Title2>
         </div>
-        {esAdmin && (
-          <Toolbar>
-            <ToolbarButton appearance="primary" icon={<Add24Regular />} onClick={abrirDialogoCrear}>
-              Registrar avería
-            </ToolbarButton>
-          </Toolbar>
-        )}
+        <Toolbar>
+          <ToolbarButton appearance="primary" icon={<Add24Regular />} onClick={abrirDialogoCrear}>
+            {esAdmin ? 'Registrar avería' : 'Reportar incidencia'}
+          </ToolbarButton>
+        </Toolbar>
       </div>
 
       {error && (
@@ -252,6 +259,7 @@ const PaginaAverias = () => {
                     </Badge>
                   ))}
                 </TableCell>
+                <TableCell>{averia.conductorDNI || '—'}</TableCell>
                 <TableCell>
                   {averia.fechaAveria
                     ? new Date(averia.fechaAveria).toLocaleDateString('es-ES')
@@ -314,36 +322,72 @@ const PaginaAverias = () => {
             <DialogTitle>{editando ? 'Editar avería' : 'Registrar avería'}</DialogTitle>
             <DialogContent>
               <div className={estilos.formulario}>
-                <Field label="Descripción" required>
-                  <Input value={averiaActual.descripcion} onChange={(_, d) => manejarCambio('descripcion', d.value)} placeholder="Describe la avería..." />
-                </Field>
-                <Field label="Matrículas afectadas (separadas por comas)" required>
-                  <Input value={vehiculosTexto} onChange={(_, d) => setVehiculosTexto(d.value)} placeholder="1234-ABC, 5678-DEF" />
-                </Field>
-                <div className={estilos.filaFormulario}>
-                  <Field label="Fecha avería">
-                    <Input type="date" value={averiaActual.fechaAveria} onChange={(_, d) => manejarCambio('fechaAveria', d.value)} />
-                  </Field>
-                  <Field label="Fecha comienzo reparación">
-                    <Input type="date" value={averiaActual.fechaComienzoReparacion} onChange={(_, d) => manejarCambio('fechaComienzoReparacion', d.value)} />
-                  </Field>
-                  <Field label="Fecha fin reparación">
-                    <Input type="date" value={averiaActual.fechaFinReparacion} onChange={(_, d) => manejarCambio('fechaFinReparacion', d.value)} />
-                  </Field>
-                  <Field label="Lugar reparación">
-                    <Input value={averiaActual.lugarReparacion} onChange={(_, d) => manejarCambio('lugarReparacion', d.value)} placeholder="Taller Central" />
-                  </Field>
-                  <Field label="Coste reparación">
-                    <Input value={averiaActual.costeReparacion} onChange={(_, d) => manejarCambio('costeReparacion', d.value)} placeholder="1000" />
-                  </Field>
-                </div>
-                <Field>
-                  <Checkbox
-                    label="¿Está actualmente en reparación?"
-                    checked={averiaActual.enReparacion}
-                    onChange={(_, d) => manejarCambio('enReparacion', !!d.checked)}
-                  />
-                </Field>
+                {esAdmin ? (
+                  <>
+                    <Field label="Descripción" required>
+                      <Input value={averiaActual.descripcion} onChange={(_, d) => manejarCambio('descripcion', d.value)} placeholder="Describe la avería..." />
+                    </Field>
+                    <Field label="Matrículas afectadas (separadas por comas)" required>
+                      <Input value={vehiculosTexto} onChange={(_, d) => setVehiculosTexto(d.value)} placeholder="1234-ABC, 5678-DEF" />
+                    </Field>
+                    <div className={estilos.filaFormulario}>
+                      <Field label="Fecha avería">
+                        <Input type="date" value={averiaActual.fechaAveria} onChange={(_, d) => manejarCambio('fechaAveria', d.value)} />
+                      </Field>
+                      <Field label="Conductor">
+                        <Input value={averiaActual.conductorDNI} onChange={(_, d) => manejarCambio('conductorDNI', d.value)} placeholder="DNI..." />
+                      </Field>
+                      <Field label="Fecha comienzo reparación">
+                        <Input type="date" value={averiaActual.fechaComienzoReparacion} onChange={(_, d) => manejarCambio('fechaComienzoReparacion', d.value)} />
+                      </Field>
+                      <Field label="Fecha fin reparación">
+                        <Input type="date" value={averiaActual.fechaFinReparacion} onChange={(_, d) => manejarCambio('fechaFinReparacion', d.value)} />
+                      </Field>
+                      <Field label="Lugar reparación">
+                        <Input value={averiaActual.lugarReparacion} onChange={(_, d) => manejarCambio('lugarReparacion', d.value)} placeholder="Taller Central" />
+                      </Field>
+                      <Field label="Coste reparación">
+                        <Input value={averiaActual.costeReparacion} onChange={(_, d) => manejarCambio('costeReparacion', d.value)} placeholder="1000" />
+                      </Field>
+                    </div>
+                    <Field>
+                      <Checkbox
+                        label="¿Está actualmente en reparación?"
+                        checked={averiaActual.enReparacion}
+                        onChange={(_, d) => manejarCambio('enReparacion', !!d.checked)}
+                      />
+                    </Field>
+                  </>
+                ) : (
+                  <>
+                    <MessageBar intent="info">
+                      <MessageBarBody>Reporta cualquier incidencia detectada en el vehículo. El administrador recibirá tu aviso.</MessageBarBody>
+                    </MessageBar>
+                    <Field label="Vehículo" required>
+                      <Select
+                        value={vehiculosTexto}
+                        onChange={(_, d) => setVehiculosTexto(d.value)}
+                      >
+                        <option value="">Selecciona el vehículo...</option>
+                        {listaVehiculos.map(v => (
+                          <option key={v.matricula} value={v.matricula}>{v.matricula} - {v.marca} {v.modelo}</option>
+                        ))}
+                      </Select>
+                    </Field>
+                    <Field label="Descripción de la incidencia" required>
+                      <Input
+                        value={averiaActual.descripcion}
+                        onChange={(_, d) => manejarCambio('descripcion', d.value)}
+                        placeholder="Ej: El motor hace un ruido extraño al arrancar..."
+                        textarea
+                      />
+                    </Field>
+                    <div style={{ display: 'flex', gap: '20px', marginTop: '10px' }}>
+                      <Text size={200}><b>Conductor:</b> {usuario.dni}</Text>
+                      <Text size={200}><b>Fecha:</b> {new Date().toLocaleDateString()}</Text>
+                    </div>
+                  </>
+                )}
               </div>
             </DialogContent>
             <DialogActions>

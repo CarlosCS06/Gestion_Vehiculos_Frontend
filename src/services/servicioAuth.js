@@ -88,12 +88,10 @@ export const verificarDniConductor = async (dni) => {
  * @param {Object} payload - Objeto con los datos del usuario (dni, email, password, fullName, telefono, etc.)
  */
 export const registrarUsuario = async (payload) => {
-  const token = sessionStorage.getItem('token');
   const response = await fetchWithLogging(`${AUTH_API_URL}/register`, {
     method: 'POST',
     headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${token}`
+      'Content-Type': 'application/json'
     },
     body: JSON.stringify(payload),
   });
@@ -143,7 +141,9 @@ export const registrarConductor = async (dni, contrasena, email) => {
  */
 export const obtenerUsuarioPorDni = async (dni) => {
   try {
-    const response = await fetchWithLogging(`${USERS_API_URL}/${dni}`);
+    const response = await fetchWithLogging(`${USERS_API_URL}/${dni}`, {
+      skipLog: 404
+    });
     const data = await response.json();
     return mapearUsuario(data);
   } catch (error) {
@@ -170,6 +170,7 @@ export const preRegistrarUsuario = async (conductor) => {
       email: '', // Se completará en el registro real
       password: '', // Sin contraseña inicialmente, se pondrá en el registro
       fullName: `${conductor.nombre} ${conductor.apellidos}`.trim(),
+      telefono: conductor.telefono ? Number(conductor.telefono.replace(/\s+/g, '')) : 0,
       roles: ['conductor'],
       isActive: true
     };
@@ -187,16 +188,10 @@ export const preRegistrarUsuario = async (conductor) => {
  */
 export const obtenerUsuarios = async () => {
   try {
-    const token = sessionStorage.getItem('token');
-    if (!token) {
-      throw new Error('No se encontró el token de autenticación');
-    }
-
     const response = await fetchWithLogging(USERS_API_URL, {
       method: 'GET',
       headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`
+        'Content-Type': 'application/json'
       },
     });
 
@@ -214,6 +209,33 @@ export const obtenerUsuarios = async () => {
     return usuariosArray.map(usuario => mapearUsuario(usuario));
   } catch (error) {
     console.error('Error fetching users:', error);
+    throw error;
+  }
+};
+/**
+ * Actualizar datos de un usuario (email, password, fullName)
+ * @param {string} dni
+ * @param {Object} datos
+ */
+export const actualizarUsuario = async (dni, datos) => {
+  try {
+    const response = await fetchWithLogging(`${USERS_API_URL}/${dni}`, {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(datos),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.message || 'Error al actualizar el usuario');
+    }
+
+    const data = await response.json();
+    return mapearUsuario(data);
+  } catch (error) {
+    console.error('Error updating user:', error);
     throw error;
   }
 };

@@ -3,32 +3,21 @@ import { fetchWithLogging } from './apiUtils';
 const AUTH_API_URL = 'https://gestion-vehiculos-backend.vercel.app/api/trayectos';
 
 export const obtenerTrayectos = async () => {
-  const token = sessionStorage.getItem('token');
-  const response = await fetchWithLogging(AUTH_API_URL, {
-    headers: {
-      'Authorization': `Bearer ${token}`
-    }
-  });
-  return response.json();
+  const response = await fetchWithLogging(AUTH_API_URL);
+  const data = await response.json();
+  return Array.isArray(data) ? data : (data && typeof data === 'object' ? Object.values(data) : []);
 };
 
 export const obtenerTrayectoPorId = async (id) => {
-  const token = sessionStorage.getItem('token');
-  const response = await fetchWithLogging(`${AUTH_API_URL}/${id}`, {
-    headers: {
-      'Authorization': `Bearer ${token}`
-    }
-  });
+  const response = await fetchWithLogging(`${AUTH_API_URL}/${id}`);
   return response.json();
 };
 
 export const crearTrayecto = async (trayecto) => {
-  const token = sessionStorage.getItem('token');
   const response = await fetchWithLogging(AUTH_API_URL, {
     method: 'POST',
     headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${token}`
+      'Content-Type': 'application/json'
     },
     body: JSON.stringify(trayecto),
   });
@@ -36,12 +25,10 @@ export const crearTrayecto = async (trayecto) => {
 };
 
 export const actualizarTrayecto = async (id, datosActualizados) => {
-  const token = sessionStorage.getItem('token');
   const response = await fetchWithLogging(`${AUTH_API_URL}/${id}`, {
     method: 'PUT',
     headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${token}`
+      'Content-Type': 'application/json'
     },
     body: JSON.stringify(datosActualizados),
   });
@@ -49,12 +36,9 @@ export const actualizarTrayecto = async (id, datosActualizados) => {
 };
 
 export const eliminarTrayecto = async (id) => {
-  const token = sessionStorage.getItem('token');
   const response = await fetchWithLogging(`${AUTH_API_URL}/${id}`, {
     method: 'DELETE',
-    headers: {
-      'Authorization': `Bearer ${token}`
-    }
+    headers: {}
   });
   return response.json();
 };

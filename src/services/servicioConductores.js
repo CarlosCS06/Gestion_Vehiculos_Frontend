@@ -57,23 +57,15 @@ const normalizarConductor = (c) => {
 };
 
 export const obtenerConductores = async () => {
-  const token = sessionStorage.getItem('token');
-  const response = await fetchWithLogging(AUTH_API_URL, {
-    headers: {
-      'Authorization': `Bearer ${token}`
-    }
-  });
+  const response = await fetchWithLogging(AUTH_API_URL);
   const datos = await response.json();
   return Array.isArray(datos) ? datos.map(mapearConductor) : (typeof datos === 'object' ? Object.values(datos).map(mapearConductor) : []);
 };
 
 export const obtenerConductorPorDni = async (dni) => {
   try {
-    const token = sessionStorage.getItem('token');
     const response = await fetchWithLogging(`${AUTH_API_URL}/${dni}`, {
-      headers: {
-        'Authorization': `Bearer ${token}`
-      }
+      skipLog: 404
     });
 
     const data = await response.json();
@@ -92,8 +84,8 @@ const prepararFormData = (conductor) => {
   formData.append('dni', conductor.dni);
   formData.append('nombre', conductor.nombre);
   formData.append('apellidos', conductor.apellidos);
-  if (conductor.telefono) formData.append('telefono', conductor.telefono);
-  if (conductor.direccion) formData.append('direccion', conductor.direccion);
+  if (conductor.telefono !== undefined) formData.append('telefono', conductor.telefono);
+  if (conductor.direccion !== undefined) formData.append('direccion', conductor.direccion);
   if (conductor.fechaNacimiento) {
     formData.append('fechaNacimiento', new Date(conductor.fechaNacimiento).toISOString());
   }
@@ -116,14 +108,11 @@ const prepararFormData = (conductor) => {
 };
 
 export const crearConductor = async (conductor) => {
-  const token = sessionStorage.getItem('token');
   const esMultipart = conductor.image instanceof File;
 
   const config = {
     method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${token}`
-    },
+    headers: {},
     body: esMultipart ? prepararFormData(conductor) : JSON.stringify(normalizarConductor(conductor)),
   };
 
@@ -136,14 +125,11 @@ export const crearConductor = async (conductor) => {
 };
 
 export const actualizarConductor = async (dni, datosActualizados) => {
-  const token = sessionStorage.getItem('token');
   const esMultipart = datosActualizados.image instanceof File;
 
   const config = {
     method: 'PATCH',
-    headers: {
-      'Authorization': `Bearer ${token}`
-    },
+    headers: {},
     body: esMultipart ? prepararFormData(datosActualizados) : JSON.stringify(normalizarConductor(datosActualizados)),
   };
 
@@ -155,12 +141,10 @@ export const actualizarConductor = async (dni, datosActualizados) => {
 };
 
 export const eliminarConductor = async (dni) => {
-  const token = sessionStorage.getItem('token');
   const response = await fetchWithLogging(`${AUTH_API_URL}/${dni}`, {
     method: 'DELETE',
     headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${token}`
+      'Content-Type': 'application/json'
     },
   });
   return response.json();
