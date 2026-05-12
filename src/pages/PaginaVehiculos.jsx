@@ -50,6 +50,14 @@ import { useAuth } from '../context/ContextoAuth.jsx';
 import BadgeEstado from '../components/shared/BadgeEstado.jsx';
 import DialogoConfirmacion from '../components/shared/DialogoConfirmacion.jsx';
 import {
+  obtenerComunidadesAutonomas,
+  obtenerProvinciasPorComunidad,
+  obtenerMunicipiosPorProvincia,
+  obtenerProductosPetroliferos,
+  obtenerEstacionesPorFiltros,
+  obtenerPrecioMedio,
+} from '../services/servicioCarburantes.js';
+import {
   obtenerVehiculos,
   crearVehiculo,
   actualizarVehiculo,
@@ -362,6 +370,11 @@ const ModalDetallesVehiculo = ({ vehiculo: vehiculoBase, onCerrar }) => {
   const [tabActiva, setTabActiva] = useState('general');
   const [vehiculoCompleto, setVehiculoCompleto] = useState(vehiculoBase);
   const [cargando, setCargando] = useState(false);
+  const [comunidades, setComunidades] = useState([]);
+  const [provincias, setProvincias] = useState([]);
+  const [municipios, setMunicipios] = useState([]);
+  const [productosPetroliferos, setProductosPetroliferos] = useState([]);
+  const [cargandoCarburante, setCargandoCarburante] = useState(false);
 
   useEffect(() => {
     if (vehiculoBase?.matricula) {
@@ -376,6 +389,152 @@ const ModalDetallesVehiculo = ({ vehiculo: vehiculoBase, onCerrar }) => {
         .finally(() => setCargando(false));
     }
   }, [vehiculoBase]);
+
+  useEffect(() => {
+    // Cargar datos de carburantes y comunidades
+    obtenerComunidadesAutonomas()
+      .then(setComunidades)
+      .catch(console.error);
+
+    obtenerProductosPetroliferos()
+      .then(setProductosPetroliferos)
+      .catch(console.error);
+
+    // Si el vehículo ya tiene comunidad, cargar provincias
+    if (vehiculoCompleto?.comunidadAutonomaId) {
+      obtenerProvinciasPorComunidad(vehiculoCompleto.comunidadAutonomaId)
+        .then(setProvincias)
+        .catch(console.error);
+    }
+
+    // Si el vehículo ya tiene provincia, cargar municipios
+    if (vehiculoCompleto?.provinciaId) {
+      obtenerMunicipiosPorProvincia(vehiculoCompleto.provinciaId)
+        .then(setMunicipios)
+        .catch(console.error);
+    }
+  }, [vehiculoCompleto?.comunidadAutonomaId, vehiculoCompleto?.provinciaId]);
+
+  const manejarCambioComunidad = async (idComunidad) => {
+    const comunidadSeleccionada = comunidades.find(
+      (c) => String(c.IDCCAA) === String(idComunidad)
+    );
+
+    setVehiculoCompleto(prev => ({
+      ...prev,
+      comunidadAutonomaId: idComunidad,
+      comunidadAutonomaNombre: comunidadSeleccionada?.CCAA || '',
+      provinciaId: '',
+      provinciaNombre: '',
+      municipioId: '',
+      municipioNombre: '',
+    }));
+
+    setProvincias([]);
+    setMunicipios([]);
+
+    if (!idComunidad) return;
+
+    try {
+      const datos = await obtenerProvinciasPorComunidad(idComunidad);
+      setProvincias(datos);
+    } catch (err) {
+      console.error('Error al cargar provincias:', err);
+    }
+  };
+
+  const manejarCambioProvincia = async (idProvincia) => {
+    const provinciaSeleccionada = provincias.find(
+      (p) => String(p.IDPovincia || p.IDProvincia) === String(idProvincia)
+    );
+
+    setVehiculoCompleto(prev => ({
+      ...prev,
+      provinciaId: idProvincia,
+      provinciaNombre: provinciaSeleccionada?.Provincia || '',
+      municipioId: '',
+      municipioNombre: '',
+    }));
+
+    setMunicipios([]);
+
+    if (!idProvincia) return;
+
+    try {
+      const datos = await obtenerMunicipiosPorProvincia(idProvincia);
+      setMunicipios(datos);
+    } catch (err) {
+      console.error('Error al cargar municipios:', err);
+    }
+  };
+
+  const manejarCambioMunicipio = (idMunicipio) => {
+    const municipioSeleccionado = municipios.find(
+      (m) => String(m.IDMunicipio) === String(idMunicipio)
+    );
+
+    setVehiculoCompleto(prev => ({
+      ...prev,
+      municipioId: idMunicipio,
+      municipioNombre: municipioSeleccionado?.Municipio || '',
+    }));
+  };
+
+  const manejarCambioCarburante = (idProducto) => {
+    const productoSeleccionado = productosPetroliferos.find(
+      (p) => String(p.IDProducto) === String(idProducto)
+    );
+
+    setVehiculoCompleto(prev => ({
+      ...prev,
+      carburanteId: idProducto,
+      carburanteNombre: productoSeleccionado?.NombreProducto || '',
+    }));
+  };
+
+  const calcularGastoPorKmCarburante = async () => {
+    if (!vehiculoCompleto.comunidadAutonomaId) {
+      alert('La Comunidad Autónoma es obligatoria para calcular el carburante.');
+      return;
+    }
+
+    if (!vehiculoCompleto.carburanteId) {
+      alert('Selecciona un carburante.');
+      return;
+    }
+
+    setCargandoCarburante(true);
+
+    try {
+      const respuesta = await obtenerEstacionesPorFiltros({
+        idComunidad: vehiculoCompleto.comunidadAutonomaId,
+        idProvincia: vehiculoCompleto.provinciaId,
+        idMunicipio: vehiculoCompleto.municipioId,
+        idProducto: vehiculoCompleto.carburanteId,
+      });
+
+      const precioMedio = obtenerPrecioMedio(
+        respuesta,
+        vehiculoCompleto.carburanteNombre
+      );
+
+      if (!precioMedio) {
+        alert('No se ha encontrado precio para ese carburante con esos filtros.');
+        return;
+      }
+
+      setVehiculoCompleto((prev) => ({
+        ...prev,
+        precioCarburanteActual: Number(precioMedio.toFixed(3)),
+      }));
+
+      alert('Precio actualizado correctamente');
+    } catch (err) {
+      alert('Error al calcular precio del carburante: ' + err.message);
+    } finally {
+      setCargandoCarburante(false);
+    }
+  };
 
   if (!vehiculoCompleto) return null;
 
@@ -420,10 +579,94 @@ const ModalDetallesVehiculo = ({ vehiculo: vehiculoBase, onCerrar }) => {
                     </div>
                   )}
                   {tabActiva === 'finanzas' && (
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
-                      <div><Text size={200} style={{ color: tokens.colorNeutralForeground3 }} block>Precio compra</Text><Text size={300} weight="semibold">{vehiculoCompleto.precio.toLocaleString('es-ES', { style: 'currency', currency: 'EUR' })}</Text></div>
-                      <div><Text size={200} style={{ color: tokens.colorNeutralForeground3 }} block>Fecha compra</Text><Text size={300} weight="semibold">{vehiculoCompleto.fechaCompra ? new Date(vehiculoCompleto.fechaCompra).toLocaleDateString('es-ES') : '—'}</Text></div>
-                      <div><Text size={200} style={{ color: tokens.colorNeutralForeground3 }} block>Gasto por Km</Text><Text size={300} weight="semibold">{vehiculoCompleto.gastoPorKm.toLocaleString('es-ES', { style: 'currency', currency: 'EUR', minimumFractionDigits: 2 })}</Text></div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+                        <div><Text size={200} style={{ color: tokens.colorNeutralForeground3 }} block>Precio compra</Text><Text size={300} weight="semibold">{vehiculoCompleto.precio.toLocaleString('es-ES', { style: 'currency', currency: 'EUR' })}</Text></div>
+                        <div><Text size={200} style={{ color: tokens.colorNeutralForeground3 }} block>Fecha compra</Text><Text size={300} weight="semibold">{vehiculoCompleto.fechaCompra ? new Date(vehiculoCompleto.fechaCompra).toLocaleDateString('es-ES') : '—'}</Text></div>
+                        <div><Text size={200} style={{ color: tokens.colorNeutralForeground3 }} block>Gasto por Km</Text><Text size={300} weight="semibold">{vehiculoCompleto.gastoPorKm.toLocaleString('es-ES', { style: 'currency', currency: 'EUR', minimumFractionDigits: 2 })}</Text></div>
+                        <div><Text size={200} style={{ color: tokens.colorNeutralForeground3 }} block>Precio carburante actual</Text><Text size={300} weight="semibold">{vehiculoCompleto.precioCarburanteActual ? `${Number(vehiculoCompleto.precioCarburanteActual).toFixed(3)} €/L` : '—'}</Text></div>
+                      </div>
+
+                      <div style={{ borderTop: `1px solid ${tokens.colorNeutralStroke2}`, paddingTop: '16px' }}>
+                        <Text size={400} weight="semibold" style={{ marginBottom: '12px' }}>Configuración de Carburante</Text>
+
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '16px' }}>
+                          <Field label="Comunidad Autónoma">
+                            <Select
+                              value={vehiculoCompleto.comunidadAutonomaId || ''}
+                              onChange={(_, d) => manejarCambioComunidad(d.value)}
+                            >
+                              <option value="">Selecciona comunidad</option>
+                              {comunidades.map((comunidad) => (
+                                <option key={comunidad.IDCCAA} value={comunidad.IDCCAA}>
+                                  {comunidad.CCAA}
+                                </option>
+                              ))}
+                            </Select>
+                          </Field>
+
+                          <Field label="Carburante">
+                            <Select
+                              value={vehiculoCompleto.carburanteId || ''}
+                              onChange={(_, d) => manejarCambioCarburante(d.value)}
+                            >
+                              <option value="">Selecciona carburante</option>
+                              {productosPetroliferos.map((producto) => (
+                                <option key={producto.IDProducto} value={producto.IDProducto}>
+                                  {producto.NombreProducto}
+                                </option>
+                              ))}
+                            </Select>
+                          </Field>
+
+                          <Field label="Provincia">
+                            <Select
+                              value={vehiculoCompleto.provinciaId || ''}
+                              disabled={!vehiculoCompleto.comunidadAutonomaId}
+                              onChange={(_, d) => manejarCambioProvincia(d.value)}
+                            >
+                              <option value="">Todas las provincias</option>
+                              {provincias.map((provincia) => (
+                                <option
+                                  key={provincia.IDPovincia || provincia.IDProvincia}
+                                  value={provincia.IDPovincia || provincia.IDProvincia}
+                                >
+                                  {provincia.Provincia}
+                                </option>
+                              ))}
+                            </Select>
+                          </Field>
+
+                          <Field label="Municipio">
+                            <Select
+                              value={vehiculoCompleto.municipioId || ''}
+                              disabled={!vehiculoCompleto.provinciaId}
+                              onChange={(_, d) => manejarCambioMunicipio(d.value)}
+                            >
+                              <option value="">Todos los municipios</option>
+                              {municipios.map((municipio) => (
+                                <option key={municipio.IDMunicipio} value={municipio.IDMunicipio}>
+                                  {municipio.Municipio}
+                                </option>
+                              ))}
+                            </Select>
+                          </Field>
+                        </div>
+
+                        <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
+                          <Button
+                            appearance="secondary"
+                            onClick={calcularGastoPorKmCarburante}
+                            disabled={
+                              cargandoCarburante ||
+                              !vehiculoCompleto.comunidadAutonomaId ||
+                              !vehiculoCompleto.carburanteId
+                            }
+                          >
+                            {cargandoCarburante ? 'Calculando...' : 'Calcular precio'}
+                          </Button>
+                        </div>
+                      </div>
                     </div>
                   )}
                   {tabActiva === 'historial' && (
@@ -611,10 +854,26 @@ const PaginaVehiculos = () => {
 
   const manejarGuardar = async () => {
     try {
+      // Filtrar los campos que se envían al backend
+      const camposPermitidos = [
+        'matricula', 'marca', 'modelo', 'tipo', 'alimentacion', 'precio',
+        'fechaCompra', 'kilometrosTotales', 'gastoPorKm', 'anyosAntiguedad',
+        'proximaItv', 'foto', 'fotoHover', 'nuevo', 'idImagen', 'nombreImagen',
+        'comunidadAutonomaId', 'comunidadAutonomaNombre', 'provinciaId', 'provinciaNombre',
+        'municipioId', 'municipioNombre', 'carburanteId', 'carburanteNombre', 'precioCarburanteActual'
+      ];
+
+      const vehiculoFiltrado = {};
+      camposPermitidos.forEach(campo => {
+        if (vehiculoActual.hasOwnProperty(campo)) {
+          vehiculoFiltrado[campo] = vehiculoActual[campo];
+        }
+      });
+
       if (editando) {
-        await actualizarVehiculo(vehiculoActual.matricula, vehiculoActual);
+        await actualizarVehiculo(vehiculoActual.matricula, vehiculoFiltrado);
       } else {
-        await crearVehiculo(vehiculoActual);
+        await crearVehiculo(vehiculoFiltrado);
       }
       setDialogoAbierto(false);
       setArchivoFoto(null);

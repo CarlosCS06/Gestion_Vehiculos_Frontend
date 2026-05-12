@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, Fragment } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   makeStyles,
   tokens,
@@ -139,9 +140,13 @@ const useEstilos = makeStyles({
     gap: tokens.spacingVerticalM,
   },
   filaFormulario: {
-    display: 'grid',
-    gridTemplateColumns: '1fr 1fr',
+    display: 'flex',
+    flexWrap: 'wrap',
     gap: tokens.spacingHorizontalM,
+    '& > *': {
+      flex: '1 1 200px',
+      minWidth: '200px',
+    },
   },
   filaExpandible: {
     cursor: 'pointer',
@@ -263,16 +268,17 @@ const PaginaViajes = () => {
   const [idEliminar, setIdEliminar] = useState('');
   const [error, setError] = useState('');
   const [expandidos, setExpandidos] = useState({});
-  // Estado para edición inline de trayectos desde la vista expandida
-  const [dialogoTrayectoAbierto, setDialogoTrayectoAbierto] = useState(false);
-  const [trayectoInline, setTrayectoInline] = useState({ viajeId: '', indice: -1, datos: null });
-  const [confirmacionTrayectoAbierta, setConfirmacionTrayectoAbierta] = useState(false);
-  const [trayectoEliminarInfo, setTrayectoEliminarInfo] = useState({ viajeId: '', indice: -1 });
   const [listaVehiculos, setListaVehiculos] = useState([]);
   const [mostrarOcultos, setMostrarOcultos] = useState(false);
   const [procesando, setProcesando] = useState(false);
   const [terminoBusqueda, setTerminoBusqueda] = useState('');
   const [filtroEstado, setFiltroEstado] = useState('Todos');
+
+  const navegar = useNavigate();
+
+  // Estados para eliminación de trayectos
+  const [confirmacionTrayectoAbierta, setConfirmacionTrayectoAbierta] = useState(false);
+  const [trayectoEliminarId, setTrayectoEliminarId] = useState('');
   
   // Función para asegurar la integridad de la cadena de trayectos
   const sincronizarCadenaTrayectos = (trayectos) => {
@@ -328,6 +334,28 @@ const PaginaViajes = () => {
     setCargando(false);
   }, [esAdmin, usuario?.dni]);
 
+  const confirmarEliminarTrayecto = (id) => {
+    setTrayectoEliminarId(id);
+    setConfirmacionTrayectoAbierta(true);
+  };
+
+  const manejarEliminarTrayecto = async () => {
+    if (procesando) return;
+    setProcesando(true);
+    try {
+      await eliminarTrayecto(trayectoEliminarId);
+      setConfirmacionTrayectoAbierta(false);
+      setTrayectoEliminarId('');
+      await cargarViajes();
+      setError('');
+    } catch (err) {
+      console.error('Error eliminando trayecto:', err);
+      setError(err.message);
+    } finally {
+      setProcesando(false);
+    }
+  };
+
   useEffect(() => {
     cargarViajes();
     // Cargamos lista de vehículos para el desplegable
@@ -351,6 +379,8 @@ const PaginaViajes = () => {
       conductor: (typeof viaje.conductor === 'object' && viaje.conductor !== null) ? viaje.conductor.dni : (viaje.conductor || ''),
       matricula: (typeof viaje.matricula === 'object' && viaje.matricula !== null) ? viaje.matricula.matricula : (viaje.matricula || ''),
       fecha: viaje.fecha || '',
+      kmSalida: viaje.kmSalida ?? '',
+      kmLlegada: viaje.kmLlegada ?? '',
       trayectos: viaje.trayectos.map((t) => ({ ...t })),
     });
     setEditando(true);
@@ -361,32 +391,36 @@ const PaginaViajes = () => {
     v.estado !== ESTADO_VEHICULO.AVERIADO || v.matricula === viajeActual.matricula
   );
 
-  const manejarGuardar = async () => {
-    if (procesando) return;
-    setProcesando(true);
-    try {
-      // Sincronizar la cadena antes de limpiar para el envío
-      const trayectosSincronizados = sincronizarCadenaTrayectos(viajeActual.trayectos || []);
+const manejarGuardar = async () => {
+  if (procesando) return;
+  setProcesando(true);
+  try {
+    if (
+      viajeActual.kmSalida !== '' &&
+      viajeActual.kmLlegada !== '' &&
+      Number(viajeActual.kmLlegada) < Number(viajeActual.kmSalida)
+    ) {
+      setError('Los Km de llegada no pueden ser inferiores a los Km de salida.');
+      setProcesando(false);
+      return;
+    }
 
-      // Limpiar trayectos para asegurar que se "machacan" correctamente
-      const trayectosLimpios = trayectosSincronizados.map(t => {
-        const limpio = { ...t };
-        // Si el ID está vacío, lo eliminamos para que el backend lo trate como nuevo
-        if (limpio.id === '') delete limpio.id;
-        return limpio;
-      });
+    // Sincronizar la cadena antes de limpiar para el envío
+    // const trayectosSincronizados = sincronizarCadenaTrayectos(viajeActual.trayectos || []);
 
       const datosGuardar = {
         ...viajeActual,
-        origen: trayectosLimpios[0]?.origen || viajeActual.origen || '',
-        destino: trayectosLimpios[trayectosLimpios.length - 1]?.destino || viajeActual.destino || '',
-        trayectos: trayectosLimpios
+        kmSalida: viajeActual.kmSalida === '' ? null : Number(viajeActual.kmSalida),
+        kmLlegada: viajeActual.kmLlegada === '' ? null : Number(viajeActual.kmLlegada),
+        origen: viajeActual.origen || '',
+        destino: viajeActual.destino || '',
+        // trayectos: trayectosLimpios
       };
 
       // Solo enviar trayectos si hay elementos
-      if (datosGuardar.trayectos.length === 0) {
-        delete datosGuardar.trayectos;
-      }
+      // if (datosGuardar.trayectos.length === 0) {
+      //   delete datosGuardar.trayectos;
+      // }
 
       console.log('Enviando datos de viaje (machacando info anterior):', datosGuardar);
 
@@ -490,130 +524,6 @@ const PaginaViajes = () => {
 
   const manejarCambioViaje = (campo, valor) => {
     setViajeActual((prev) => ({ ...prev, [campo]: valor }));
-  };
-
-  const manejarCambioTrayecto = (indice, campo, valor) => {
-    setViajeActual((prev) => {
-      const nuevosTrayectos = prev.trayectos.map((t) => ({ ...t }));
-      nuevosTrayectos[indice] = { ...nuevosTrayectos[indice], [campo]: valor };
-      // Si se cambia el destino, encadenar: el origen del siguiente trayecto = este destino
-      if (campo === 'destino' && indice < nuevosTrayectos.length - 1) {
-        nuevosTrayectos[indice + 1] = { ...nuevosTrayectos[indice + 1], origen: valor };
-      }
-      return { ...prev, trayectos: nuevosTrayectos };
-    });
-  };
-
-  const anadirTrayecto = () => {
-    setViajeActual((prev) => {
-      const ultimoTrayecto = prev.trayectos[prev.trayectos.length - 1];
-      const nuevo = crearTrayectoDeViajeVacio();
-      // Aseguramos que el ID esté vacío para que el backend sepa que es nuevo
-      nuevo.id = '';
-      
-      // El origen del nuevo trayecto es el destino del anterior
-      if (ultimoTrayecto && ultimoTrayecto.destino) {
-        nuevo.origen = ultimoTrayecto.destino;
-      }
-      return { ...prev, trayectos: [...prev.trayectos, nuevo] };
-    });
-  };
-
-  const eliminarTrayectoDelViaje = (indice) => {
-    setViajeActual((prev) => {
-      const nuevosTrayectos = prev.trayectos.filter((_, i) => i !== indice);
-      // Reencadenar: cada trayecto (excepto el primero) hereda el destino del anterior como origen
-      for (let i = 1; i < nuevosTrayectos.length; i++) {
-        nuevosTrayectos[i] = { ...nuevosTrayectos[i], origen: nuevosTrayectos[i - 1].destino };
-      }
-      return { ...prev, trayectos: nuevosTrayectos };
-    });
-  };
-
-  // --- Edición inline de trayectos desde la vista expandida ---
-
-  const abrirEditarTrayectoInline = (viajeId, indice, trayecto) => {
-    setTrayectoInline({ viajeId, indice, datos: { ...trayecto } });
-    setDialogoTrayectoAbierto(true);
-  };
-
-  const manejarCambioTrayectoInline = (campo, valor) => {
-    setTrayectoInline((prev) => ({
-      ...prev,
-      datos: { ...prev.datos, [campo]: valor },
-    }));
-  };
-
-  const guardarTrayectoInline = async () => {
-    if (procesando) return;
-    setProcesando(true);
-    try {
-      const { viajeId, indice, datos } = trayectoInline;
-      
-      // Buscar el viaje original para obtener todos sus trayectos
-      const viajeOriginal = viajes.find(v => v.id === viajeId);
-      if (!viajeOriginal) throw new Error('Viaje no encontrado');
-
-      // Crear copia de los trayectos y actualizar el que se editó
-      let nuevosTrayectos = viajeOriginal.trayectos.map(t => ({ ...t }));
-      nuevosTrayectos[indice] = { ...datos };
-
-      // Sincronizar la cadena completa del viaje
-      nuevosTrayectos = sincronizarCadenaTrayectos(nuevosTrayectos);
-
-      console.log('Guardando cambio en cadena de trayectos para el viaje:', viajeId);
-      
-      // Actualizamos el viaje completo para asegurar la integridad en el backend
-      const viajeActualizado = {
-        ...viajeOriginal,
-        // Normalizar conductor y matrícula por si son objetos
-        conductor: (typeof viajeOriginal.conductor === 'object' && viajeOriginal.conductor !== null) ? viajeOriginal.conductor.dni : (viajeOriginal.conductor || ''),
-        matricula: (typeof viajeOriginal.matricula === 'object' && viajeOriginal.matricula !== null) ? viajeOriginal.matricula.matricula : (viajeOriginal.matricula || ''),
-        trayectos: nuevosTrayectos
-      };
-
-      await actualizarViaje(viajeId, viajeActualizado);
-      
-      setDialogoTrayectoAbierto(false);
-      setTrayectoInline({ viajeId: '', indice: -1, datos: null });
-      await cargarViajes();
-      setError('');
-    } catch (err) {
-      console.error('Error guardando trayecto inline:', err);
-      setError(err.message);
-    } finally {
-      setProcesando(false);
-    }
-  };
-
-  const confirmarEliminarTrayectoInline = (viajeId, indice) => {
-    setTrayectoEliminarInfo({ viajeId, indice });
-    setConfirmacionTrayectoAbierta(true);
-  };
-
-  const eliminarTrayectoInline = async () => {
-    if (procesando) return;
-    setProcesando(true);
-    try {
-      const viajeOriginal = viajes.find((v) => v.id === trayectoEliminarInfo.viajeId);
-      if (!viajeOriginal) throw new Error('Viaje no encontrado');
-      
-      const trayectoAEliminar = viajeOriginal.trayectos[trayectoEliminarInfo.indice];
-      if (!trayectoAEliminar?.id) throw new Error('ID de trayecto no encontrado para eliminación');
-
-      console.log(`Eliminando trayecto individualmente (ID: ${trayectoAEliminar.id})`);
-      await eliminarTrayecto(trayectoAEliminar.id);
-      
-      setConfirmacionTrayectoAbierta(false);
-      setTrayectoEliminarInfo({ viajeId: '', indice: -1 });
-      await cargarViajes();
-      setError('');
-    } catch (err) {
-      console.error('Error eliminando trayecto inline:', err);
-      setError(err.message);
-    } finally {
-      setProcesando(false);
-    }
   };
 
   if (cargando) {
@@ -787,6 +697,16 @@ const PaginaViajes = () => {
                             ))}
                           </div>
                           <Divider style={{ margin: `${tokens.spacingVerticalS} 0` }} />
+                          <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: tokens.spacingVerticalS }}>
+                            <Button
+                              appearance="outline"
+                              icon={<Add24Regular />}
+                              onClick={() => navegar('/trayectos?viajeId=' + viaje.id)}
+                              size="small"
+                            >
+                              Añadir trayecto
+                            </Button>
+                          </div>
                           <Table size="small">
                             <TableHeader>
                               <TableRow>
@@ -819,19 +739,15 @@ const PaginaViajes = () => {
                                           icon={<Edit24Regular />}
                                           appearance="subtle"
                                           size="small"
-                                          onClick={() => abrirEditarTrayectoInline(viaje.id, idx, t)}
+                                          onClick={() => navegar('/trayectos?editar=' + t.id)}
                                         />
                                       </Tooltip>
-                                      <Tooltip 
-                                        content={viaje.trayectos.length > 1 ? "Eliminar trayecto" : "No se puede eliminar el último trayecto de un viaje"} 
-                                        relationship="label"
-                                      >
+                                      <Tooltip content="Eliminar trayecto" relationship="label">
                                         <Button
                                           icon={<Delete24Regular />}
                                           appearance="subtle"
                                           size="small"
-                                          disabled={viaje.trayectos.length <= 1 || procesando}
-                                          onClick={() => confirmarEliminarTrayectoInline(viaje.id, idx)}
+                                          onClick={() => confirmarEliminarTrayecto(t.id)}
                                         />
                                       </Tooltip>
                                     </TableCell>
@@ -988,7 +904,7 @@ const PaginaViajes = () => {
             <DialogTitle>{editando ? 'Editar viaje' : 'Nuevo viaje'}</DialogTitle>
             <DialogContent>
               <div className={estilos.formulario}>
-                {/* Datos del viaje */}
+                {/* Datos del viaje en una sola fila */}
                 <div className={estilos.filaFormulario}>
                   <Field label="Descripción del viaje" required>
                     <Input
@@ -1017,8 +933,24 @@ const PaginaViajes = () => {
                       ))}
                     </Select>
                   </Field>
-                </div>
-                <div className={estilos.filaFormulario}>
+                  <Field label="Km salida">
+                    <Input
+                      type="number"
+                      min="0"
+                      value={viajeActual.kmSalida ?? ''}
+                      onChange={(_, d) => manejarCambioViaje('kmSalida', d.value)}
+                      placeholder="Ej: 12500"
+                    />
+                  </Field>
+                  <Field label="Km llegada">
+                    <Input
+                      type="number"
+                      min="0"
+                      value={viajeActual.kmLlegada ?? ''}
+                      onChange={(_, d) => manejarCambioViaje('kmLlegada', d.value)}
+                      placeholder="Ej: 12680"
+                    />
+                  </Field>
                   <Field label="Fecha">
                     <Input
                       type="date"
@@ -1047,6 +979,24 @@ const PaginaViajes = () => {
                   </Field>
                 </div>
 
+                {viajeActual.kmSalida !== '' && viajeActual.kmLlegada !== '' && (
+                  <Text
+                    size={300}
+                    style={{
+                      color:
+                        Number(viajeActual.kmLlegada) >= Number(viajeActual.kmSalida)
+                          ? tokens.colorNeutralForeground2
+                          : tokens.colorPaletteRedForeground1,
+                    }}
+                  >
+                    {Number(viajeActual.kmLlegada) >= Number(viajeActual.kmSalida)
+                      ? `Km recorridos: ${(
+                          Number(viajeActual.kmLlegada) - Number(viajeActual.kmSalida)
+                        ).toLocaleString('es-ES')} km`
+                      : 'Los Km de llegada no pueden ser inferiores a los Km de salida.'}
+                  </Text>
+                )}
+
                 {esAdmin && (
                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                     <Checkbox
@@ -1060,83 +1010,6 @@ const PaginaViajes = () => {
                   </div>
                 )}
 
-                <Divider />
-
-                {/* Trayectos dinámicos */}
-                <Subtitle2>Trayectos del viaje</Subtitle2>
-                <div className={estilos.seccionTrayectos}>
-                  {viajeActual.trayectos.map((trayecto, idx) => (
-                    <div key={idx} className={estilos.trayectoCard}>
-                      <div className={estilos.trayectoCardCabecera}>
-                        <Badge appearance="outline" color="brand">Trayecto {idx + 1}</Badge>
-                        <Tooltip 
-                          content={viajeActual.trayectos.length > 1 ? "Quitar trayecto" : "Un viaje debe tener al menos un trayecto"} 
-                          relationship="label"
-                        >
-                          <Button
-                            icon={<Subtract24Regular />}
-                            appearance="subtle"
-                            size="small"
-                            disabled={viajeActual.trayectos.length <= 1}
-                            onClick={() => eliminarTrayectoDelViaje(idx)}
-                          />
-                        </Tooltip>
-                      </div>
-                      <div className={estilos.filaFormulario}>
-                        <Field label="Origen" required hint={idx > 0 ? 'Se hereda del destino anterior' : undefined}>
-                          <Input
-                            value={trayecto.origen || ''}
-                            onChange={(_, d) => manejarCambioTrayecto(idx, 'origen', d.value)}
-                            placeholder="Madrid"
-                            readOnly={idx > 0}
-                            style={idx > 0 ? { opacity: 0.7, cursor: 'not-allowed' } : undefined}
-                          />
-                        </Field>
-                        <Field label="Destino" required>
-                          <Input
-                            value={trayecto.destino || ''}
-                            onChange={(_, d) => manejarCambioTrayecto(idx, 'destino', d.value)}
-                            placeholder="Toledo"
-                          />
-                        </Field>
-                      </div>
-                      <div className={estilos.filaFormulario}>
-                        <Field label="Km recorridos">
-                          <Input
-                            type="number"
-                            value={String(trayecto.distanciaEnKm || 0)}
-                            onChange={(_, d) => manejarCambioTrayecto(idx, 'distanciaEnKm', Number(d.value))}
-                          />
-                        </Field>
-                      </div>
-                      <div className={estilos.filaFormulario}>
-                        <Field label="Hora salida">
-                          <Input
-                            type="datetime-local"
-                            value={trayecto.horaSalida}
-                            onChange={(_, d) => manejarCambioTrayecto(idx, 'horaSalida', d.value)}
-                          />
-                        </Field>
-                        <Field label="Hora llegada">
-                          <Input
-                            type="datetime-local"
-                            value={trayecto.horaLlegada}
-                            onChange={(_, d) => manejarCambioTrayecto(idx, 'horaLlegada', d.value)}
-                          />
-                        </Field>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-
-                <Button
-                  className={estilos.botonAnadirTrayecto}
-                  appearance="outline"
-                  icon={<Add24Regular />}
-                  onClick={anadirTrayecto}
-                >
-                  Añadir trayecto
-                </Button>
               </div>
             </DialogContent>
             <DialogActions>
@@ -1158,81 +1031,17 @@ const PaginaViajes = () => {
         }}
       />
 
-      {/* Diálogo edición inline de un trayecto */}
-      <Dialog open={dialogoTrayectoAbierto} onOpenChange={(_, d) => { 
-        if (!d.open) {
-          setDialogoTrayectoAbierto(false);
-          setTrayectoInline({ viajeId: '', indice: -1, datos: null });
-        }
-      }}>
-        <DialogSurface style={{ maxWidth: '600px' }}>
-          <DialogBody>
-            <DialogTitle>Editar trayecto</DialogTitle>
-            <DialogContent>
-              {trayectoInline.datos && (
-                <div className={estilos.formulario}>
-                  <div className={estilos.filaFormulario}>
-                    <Field label="Origen" hint={trayectoInline.indice > 0 ? 'Heredado del trayecto anterior' : undefined}>
-                      <Input
-                        value={trayectoInline.datos.origen || ''}
-                        onChange={(_, d) => manejarCambioTrayectoInline('origen', d.value)}
-                        readOnly={trayectoInline.indice > 0}
-                        style={trayectoInline.indice > 0 ? { opacity: 0.7, cursor: 'not-allowed' } : undefined}
-                      />
-                    </Field>
-                    <Field label="Destino" required>
-                      <Input
-                        value={trayectoInline.datos.destino || ''}
-                        onChange={(_, d) => manejarCambioTrayectoInline('destino', d.value)}
-                      />
-                    </Field>
-                  </div>
-                  <div className={estilos.filaFormulario}>
-                    <Field label="Km recorridos">
-                      <Input
-                        type="number"
-                        value={String(trayectoInline.datos.distanciaEnKm || 0)}
-                        onChange={(_, d) => manejarCambioTrayectoInline('distanciaEnKm', Number(d.value))}
-                      />
-                    </Field>
-                  </div>
-                  <div className={estilos.filaFormulario}>
-                    <Field label="Hora salida">
-                      <Input
-                        type="datetime-local"
-                        value={trayectoInline.datos.horaSalida || ''}
-                        onChange={(_, d) => manejarCambioTrayectoInline('horaSalida', d.value)}
-                      />
-                    </Field>
-                    <Field label="Hora llegada">
-                      <Input
-                        type="datetime-local"
-                        value={trayectoInline.datos.horaLlegada || ''}
-                        onChange={(_, d) => manejarCambioTrayectoInline('horaLlegada', d.value)}
-                      />
-                    </Field>
-                  </div>
-                </div>
-              )}
-            </DialogContent>
-            <DialogActions>
-              <Button appearance="secondary" onClick={() => setDialogoTrayectoAbierto(false)}>Cancelar</Button>
-              <Button appearance="primary" onClick={guardarTrayectoInline}>Guardar cambios</Button>
-            </DialogActions>
-          </DialogBody>
-        </DialogSurface>
-      </Dialog>
-
       <DialogoConfirmacion
         abierto={confirmacionTrayectoAbierta}
         titulo="Eliminar trayecto"
-        mensaje="¿Estás seguro de que deseas eliminar este trayecto? Los orígenes de los trayectos siguientes se ajustarán automáticamente."
-        onConfirmar={eliminarTrayectoInline}
+        mensaje="¿Estás seguro de que deseas eliminar este trayecto?"
+        onConfirmar={manejarEliminarTrayecto}
         onCancelar={() => {
           setConfirmacionTrayectoAbierta(false);
-          setTrayectoEliminarInfo({ viajeId: '', indice: -1 });
+          setTrayectoEliminarId('');
         }}
       />
+
     </div>
   );
 };

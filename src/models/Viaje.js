@@ -44,6 +44,7 @@ export const crearTrayectoDeViajeVacio = () => ({
 /**
  * Crea un viaje vacío con valores por defecto
  */
+
 export const crearViajeVacio = () => ({
   descripcion: '',
   conductor: '',
@@ -51,10 +52,10 @@ export const crearViajeVacio = () => ({
   fecha: '',
   origen: '',
   destino: '',
+  kmSalida: '',
+  kmLlegada: '',
   gastoGasolina: 0,
   visible: true,
   estado: ESTADO_VIAJE.PENDIENTE,
   trayectos: [],
 });
-
-
