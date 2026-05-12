@@ -9,7 +9,8 @@ export const obtenerAverias = async () => {
       'Authorization': `Bearer ${token}`
     }
   });
-  return response.json();
+  const data = await response.json();
+  return Array.isArray(data) ? data : (data && typeof data === 'object' ? Object.values(data) : []);
 };
 
 export const obtenerAveriaPorId = async (id) => {
@@ -38,7 +39,7 @@ export const crearAveria = async (averia) => {
 export const actualizarAveria = async (id, datosActualizados) => {
   const token = sessionStorage.getItem('token');
   const response = await fetchWithLogging(`${AUTH_API_URL}/${id}`, {
-    method: 'PUT',
+    method: 'PATCH',
     headers: {
       'Content-Type': 'application/json',
       'Authorization': `Bearer ${token}`

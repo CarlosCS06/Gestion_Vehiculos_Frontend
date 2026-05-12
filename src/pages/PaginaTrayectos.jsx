@@ -110,13 +110,35 @@ const PaginaTrayectos = () => {
   const [editando, setEditando] = useState(false);
   const [idEliminar, setIdEliminar] = useState('');
   const [error, setError] = useState('');
+  const [procesando, setProcesando] = useState(false);
 
   const cargarTrayectos = useCallback(async () => {
     setCargando(true);
     try {
       const datos = await obtenerTrayectos();
-      setTrayectos(datos);
-    } catch {
+      console.log('Trayectos cargados:', datos);
+      
+      // Filtrar duplicados por ID (por si el servidor los devuelve)
+      const unicos = [];
+      const idsVistos = new Set();
+      
+      datos.forEach(t => {
+        if (t && t.id && !idsVistos.has(t.id)) {
+          unicos.push(t);
+          idsVistos.add(t.id);
+        } else if (t && !t.id) {
+          // Si por alguna razón no tiene ID, lo incluimos pero con una clave temporal
+          unicos.push({ ...t, id: t.id || `temp-${Math.random()}` });
+        }
+      });
+
+      if (unicos.length !== datos.length) {
+        console.warn(`Se filtraron ${datos.length - unicos.length} trayectos duplicados.`);
+      }
+      
+      setTrayectos(unicos);
+    } catch (err) {
+      console.error('Error al cargar los trayectos:', err);
       setError('Error al cargar los trayectos');
     }
     setCargando(false);
@@ -139,17 +161,42 @@ const PaginaTrayectos = () => {
   };
 
   const manejarGuardar = async () => {
+    if (procesando) return;
+    setProcesando(true);
     try {
       if (editando) {
+        // 1. Guardar el trayecto actual (Machacando info anterior)
         await actualizarTrayecto(trayectoActual.id, trayectoActual);
+        
+        // 2. Lógica de encadenamiento automático:
+        // Si hemos cambiado el destino, buscamos si hay un "siguiente" trayecto para este conductor
+        const siguienteTrayecto = trayectos.find(t => 
+          t.conductor === trayectoActual.conductor && 
+          t.id !== trayectoActual.id &&
+          new Date(t.horaSalida) >= new Date(trayectoActual.horaLlegada || trayectoActual.horaSalida)
+        );
+
+        if (siguienteTrayecto && siguienteTrayecto.origen !== trayectoActual.destino) {
+          console.log(`Encadenando automáticamente: Actualizando origen de ${siguienteTrayecto.id} a ${trayectoActual.destino}`);
+          await actualizarTrayecto(siguienteTrayecto.id, { 
+            ...siguienteTrayecto, 
+            origen: trayectoActual.destino 
+          });
+        }
       } else {
-        await crearTrayecto(trayectoActual);
+        // Crear nuevo (asegurando que no lleve ID previo)
+        const nuevoTrayecto = { ...trayectoActual };
+        delete nuevoTrayecto.id;
+        await crearTrayecto(nuevoTrayecto);
       }
+      
       setDialogoAbierto(false);
-      cargarTrayectos();
+      await cargarTrayectos();
       setError('');
     } catch (err) {
       setError(err.message);
+    } finally {
+      setProcesando(false);
     }
   };
 
@@ -159,12 +206,19 @@ const PaginaTrayectos = () => {
   };
 
   const manejarEliminar = async () => {
+    if (procesando) return;
+    setProcesando(true);
     try {
+      console.log(`Intentando eliminar trayecto: ${idEliminar}`);
       await eliminarTrayecto(idEliminar);
+      console.log('Eliminación exitosa en backend, recargando...');
       setConfirmacionAbierta(false);
-      cargarTrayectos();
+      await cargarTrayectos();
     } catch (err) {
+      console.error('Error al eliminar trayecto:', err);
       setError(err.message);
+    } finally {
+      setProcesando(false);
     }
   };
 
@@ -257,30 +311,30 @@ const PaginaTrayectos = () => {
               <div className={estilos.formulario}>
                 <div className={estilos.filaFormulario}>
                   <Field label="Origen" required>
-                    <Input value={trayectoActual.origen} onChange={(_, d) => manejarCambio('origen', d.value)} placeholder="Madrid" />
+                    <Input value={trayectoActual.origen || ''} onChange={(_, d) => manejarCambio('origen', d.value)} placeholder="Madrid" />
                   </Field>
                   <Field label="Destino" required>
-                    <Input value={trayectoActual.destino} onChange={(_, d) => manejarCambio('destino', d.value)} placeholder="Barcelona" />
+                    <Input value={trayectoActual.destino || ''} onChange={(_, d) => manejarCambio('destino', d.value)} placeholder="Barcelona" />
                   </Field>
                 </div>
                 <div className={estilos.filaFormulario}>
                   <Field label="Hora salida">
-                    <Input type="datetime-local" value={trayectoActual.horaSalida} onChange={(_, d) => manejarCambio('horaSalida', d.value)} />
+                    <Input type="datetime-local" value={trayectoActual.horaSalida || ''} onChange={(_, d) => manejarCambio('horaSalida', d.value)} />
                   </Field>
                   <Field label="Hora llegada">
-                    <Input type="datetime-local" value={trayectoActual.horaLlegada} onChange={(_, d) => manejarCambio('horaLlegada', d.value)} />
+                    <Input type="datetime-local" value={trayectoActual.horaLlegada || ''} onChange={(_, d) => manejarCambio('horaLlegada', d.value)} />
                   </Field>
                 </div>
                 <div className={estilos.filaFormulario}>
                   <Field label="Km recorridos">
-                    <Input type="number" value={String(trayectoActual.kmRecorridos)} onChange={(_, d) => manejarCambio('kmRecorridos', Number(d.value))} />
+                    <Input type="number" value={String(trayectoActual.kmRecorridos || 0)} onChange={(_, d) => manejarCambio('kmRecorridos', Number(d.value))} />
                   </Field>
                   <Field label="Gasto gasolina (€)">
-                    <Input type="number" step="0.01" value={String(trayectoActual.gastoGasolina)} onChange={(_, d) => manejarCambio('gastoGasolina', Number(d.value))} />
+                    <Input type="number" step="0.01" value={String(trayectoActual.gastoGasolina || 0)} onChange={(_, d) => manejarCambio('gastoGasolina', Number(d.value))} />
                   </Field>
                 </div>
                 <Field label="DNI Conductor">
-                  <Input value={trayectoActual.conductor} onChange={(_, d) => manejarCambio('conductor', d.value)} placeholder="12345678A" />
+                  <Input value={trayectoActual.conductor || ''} onChange={(_, d) => manejarCambio('conductor', d.value)} placeholder="12345678A" />
                 </Field>
                 <div className={estilos.filaFormulario}>
                   <Field label="Estado">

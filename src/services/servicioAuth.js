@@ -68,9 +68,12 @@ export const iniciarSesion = async (dni, contrasena) => {
  */
 export const verificarDniConductor = async (dni) => {
   const usuarioExistente = await obtenerUsuarioPorDni(dni);
-  if (usuarioExistente && usuarioExistente.contrasena !== '') {
+
+  // Si el usuario existe y NO tiene un email temporal, es que ya está registrado de verdad
+  if (usuarioExistente && !usuarioExistente.email.endsWith('@temporal.com')) {
     throw new Error('Este DNI ya tiene una cuenta registrada');
   }
+
   // Buscar en conductores dados de alta por el admin
   const conductor = await obtenerConductorPorDni(dni);
   if (!conductor) {
@@ -126,6 +129,12 @@ export const registrarConductor = async (dni, contrasena, email) => {
       fullName: `${conductor.nombre} ${conductor.apellidos}`.trim()
     };
 
+    // Si ya existe un usuario (pre-registrado), lo actualizamos en lugar de registrar uno nuevo
+    const usuarioExistente = await obtenerUsuarioPorDni(dni);
+    if (usuarioExistente) {
+      return await actualizarUsuario(dni, { email, password: contrasena, fullName: payload.fullName });
+    }
+
     // Llamamos a la función genérica de registro
     return await registrarUsuario(payload);
   } catch (error) {
@@ -142,7 +151,8 @@ export const registrarConductor = async (dni, contrasena, email) => {
 export const obtenerUsuarioPorDni = async (dni) => {
   try {
     const response = await fetchWithLogging(`${USERS_API_URL}/${dni}`, {
-      skipLog: 404
+      skipLog: 404,
+      skipAuth: true,
     });
     const data = await response.json();
     return mapearUsuario(data);
@@ -167,10 +177,10 @@ export const preRegistrarUsuario = async (conductor) => {
 
     const payload = {
       dni: conductor.dni,
-      email: '', // Se completará en el registro real
-      password: '', // Sin contraseña inicialmente, se pondrá en el registro
+      email: `${conductor.dni}@temporal.com`, // Placeholder para cumplir validación backend
+      password: `pass_${conductor.dni}`, // Placeholder inicial
       fullName: `${conductor.nombre} ${conductor.apellidos}`.trim(),
-      telefono: conductor.telefono ? Number(conductor.telefono.replace(/\s+/g, '')) : 0,
+      telefono: conductor.telefono ? Number(String(conductor.telefono).replace(/\s+/g, '')) : 0,
       roles: ['conductor'],
       isActive: true
     };

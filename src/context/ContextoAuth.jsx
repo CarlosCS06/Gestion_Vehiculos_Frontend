@@ -12,21 +12,18 @@ export const useAuth = () => {
 };
 
 export const ProveedorAuth = ({ children }) => {
-  const [usuario, setUsuario] = useState(null);
-  const [cargando, setCargando] = useState(true);
-
-  // Recuperar sesión del localStorage al cargar
-  useEffect(() => {
+  const [usuario, setUsuario] = useState(() => {
     const usuarioGuardado = sessionStorage.getItem('usuario_sesion');
     if (usuarioGuardado) {
       try {
-        setUsuario(JSON.parse(usuarioGuardado));
+        return JSON.parse(usuarioGuardado);
       } catch {
         sessionStorage.removeItem('usuario_sesion');
       }
     }
-    setCargando(false);
-  }, []);
+    return null;
+  });
+  const [cargando, setCargando] = useState(false);
 
   const login = async (dni, contrasena) => {
     const usuarioAuth = await iniciarSesion(dni, contrasena);

@@ -36,6 +36,7 @@ import {
   Edit24Regular,
   Delete24Regular,
   Warning24Regular,
+  Search24Regular,
 } from '@fluentui/react-icons';
 import { useAuth } from '../context/ContextoAuth.jsx';
 import DialogoConfirmacion from '../components/shared/DialogoConfirmacion.jsx';
@@ -70,6 +71,52 @@ const useEstilos = makeStyles({
   tarjetaTabla: {
     padding: tokens.spacingHorizontalL,
     overflow: 'auto',
+    '@media (max-width: 768px)': {
+      display: 'none',
+    }
+  },
+  listaMovil: {
+    display: 'none',
+    '@media (max-width: 768px)': {
+      display: 'flex',
+      flexDirection: 'column',
+      gap: tokens.spacingVerticalM,
+    }
+  },
+  tarjetaMovil: {
+    padding: tokens.spacingHorizontalM,
+    display: 'flex',
+    flexDirection: 'column',
+    gap: tokens.spacingVerticalS,
+  },
+  tarjetaMovilCabecera: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    borderBottomColor: tokens.colorNeutralStroke2,
+    borderBottomStyle: 'solid',
+    borderBottomWidth: '1px',
+    paddingBottom: tokens.spacingVerticalS,
+  },
+  tarjetaMovilCuerpo: {
+    display: 'grid',
+    gridTemplateColumns: '1fr 1fr',
+    gap: tokens.spacingHorizontalM,
+  },
+  datoEtiqueta: {
+    fontSize: tokens.fontSizeBase200,
+    color: tokens.colorNeutralForeground3,
+    marginBottom: '2px',
+  },
+  datoValor: {
+    fontSize: tokens.fontSizeBase300,
+    fontWeight: tokens.fontWeightSemibold,
+  },
+  accionesMovil: {
+    display: 'flex',
+    justifyContent: 'flex-end',
+    gap: tokens.spacingHorizontalS,
+    marginTop: tokens.spacingVerticalS,
   },
   formulario: {
     display: 'flex',
@@ -84,7 +131,6 @@ const useEstilos = makeStyles({
 });
 
 const columnas = [
-  { nombre: 'ID', campo: 'id' },
   { nombre: 'Descripción', campo: 'descripcion' },
   { nombre: 'Vehículos afectados', campo: 'vehiculosAveriados' },
   { nombre: 'Conductor', campo: 'conductorDNI' },
@@ -109,6 +155,8 @@ const PaginaAverias = () => {
   const [editando, setEditando] = useState(false);
   const [idEliminar, setIdEliminar] = useState('');
   const [error, setError] = useState('');
+  const [terminoBusqueda, setTerminoBusqueda] = useState('');
+  const [filtroEstado, setFiltroEstado] = useState('Todas');
   const [vehiculosTexto, setVehiculosTexto] = useState('');
   const [listaVehiculos, setListaVehiculos] = useState([]);
 
@@ -116,7 +164,16 @@ const PaginaAverias = () => {
     setCargando(true);
     try {
       const datos = await obtenerAverias();
-      setAverias(datos);
+      
+      // Filtrar duplicados por ID
+      const idsVistos = new Set();
+      const unicas = datos.filter(a => {
+        if (!a.id || idsVistos.has(a.id)) return false;
+        idsVistos.add(a.id);
+        return true;
+      });
+
+      setAverias(unicas);
     } catch (err) {
       setError(err.message || 'Error al cargar las averías');
     }
@@ -132,6 +189,7 @@ const PaginaAverias = () => {
     const nueva = crearAveriaVacia();
     if (!esAdmin) {
       nueva.conductorDNI = usuario.dni;
+      nueva.userDni = usuario.dni;
       nueva.fechaAveria = new Date().toISOString().split('T')[0];
     }
     setAveriaActual(nueva);
@@ -141,18 +199,64 @@ const PaginaAverias = () => {
   };
 
   const abrirDialogoEditar = (averia) => {
-    setAveriaActual({ ...averia });
-    setVehiculosTexto(averia.vehiculosAveriados.join(', '));
+    const averiaEditada = {
+      ...crearAveriaVacia(),
+      ...averia,
+      // Asegurar que todos los campos tengan valores válidos
+      descripcion: averia.descripcion || '',
+      conductorDNI: averia.conductorDNI || averia.userDni || '',
+      userDni: averia.userDni || averia.conductorDNI || '',
+      fechaAveria: averia.fechaAveria || '',
+      fechaComienzoReparacion: averia.fechaComienzoReparacion || '',
+      fechaFinReparacion: averia.fechaFinReparacion || '',
+      lugarReparacion: averia.lugarReparacion || '',
+      costeReparacion: averia.costeReparacion || 0,
+      resuelta: !!averia.resuelta,
+    };
+    setAveriaActual(averiaEditada);
+    // Proteger contra vehiculosAveriados indefinido o nulo
+    const listaVehiculos = averia.vehiculosAveriados || (averia.vehiculoMatricula ? [averia.vehiculoMatricula] : []);
+    setVehiculosTexto(listaVehiculos.join(', '));
     setEditando(true);
     setDialogoAbierto(true);
   };
 
   const manejarGuardar = async () => {
     try {
+      const matriculas = vehiculosTexto.split(',').map((v) => v.trim()).filter(Boolean);
+      
+      // Validar que hay vehículos seleccionados
+      if (matriculas.length === 0) {
+        setError('Debe seleccionar al menos un vehículo afectado');
+        return;
+      }
+
+      // Validar que hay descripción
+      if (!averiaActual.descripcion || averiaActual.descripcion.trim() === '') {
+        setError('Debe proporcionar una descripción de la avería');
+        return;
+      }
+      
       const datosGuardar = {
-        ...averiaActual,
-        vehiculosAveriados: vehiculosTexto.split(',').map((v) => v.trim()).filter(Boolean),
+        descripcion: averiaActual.descripcion || '',
+        vehiculosAveriados: matriculas,
+        vehiculoMatricula: matriculas[0] || '',
+        conductorDNI: averiaActual.conductorDNI || averiaActual.userDni || usuario?.dni || '',
+        userDni: averiaActual.userDni || averiaActual.conductorDNI || usuario?.dni || '',
+        fechaAveria: averiaActual.fechaAveria || new Date().toISOString().split('T')[0],
+        fechaComienzoReparacion: averiaActual.fechaComienzoReparacion || '',
+        fechaFinReparacion: averiaActual.fechaFinReparacion || '',
+        lugarReparacion: averiaActual.lugarReparacion || '',
+        costeReparacion: parseFloat(averiaActual.costeReparacion) || 0,
+        resuelta: !!averiaActual.resuelta,
+        enReparacion: !averiaActual.resuelta && !averiaActual.fechaFinReparacion,
       };
+
+      // Remover campos que no deben enviarse al crear
+      if (!editando) {
+        delete datosGuardar.id;
+      }
+
       if (editando) {
         await actualizarAveria(averiaActual.id, datosGuardar);
       } else {
@@ -160,22 +264,32 @@ const PaginaAverias = () => {
       }
 
       // Lógica de automatización de estado del vehículo
-      const nuevoEstado = (datosGuardar.fechaFinReparacion || !datosGuardar.enReparacion && datosGuardar.fechaFinReparacion) 
-        ? ESTADO_VEHICULO.DISPONIBLE 
-        : ESTADO_VEHICULO.AVERIADO;
+      // Determinar si la avería está resuelta basándose en la fecha de fin o el campo resuelta
+      const averiaResuelta = datosGuardar.resuelta === true || 
+                            (datosGuardar.fechaFinReparacion && datosGuardar.fechaFinReparacion.trim() !== '');
+      
+      const estadoFinal = averiaResuelta ? ESTADO_VEHICULO.DISPONIBLE : ESTADO_VEHICULO.AVERIADO;
 
-      // Si tiene fecha de fin de reparación, vuelve a estar disponible
-      const estadoFinal = datosGuardar.fechaFinReparacion ? ESTADO_VEHICULO.DISPONIBLE : ESTADO_VEHICULO.AVERIADO;
-
+      // Actualizar estado de todos los vehículos afectados
       for (const matricula of datosGuardar.vehiculosAveriados) {
-        await actualizarVehiculo(matricula, { estado: estadoFinal });
+        if (matricula) {
+          try {
+            await actualizarVehiculo(matricula, { estado: estadoFinal });
+          } catch (err) {
+            console.error(`Error actualizando estado de vehículo ${matricula}:`, err);
+            // Continuar con los demás vehículos aunque falle uno
+          }
+        }
       }
 
       setDialogoAbierto(false);
-      cargarAverias();
+      await cargarAverias();
+      window.dispatchEvent(new CustomEvent('vehiculosActualizados', {
+        detail: { matriculas: datosGuardar.vehiculosAveriados }
+      }));
       setError('');
     } catch (err) {
-      setError(err.message);
+      setError(err.message || 'Error al guardar la avería');
     }
   };
 
@@ -189,17 +303,31 @@ const PaginaAverias = () => {
       const averiaAEliminar = averias.find(a => a.id === idEliminar);
       await eliminarAveria(idEliminar);
       
-      // Al eliminar la avería, los vehículos vuelven a estar disponibles (según petición usuario)
+      // Al eliminar la avería, los vehículos vuelven a estar disponibles
       if (averiaAEliminar) {
-        for (const matricula of averiaAEliminar.vehiculosAveriados) {
-          await actualizarVehiculo(matricula, { estado: ESTADO_VEHICULO.DISPONIBLE });
+        const listaVehiculos = averiaAEliminar.vehiculosAveriados || 
+                               (averiaAEliminar.vehiculoMatricula ? [averiaAEliminar.vehiculoMatricula] : []);
+        
+        for (const matricula of listaVehiculos) {
+          if (matricula) {
+            try {
+              await actualizarVehiculo(matricula, { estado: ESTADO_VEHICULO.DISPONIBLE });
+            } catch (err) {
+              console.error(`Error actualizando estado de vehículo ${matricula}:`, err);
+              // Continuar con los demás vehículos aunque falle uno
+            }
+          }
         }
       }
 
       setConfirmacionAbierta(false);
-      cargarAverias();
+      await cargarAverias();
+      window.dispatchEvent(new CustomEvent('vehiculosActualizados', {
+        detail: { matriculas: averiaAEliminar ? (averiaAEliminar.vehiculosAveriados || [averiaAEliminar.vehiculoMatricula]) : [] }
+      }));
+      setError('');
     } catch (err) {
-      setError(err.message);
+      setError(err.message || 'Error al eliminar la avería');
     }
   };
 
@@ -215,6 +343,25 @@ const PaginaAverias = () => {
     );
   }
 
+  const averiasFiltradas = averias.filter(a => {
+    const estaResuelta = a.resuelta || a.fechaFinReparacion;
+    if (filtroEstado === 'Resueltas' && !estaResuelta) return false;
+    if (filtroEstado === 'En taller' && estaResuelta) return false;
+
+    if (!terminoBusqueda) return true;
+    const term = terminoBusqueda.toLowerCase();
+    const vehiculosStr = a.vehiculosAveriados ? a.vehiculosAveriados.join(' ').toLowerCase() : '';
+    return (
+      (a.id || '').toLowerCase().includes(term) ||
+      (a.descripcion || '').toLowerCase().includes(term) ||
+      (a.conductorDNI || '').toLowerCase().includes(term) ||
+      (a.userDni || '').toLowerCase().includes(term) ||
+      (a.vehiculoMatricula || '').toLowerCase().includes(term) ||
+      (a.lugarReparacion || '').toLowerCase().includes(term) ||
+      vehiculosStr.includes(term)
+    );
+  });
+
   return (
     <div className={estilos.pagina}>
       <div className={estilos.cabecera}>
@@ -222,7 +369,19 @@ const PaginaAverias = () => {
           <Warning24Regular style={{ fontSize: '28px', color: '#d13438' }} />
           <Title2>Averías</Title2>
         </div>
-        <Toolbar>
+        <Toolbar style={{ flexWrap: 'wrap', gap: '8px' }}>
+          <Input 
+            contentBefore={<Search24Regular />} 
+            placeholder="Buscar incidencia..." 
+            value={terminoBusqueda}
+            onChange={(e) => setTerminoBusqueda(e.target.value)}
+            style={{ minWidth: '200px' }}
+          />
+          <Select value={filtroEstado} onChange={(e, d) => setFiltroEstado(d.value)}>
+            <option value="Todas">Todos los estados</option>
+            <option value="En taller">En taller</option>
+            <option value="Resueltas">Resueltas</option>
+          </Select>
           <ToolbarButton appearance="primary" icon={<Add24Regular />} onClick={abrirDialogoCrear}>
             {esAdmin ? 'Registrar avería' : 'Reportar incidencia'}
           </ToolbarButton>
@@ -248,18 +407,17 @@ const PaginaAverias = () => {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {averias.map((averia) => (
+            {averiasFiltradas.map((averia) => (
               <TableRow key={averia.id}>
-                <TableCell><strong>{averia.id}</strong></TableCell>
                 <TableCell>{averia.descripcion}</TableCell>
                 <TableCell>
-                  {averia.vehiculosAveriados.map((matricula) => (
+                  {(averia.vehiculosAveriados || (averia.vehiculoMatricula ? [averia.vehiculoMatricula] : [])).map((matricula) => (
                     <Badge key={matricula} appearance="outline" style={{ marginRight: '4px' }}>
                       {matricula}
                     </Badge>
                   ))}
                 </TableCell>
-                <TableCell>{averia.conductorDNI || '—'}</TableCell>
+                <TableCell>{averia.conductorDNI || averia.userDni || '—'}</TableCell>
                 <TableCell>
                   {averia.fechaAveria
                     ? new Date(averia.fechaAveria).toLocaleDateString('es-ES')
@@ -282,18 +440,37 @@ const PaginaAverias = () => {
                 <TableCell>
                   {averia.costeReparacion ? `${averia.costeReparacion} €` : '—'}
                 </TableCell>
-                <TableCell>
-                  {averia.fechaFinReparacion ? (
-                    <Badge appearance="filled" color="success">Reparado</Badge>
-                  ) : averia.enReparacion ? (
-                    <Badge appearance="filled" color="warning">En reparación</Badge>
+                 <TableCell>
+                  {averia.resuelta || averia.fechaFinReparacion ? (
+                    <Badge appearance="filled" color="success">Resuelta / Reparado</Badge>
                   ) : (
-                    <Badge appearance="filled" color="danger">Sin reparar</Badge>
+                    <Badge appearance="filled" color="warning">En reparación</Badge>
                   )}
                 </TableCell>
                 <TableCell>
-                  {esAdmin && (
-                    <>
+                     <>
+                      {!averia.resuelta && (
+                        <Tooltip content="Marcar como resuelta" relationship="label">
+                          <Button 
+                            icon={<Badge color="success" size="extra-small" style={{ minWidth: 0, padding: 0 }} />} 
+                            appearance="subtle" 
+                            size="small" 
+                            onClick={async () => {
+                              const datosActualizados = { 
+                                ...averia, 
+                                resuelta: true, 
+                                fechaFinReparacion: new Date().toISOString().split('T')[0],
+                                costeReparacion: parseFloat(averia.costeReparacion) || 0
+                              };
+                              await actualizarAveria(averia.id, datosActualizados);
+                              for (const m of (averia.vehiculosAveriados || [averia.vehiculoMatricula])) {
+                                if (m) await actualizarVehiculo(m, { estado: ESTADO_VEHICULO.DISPONIBLE });
+                              }
+                              await cargarAverias();
+                            }}
+                          />
+                        </Tooltip>
+                      )}
                       <Tooltip content="Editar" relationship="label">
                         <Button icon={<Edit24Regular />} appearance="subtle" size="small" onClick={() => abrirDialogoEditar(averia)} />
                       </Tooltip>
@@ -301,7 +478,6 @@ const PaginaAverias = () => {
                         <Button icon={<Delete24Regular />} appearance="subtle" size="small" onClick={() => confirmarEliminar(averia.id)} />
                       </Tooltip>
                     </>
-                  )}
                 </TableCell>
               </TableRow>
             ))}
@@ -316,6 +492,84 @@ const PaginaAverias = () => {
         </Table>
       </Card>
 
+      {/* Vista de Lista Móvil */}
+      <div className={estilos.listaMovil}>
+        {averiasFiltradas.map((averia) => (
+          <Card key={averia.id} className={estilos.tarjetaMovil}>
+            <div className={estilos.tarjetaMovilCabecera}>
+              <div style={{ flex: 1 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                  <Text size={300} weight="semibold" style={{ color: tokens.colorNeutralForeground1 }}>Avería reportada</Text>
+                  {averia.resuelta || averia.fechaFinReparacion ? (
+                    <Badge appearance="filled" color="success">Resuelta</Badge>
+                  ) : (
+                    <Badge appearance="filled" color="warning">En taller</Badge>
+                  )}
+                </div>
+                <Text size={300} weight="semibold" block style={{ marginBottom: '8px' }}>{averia.descripcion}</Text>
+                <div>
+                  {(averia.vehiculosAveriados || (averia.vehiculoMatricula ? [averia.vehiculoMatricula] : [])).map((matricula) => (
+                    <Badge key={matricula} appearance="outline" style={{ marginRight: '4px' }}>
+                      {matricula}
+                    </Badge>
+                  ))}
+                </div>
+              </div>
+            </div>
+            
+            <div className={estilos.tarjetaMovilCuerpo}>
+              <div>
+                <div className={estilos.datoEtiqueta}>Fecha Avería</div>
+                <div className={estilos.datoValor}>{averia.fechaAveria ? new Date(averia.fechaAveria).toLocaleDateString('es-ES') : '—'}</div>
+              </div>
+              <div>
+                <div className={estilos.datoEtiqueta}>Coste</div>
+                <div className={estilos.datoValor}>{averia.costeReparacion ? `${averia.costeReparacion} €` : '—'}</div>
+              </div>
+              <div style={{ gridColumn: 'span 2' }}>
+                <div className={estilos.datoEtiqueta}>Conductor</div>
+                <div className={estilos.datoValor}>{averia.conductorDNI || averia.userDni || '—'}</div>
+              </div>
+            </div>
+
+            <div className={estilos.accionesMovil}>
+              {!averia.resuelta && (
+                <Button 
+                  icon={<Badge color="success" size="extra-small" style={{ minWidth: 0, padding: 0 }} />} 
+                  appearance="subtle" 
+                  onClick={async () => {
+                    const datosActualizados = { 
+                      ...averia, 
+                      resuelta: true, 
+                      fechaFinReparacion: new Date().toISOString().split('T')[0],
+                      costeReparacion: parseFloat(averia.costeReparacion) || 0
+                    };
+                    await actualizarAveria(averia.id, datosActualizados);
+                    for (const m of (averia.vehiculosAveriados || [averia.vehiculoMatricula])) {
+                      if (m) await actualizarVehiculo(m, { estado: ESTADO_VEHICULO.DISPONIBLE });
+                    }
+                    await cargarAverias();
+                  }}
+                >
+                  Resolver
+                </Button>
+              )}
+              <Button icon={<Edit24Regular />} appearance="subtle" onClick={() => abrirDialogoEditar(averia)}>
+                Editar
+              </Button>
+              <Button icon={<Delete24Regular />} appearance="subtle" style={{ color: tokens.colorPaletteRedForeground1 }} onClick={() => confirmarEliminar(averia.id)}>
+                Borrar
+              </Button>
+            </div>
+          </Card>
+        ))}
+        {averias.length === 0 && (
+          <Card style={{ padding: '40px', textAlign: 'center' }}>
+            <Text size={300} style={{ color: tokens.colorNeutralForeground3 }}>No hay averías registradas</Text>
+          </Card>
+        )}
+      </div>
+
       <Dialog open={dialogoAbierto} onOpenChange={(_, d) => { if (!d.open) setDialogoAbierto(false); }}>
         <DialogSurface style={{ maxWidth: '550px' }}>
           <DialogBody>
@@ -325,36 +579,99 @@ const PaginaAverias = () => {
                 {esAdmin ? (
                   <>
                     <Field label="Descripción" required>
-                      <Input value={averiaActual.descripcion} onChange={(_, d) => manejarCambio('descripcion', d.value)} placeholder="Describe la avería..." />
+                      <Input value={averiaActual.descripcion || ''} onChange={(_, d) => manejarCambio('descripcion', d.value)} placeholder="Describe la avería..." />
                     </Field>
-                    <Field label="Matrículas afectadas (separadas por comas)" required>
-                      <Input value={vehiculosTexto} onChange={(_, d) => setVehiculosTexto(d.value)} placeholder="1234-ABC, 5678-DEF" />
+                    <Field label="Vehículos afectados" required>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: tokens.spacingVerticalM }}>
+                        <Select
+                          value=""
+                          style={{ width: '100%', minWidth: '100%', maxWidth: '100%' }}
+                          onChange={(_, d) => {
+                            if (d.value) {
+                              const vehiculosActuales = vehiculosTexto.split(',').map(v => v.trim()).filter(Boolean);
+                              if (!vehiculosActuales.includes(d.value)) {
+                                const actualizado = [...vehiculosActuales, d.value];
+                                setVehiculosTexto(actualizado.join(', '));
+                              }
+                            }
+                          }}
+                        >
+                          <option value="">Seleccionar vehículo...</option>
+                          {listaVehiculos.length === 0 ? (
+                            <option disabled>No hay vehículos disponibles</option>
+                          ) : (
+                            listaVehiculos.map((vehiculo) => (
+                              <option key={vehiculo.matricula} value={vehiculo.matricula}>
+                                {vehiculo.matricula} - {vehiculo.marca} {vehiculo.modelo}
+                              </option>
+                            ))
+                          )}
+                        </Select>
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: tokens.spacingHorizontalS }}>
+                          {vehiculosTexto.split(',').map((matricula) => {
+                            const mat = matricula.trim();
+                            if (!mat) return null;
+                            const vehiculo = listaVehiculos.find(v => v.matricula === mat);
+                            return (
+                              <Badge
+                                key={mat}
+                                appearance="filled"
+                                color="brand"
+                                style={{ paddingRight: tokens.spacingHorizontalS }}
+                                action={{
+                                  icon: <span style={{ cursor: 'pointer', marginLeft: tokens.spacingHorizontalXS }}>✕</span>,
+                                  onClick: () => {
+                                    const actualizado = vehiculosTexto.split(',')
+                                      .map(v => v.trim())
+                                      .filter(v => v !== mat)
+                                      .join(', ');
+                                    setVehiculosTexto(actualizado);
+                                  }
+                                }}
+                              >
+                                {vehiculo ? `${mat} - ${vehiculo.marca}` : mat}
+                              </Badge>
+                            );
+                          }).filter(Boolean)}
+                        </div>
+                      </div>
                     </Field>
                     <div className={estilos.filaFormulario}>
                       <Field label="Fecha avería">
-                        <Input type="date" value={averiaActual.fechaAveria} onChange={(_, d) => manejarCambio('fechaAveria', d.value)} />
+                        <Input 
+                          type="date" 
+                          value={averiaActual.fechaAveria || ''} 
+                          onChange={(_, d) => manejarCambio('fechaAveria', d.value)} 
+                        />
                       </Field>
                       <Field label="Conductor">
-                        <Input value={averiaActual.conductorDNI} onChange={(_, d) => manejarCambio('conductorDNI', d.value)} placeholder="DNI..." />
+                        <Input value={averiaActual.conductorDNI || averiaActual.userDni || ''} onChange={(_, d) => manejarCambio('conductorDNI', d.value)} placeholder="DNI..." />
                       </Field>
                       <Field label="Fecha comienzo reparación">
-                        <Input type="date" value={averiaActual.fechaComienzoReparacion} onChange={(_, d) => manejarCambio('fechaComienzoReparacion', d.value)} />
+                        <Input type="date" value={averiaActual.fechaComienzoReparacion || ''} onChange={(_, d) => manejarCambio('fechaComienzoReparacion', d.value)} />
                       </Field>
                       <Field label="Fecha fin reparación">
-                        <Input type="date" value={averiaActual.fechaFinReparacion} onChange={(_, d) => manejarCambio('fechaFinReparacion', d.value)} />
+                        <Input type="date" value={averiaActual.fechaFinReparacion || ''} onChange={(_, d) => manejarCambio('fechaFinReparacion', d.value)} />
                       </Field>
                       <Field label="Lugar reparación">
-                        <Input value={averiaActual.lugarReparacion} onChange={(_, d) => manejarCambio('lugarReparacion', d.value)} placeholder="Taller Central" />
+                        <Input value={averiaActual.lugarReparacion || ''} onChange={(_, d) => manejarCambio('lugarReparacion', d.value)} placeholder="Taller Central" />
                       </Field>
                       <Field label="Coste reparación">
-                        <Input value={averiaActual.costeReparacion} onChange={(_, d) => manejarCambio('costeReparacion', d.value)} placeholder="1000" />
+                        <Input 
+                          type="number" 
+                          value={averiaActual.costeReparacion || ''} 
+                          onChange={(_, d) => manejarCambio('costeReparacion', d.value ? parseFloat(d.value) : 0)} 
+                          placeholder="1000" 
+                          min="0" 
+                          step="0.01" 
+                        />
                       </Field>
                     </div>
-                    <Field>
+                     <Field>
                       <Checkbox
-                        label="¿Está actualmente en reparación?"
-                        checked={averiaActual.enReparacion}
-                        onChange={(_, d) => manejarCambio('enReparacion', !!d.checked)}
+                        label="¿Está la avería ya resuelta?"
+                        checked={!!averiaActual.resuelta}
+                        onChange={(_, d) => manejarCambio('resuelta', !!d.checked)}
                       />
                     </Field>
                   </>
@@ -376,7 +693,7 @@ const PaginaAverias = () => {
                     </Field>
                     <Field label="Descripción de la incidencia" required>
                       <Input
-                        value={averiaActual.descripcion}
+                        value={averiaActual.descripcion || ''}
                         onChange={(_, d) => manejarCambio('descripcion', d.value)}
                         placeholder="Ej: El motor hace un ruido extraño al arrancar..."
                         textarea

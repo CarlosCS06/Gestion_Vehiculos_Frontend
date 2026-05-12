@@ -4,7 +4,6 @@
  * Crea una revisión vacía con valores por defecto
  */
 export const crearRevisionVacia = () => ({
-  id: '',
   vehiculoMatricula: '',
   fecha: '',
   lugar: '',

@@ -26,7 +26,7 @@ export const crearTrayecto = async (trayecto) => {
 
 export const actualizarTrayecto = async (id, datosActualizados) => {
   const response = await fetchWithLogging(`${AUTH_API_URL}/${id}`, {
-    method: 'PUT',
+    method: 'PATCH',
     headers: {
       'Content-Type': 'application/json'
     },

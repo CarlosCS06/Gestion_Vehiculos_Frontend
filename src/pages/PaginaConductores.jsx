@@ -29,12 +29,14 @@ import {
   ToolbarButton,
   Avatar,
   Badge,
+  Select,
 } from '@fluentui/react-components';
 import {
   Add24Regular,
   Edit24Regular,
   Delete24Regular,
   Person24Regular,
+  Search24Regular,
 } from '@fluentui/react-icons';
 import { useAuth } from '../context/ContextoAuth.jsx';
 import DialogoConfirmacion from '../components/shared/DialogoConfirmacion.jsx';
@@ -70,6 +72,52 @@ const useEstilos = makeStyles({
   tarjetaTabla: {
     padding: tokens.spacingHorizontalL,
     overflow: 'auto',
+    '@media (max-width: 768px)': {
+      display: 'none',
+    }
+  },
+  listaMovil: {
+    display: 'none',
+    '@media (max-width: 768px)': {
+      display: 'flex',
+      flexDirection: 'column',
+      gap: tokens.spacingVerticalM,
+    }
+  },
+  tarjetaMovil: {
+    padding: tokens.spacingHorizontalM,
+    display: 'flex',
+    flexDirection: 'column',
+    gap: tokens.spacingVerticalS,
+  },
+  tarjetaMovilCabecera: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    borderBottomColor: tokens.colorNeutralStroke2,
+    borderBottomStyle: 'solid',
+    borderBottomWidth: '1px',
+    paddingBottom: tokens.spacingVerticalS,
+  },
+  tarjetaMovilCuerpo: {
+    display: 'grid',
+    gridTemplateColumns: '1fr 1fr',
+    gap: tokens.spacingHorizontalM,
+  },
+  datoEtiqueta: {
+    fontSize: tokens.fontSizeBase200,
+    color: tokens.colorNeutralForeground3,
+    marginBottom: '2px',
+  },
+  datoValor: {
+    fontSize: tokens.fontSizeBase300,
+    fontWeight: tokens.fontWeightSemibold,
+  },
+  accionesMovil: {
+    display: 'flex',
+    justifyContent: 'flex-end',
+    gap: tokens.spacingHorizontalS,
+    marginTop: tokens.spacingVerticalS,
   },
   formulario: {
     display: 'flex',
@@ -145,6 +193,8 @@ const PaginaConductores = () => {
   const [editando, setEditando] = useState(false);
   const [dniEliminar, setDniEliminar] = useState('');
   const [error, setError] = useState('');
+  const [terminoBusqueda, setTerminoBusqueda] = useState('');
+  const [filtroActividad, setFiltroActividad] = useState('Todos');
   const [guardando, setGuardando] = useState(false);
   const [subiendoImagen, setSubiendoImagen] = useState(false);
   const [previewUrl, setPreviewUrl] = useState(null);
@@ -303,6 +353,22 @@ const PaginaConductores = () => {
     );
   }
 
+  const conductoresFiltrados = conductores.filter(c => {
+    const numViajes = c.trayectos?.length || 0;
+    if (filtroActividad === 'Con viajes' && numViajes === 0) return false;
+    if (filtroActividad === 'Sin viajes' && numViajes > 0) return false;
+
+    if (!terminoBusqueda) return true;
+    const term = terminoBusqueda.toLowerCase();
+    return (
+      (c.dni || '').toLowerCase().includes(term) ||
+      (c.nombre || '').toLowerCase().includes(term) ||
+      (c.apellidos || '').toLowerCase().includes(term) ||
+      (c.telefono || '').toLowerCase().includes(term) ||
+      (c.direccion || '').toLowerCase().includes(term)
+    );
+  });
+
   return (
     <div className={estilos.pagina}>
       <div className={estilos.cabecera}>
@@ -310,13 +376,25 @@ const PaginaConductores = () => {
           <Person24Regular style={{ fontSize: '28px', color: tokens.colorBrandForeground1 }} />
           <Title2>Conductores</Title2>
         </div>
-        {esAdmin && (
-          <Toolbar>
+        <Toolbar style={{ flexWrap: 'wrap', gap: '8px' }}>
+          <Input 
+            contentBefore={<Search24Regular />} 
+            placeholder="Buscar conductor..." 
+            value={terminoBusqueda}
+            onChange={(e) => setTerminoBusqueda(e.target.value)}
+            style={{ minWidth: '200px' }}
+          />
+          <Select value={filtroActividad} onChange={(e, d) => setFiltroActividad(d.value)}>
+            <option value="Todos">Todos</option>
+            <option value="Con viajes">Con viajes asignados</option>
+            <option value="Sin viajes">Sin viajes</option>
+          </Select>
+          {esAdmin && (
             <ToolbarButton appearance="primary" icon={<Add24Regular />} onClick={abrirDialogoCrear}>
               Dar de alta conductor
             </ToolbarButton>
-          </Toolbar>
-        )}
+          )}
+        </Toolbar>
       </div>
 
       {error && (
@@ -338,12 +416,12 @@ const PaginaConductores = () => {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {conductores.map((conductor) => (
+            {conductoresFiltrados.map((conductor) => (
               <TableRow key={conductor.dni}>
                 <TableCell><strong>{conductor.dni}</strong></TableCell>
                 <TableCell>
                   <Avatar
-                    image={{ src: conductor.image?.url }}
+                    image={{ src: typeof conductor.image === 'string' ? conductor.image : conductor.image?.url }}
                     name={`${conductor.nombre} ${conductor.apellidos}`}
                     size={32}
                   />
@@ -352,7 +430,7 @@ const PaginaConductores = () => {
                 <TableCell>{conductor.apellidos}</TableCell>
                 <TableCell>{conductor.telefono}</TableCell>
                 <TableCell>{conductor.direccion}</TableCell>
-                <TableCell>{new Date(conductor.fechaNacimiento).toLocaleDateString('es-ES')}</TableCell>
+                <TableCell>{conductor.fechaNacimiento ? new Date(conductor.fechaNacimiento).toLocaleDateString('es-ES') : 'N/A'}</TableCell>
                 <TableCell>{conductor.trayectos?.length || 0}</TableCell>
                 <TableCell>
                   {(esAdmin || (usuario && usuario.dni === conductor.dni)) && (
@@ -378,6 +456,60 @@ const PaginaConductores = () => {
           </TableBody>
         </Table>
       </Card>
+
+      {/* Vista de Lista Móvil */}
+      <div className={estilos.listaMovil}>
+        {conductoresFiltrados.map((conductor) => (
+          <Card key={conductor.dni} className={estilos.tarjetaMovil}>
+            <div className={estilos.tarjetaMovilCabecera}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <Avatar
+                  image={{ src: typeof conductor.image === 'string' ? conductor.image : conductor.image?.url }}
+                  name={`${conductor.nombre} ${conductor.apellidos}`}
+                  size={40}
+                />
+                <div>
+                  <Text size={400} weight="bold" block>{conductor.nombre} {conductor.apellidos}</Text>
+                  <Text size={200} style={{ color: tokens.colorBrandForeground1 }}>{conductor.dni}</Text>
+                </div>
+              </div>
+            </div>
+            
+            <div className={estilos.tarjetaMovilCuerpo}>
+              <div>
+                <div className={estilos.datoEtiqueta}>Teléfono</div>
+                <div className={estilos.datoValor}>{conductor.telefono || '—'}</div>
+              </div>
+              <div>
+                <div className={estilos.datoEtiqueta}>Nacimiento</div>
+                <div className={estilos.datoValor}>{conductor.fechaNacimiento ? new Date(conductor.fechaNacimiento).toLocaleDateString('es-ES') : 'N/A'}</div>
+              </div>
+              <div style={{ gridColumn: 'span 2' }}>
+                <div className={estilos.datoEtiqueta}>Dirección</div>
+                <div className={estilos.datoValor}>{conductor.direccion || '—'}</div>
+              </div>
+            </div>
+
+            <div className={estilos.accionesMovil}>
+              {(esAdmin || (usuario && usuario.dni === conductor.dni)) && (
+                <Button icon={<Edit24Regular />} appearance="subtle" onClick={() => abrirDialogoEditar(conductor)}>
+                  Editar
+                </Button>
+              )}
+              {esAdmin && (
+                <Button icon={<Delete24Regular />} appearance="subtle" style={{ color: tokens.colorPaletteRedForeground1 }} onClick={() => confirmarEliminar(conductor.dni)}>
+                  Borrar
+                </Button>
+              )}
+            </div>
+          </Card>
+        ))}
+        {conductores.length === 0 && (
+          <Card style={{ padding: '40px', textAlign: 'center' }}>
+            <Text size={300} style={{ color: tokens.colorNeutralForeground3 }}>No hay conductores registrados</Text>
+          </Card>
+        )}
+      </div>
 
       <Dialog open={dialogoAbierto} onOpenChange={(_, d) => { if (!d.open) setDialogoAbierto(false); }}>
         <DialogSurface style={{ maxWidth: '550px' }}>
@@ -435,7 +567,7 @@ const PaginaConductores = () => {
                     {(previewUrl || conductorActual.image?.url) && (
                       <div style={{ display: 'flex', alignItems: 'center', gap: '16px', padding: '12px', borderRadius: tokens.borderRadiusLarge, border: `1px solid ${tokens.colorNeutralStroke1}` }}>
                         <Avatar
-                          image={{ src: previewUrl || conductorActual.image?.url }}
+                          image={{ src: previewUrl || (typeof conductorActual.image === 'string' ? conductorActual.image : conductorActual.image?.url) }}
                           name={`${conductorActual.nombre} ${conductorActual.apellidos}`}
                           size={96}
                         />

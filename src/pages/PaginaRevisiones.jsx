@@ -36,6 +36,7 @@ import {
   Edit24Regular,
   Delete24Regular,
   Wrench24Regular,
+  Search24Regular,
 } from '@fluentui/react-icons';
 import { useAuth } from '../context/ContextoAuth.jsx';
 import DialogoConfirmacion from '../components/shared/DialogoConfirmacion.jsx';
@@ -69,6 +70,52 @@ const useEstilos = makeStyles({
   tarjetaTabla: {
     padding: tokens.spacingHorizontalL,
     overflow: 'auto',
+    '@media (max-width: 768px)': {
+      display: 'none',
+    }
+  },
+  listaMovil: {
+    display: 'none',
+    '@media (max-width: 768px)': {
+      display: 'flex',
+      flexDirection: 'column',
+      gap: tokens.spacingVerticalM,
+    }
+  },
+  tarjetaMovil: {
+    padding: tokens.spacingHorizontalM,
+    display: 'flex',
+    flexDirection: 'column',
+    gap: tokens.spacingVerticalS,
+  },
+  tarjetaMovilCabecera: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    borderBottomColor: tokens.colorNeutralStroke2,
+    borderBottomStyle: 'solid',
+    borderBottomWidth: '1px',
+    paddingBottom: tokens.spacingVerticalS,
+  },
+  tarjetaMovilCuerpo: {
+    display: 'grid',
+    gridTemplateColumns: '1fr 1fr',
+    gap: tokens.spacingHorizontalM,
+  },
+  datoEtiqueta: {
+    fontSize: tokens.fontSizeBase200,
+    color: tokens.colorNeutralForeground3,
+    marginBottom: '2px',
+  },
+  datoValor: {
+    fontSize: tokens.fontSizeBase300,
+    fontWeight: tokens.fontWeightSemibold,
+  },
+  accionesMovil: {
+    display: 'flex',
+    justifyContent: 'flex-end',
+    gap: tokens.spacingHorizontalS,
+    marginTop: tokens.spacingVerticalS,
   },
   formulario: {
     display: 'flex',
@@ -121,7 +168,6 @@ const useEstilos = makeStyles({
 });
 
 const columnas = [
-  { nombre: 'ID', campo: 'id' },
   { nombre: 'Vehículo', campo: 'vehiculoMatricula' },
   { nombre: 'Fecha', campo: 'fecha' },
   { nombre: 'Lugar', campo: 'lugar' },
@@ -144,6 +190,8 @@ const PaginaRevisiones = () => {
   const [editando, setEditando] = useState(false);
   const [idEliminar, setIdEliminar] = useState('');
   const [error, setError] = useState('');
+  const [terminoBusqueda, setTerminoBusqueda] = useState('');
+  const [filtroEstado, setFiltroEstado] = useState('Todas');
 
   const cargarDatos = useCallback(async () => {
     setCargando(true);
@@ -210,6 +258,21 @@ const PaginaRevisiones = () => {
     setRevisionActual((prev) => ({ ...prev, [campo]: valor }));
   };
 
+  const revisionesFiltradas = revisiones.filter(r => {
+    if (filtroEstado === 'Aprobadas' && !r.aprobada) return false;
+    if (filtroEstado === 'Pendientes' && r.aprobada) return false;
+
+    if (!terminoBusqueda) return true;
+    const term = terminoBusqueda.toLowerCase();
+    return (
+      (r.id || '').toLowerCase().includes(term) ||
+      (r.vehiculoMatricula || '').toLowerCase().includes(term) ||
+      (r.lugar || '').toLowerCase().includes(term) ||
+      (r.activo ? 'activa' : 'inactiva').includes(term) ||
+      (r.aprobada ? 'aprobada' : 'pendiente').includes(term)
+    );
+  });
+
   if (cargando) {
     return (
       <div style={{ display: 'flex', justifyContent: 'center', padding: '60px' }}>
@@ -259,13 +322,25 @@ const PaginaRevisiones = () => {
           <Wrench24Regular style={{ fontSize: '28px', color: tokens.colorBrandForeground1 }} />
           <Title2>Gestión de Inspecciones ITV</Title2>
         </div>
-        {esAdmin && (
-          <Toolbar>
+        <Toolbar style={{ flexWrap: 'wrap', gap: '8px' }}>
+          <Input 
+            contentBefore={<Search24Regular />} 
+            placeholder="Buscar inspección..." 
+            value={terminoBusqueda}
+            onChange={(e) => setTerminoBusqueda(e.target.value)}
+            style={{ minWidth: '200px' }}
+          />
+          <Select value={filtroEstado} onChange={(e, d) => setFiltroEstado(d.value)}>
+            <option value="Todas">Todas</option>
+            <option value="Aprobadas">Aprobadas</option>
+            <option value="Pendientes">Pendientes</option>
+          </Select>
+          {esAdmin && (
             <ToolbarButton appearance="primary" icon={<Add24Regular />} onClick={abrirDialogoCrear}>
               Registrar ITV pasada
             </ToolbarButton>
-          </Toolbar>
-        )}
+          )}
+        </Toolbar>
       </div>
 
       {error && (
@@ -321,9 +396,8 @@ const PaginaRevisiones = () => {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {revisiones.map((revision) => (
+            {revisionesFiltradas.map((revision) => (
               <TableRow key={revision.id}>
-                <TableCell><strong>{revision.id}</strong></TableCell>
                 <TableCell>
                   <Text weight="semibold" style={{ color: tokens.colorBrandForeground1 }}>
                     {revision.vehiculoMatricula}
@@ -370,6 +444,59 @@ const PaginaRevisiones = () => {
           </TableBody>
         </Table>
       </Card>
+
+      {/* Vista de Lista Móvil */}
+      <div className={estilos.listaMovil}>
+        {revisionesFiltradas.map((revision) => (
+          <Card key={revision.id} className={estilos.tarjetaMovil}>
+            <div className={estilos.tarjetaMovilCabecera}>
+              <div style={{ display: 'flex', flexDirection: 'column' }}>
+                <Text size={200} style={{ color: tokens.colorNeutralForeground3 }}>Vehículo</Text>
+                <Text size={400} weight="bold" style={{ color: tokens.colorBrandForeground1 }}>{revision.vehiculoMatricula}</Text>
+              </div>
+              <div style={{ display: 'flex', gap: '4px', flexDirection: 'column', alignItems: 'flex-end' }}>
+                <Badge appearance="filled" color={revision.aprobada ? 'success' : 'danger'}>
+                  {revision.aprobada ? 'Aprobada' : 'Pendiente'}
+                </Badge>
+                <Badge appearance="outline" color={revision.activo ? 'warning' : 'subtle'}>
+                  {revision.activo ? 'Activa' : 'Inactiva'}
+                </Badge>
+              </div>
+            </div>
+            
+            <div className={estilos.tarjetaMovilCuerpo}>
+              <div>
+                <div className={estilos.datoEtiqueta}>Fecha</div>
+                <div className={estilos.datoValor}>{new Date(revision.fecha).toLocaleDateString('es-ES')}</div>
+              </div>
+              <div>
+                <div className={estilos.datoEtiqueta}>Coste</div>
+                <div className={estilos.datoValor}>{new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR' }).format(revision.costo || 0)}</div>
+              </div>
+              <div style={{ gridColumn: 'span 2' }}>
+                <div className={estilos.datoEtiqueta}>Lugar</div>
+                <div className={estilos.datoValor}>{revision.lugar}</div>
+              </div>
+            </div>
+
+            {esAdmin && (
+              <div className={estilos.accionesMovil}>
+                <Button icon={<Edit24Regular />} appearance="subtle" onClick={() => abrirDialogoEditar(revision)}>
+                  Editar
+                </Button>
+                <Button icon={<Delete24Regular />} appearance="subtle" style={{ color: tokens.colorPaletteRedForeground1 }} onClick={() => confirmarEliminar(revision.id)}>
+                  Borrar
+                </Button>
+              </div>
+            )}
+          </Card>
+        ))}
+        {revisiones.length === 0 && (
+          <Card style={{ padding: '40px', textAlign: 'center' }}>
+            <Text size={300} style={{ color: tokens.colorNeutralForeground3 }}>No hay revisiones registradas</Text>
+          </Card>
+        )}
+      </div>
 
       <Dialog open={dialogoAbierto} onOpenChange={(_, d) => { if (!d.open) setDialogoAbierto(false); }}>
         <DialogSurface style={{ maxWidth: '500px' }}>

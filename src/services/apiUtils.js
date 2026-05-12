@@ -5,8 +5,8 @@ export const fetchWithLogging = async (url, options = {}) => {
     // Preparar las cabeceras asegurando que no sobreescribimos las existentes
     const headers = { ...options.headers };
     
-    // Inyectar el token automáticamente si existe y no se ha proporcionado uno manualmente
-    if (token && !headers['Authorization'] && !headers['authorization']) {
+    // Inyectar el token automáticamente si existe y no se ha solicitado omitir la autenticación
+    if (!options.skipAuth && token && !headers['Authorization'] && !headers['authorization']) {
       headers['Authorization'] = `Bearer ${token}`;
     }
 

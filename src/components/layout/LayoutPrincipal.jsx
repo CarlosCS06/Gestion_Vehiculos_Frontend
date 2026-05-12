@@ -16,6 +16,11 @@ const useEstilos = makeStyles({
     width: '100%',
     margin: '0 auto',
     boxSizing: 'border-box',
+    '@media (max-width: 768px)': {
+      paddingBottom: '80px',
+      paddingLeft: tokens.spacingHorizontalL,
+      paddingRight: tokens.spacingHorizontalL,
+    }
   },
 });
 

@@ -213,14 +213,6 @@ const MenuPerfilConductor = ({ abierto, alCerrar }) => {
         datosUsuario.password = datos.password;
       }
 
-      if (datos.telefono) {
-        // El backend espera un número según la estructura proporcionada
-        const telLimpio = datos.telefono.replace(/\s+/g, '');
-        if (!isNaN(telLimpio)) {
-          datosUsuario.telefono = Number(telLimpio);
-        }
-      }
-      
       await actualizarUsuario(usuario.dni, datosUsuario);
 
       // 3. Actualizar estado global para que la barra de navegación muestre los cambios

@@ -2,9 +2,32 @@
 
 // Estados posibles del viaje
 export const ESTADO_VIAJE = {
-  PENDIENTE: 'pendiente',
-  EN_CURSO: 'en_curso',
-  COMPLETADO: 'completado',
+  PENDIENTE: 'PENDIENTE',
+  EN_CURSO: 'ACTIVO',
+  COMPLETADO: 'FINALIZADO',
+};
+
+export const normalizarEstadoViaje = (estado) => {
+  if (estado === null || estado === undefined) {
+    return ESTADO_VIAJE.PENDIENTE;
+  }
+
+  const valor = String(estado).trim().toLowerCase();
+  if (valor === 'pendiente') {
+    return ESTADO_VIAJE.PENDIENTE;
+  }
+  if (valor === 'en_curso' || valor === 'en curso' || valor === 'activo') {
+    return ESTADO_VIAJE.EN_CURSO;
+  }
+  if (valor === 'completado' || valor === 'finalizado') {
+    return ESTADO_VIAJE.COMPLETADO;
+  }
+
+  if (Object.values(ESTADO_VIAJE).includes(estado)) {
+    return estado;
+  }
+
+  return ESTADO_VIAJE.PENDIENTE;
 };
 
 /**
@@ -13,8 +36,7 @@ export const ESTADO_VIAJE = {
 export const crearTrayectoDeViajeVacio = () => ({
   origen: '',
   destino: '',
-  kmRecorridos: 0,
-  gastoGasolina: 0,
+  distanciaEnKm: 0,
   horaSalida: '',
   horaLlegada: '',
 });
@@ -23,11 +45,16 @@ export const crearTrayectoDeViajeVacio = () => ({
  * Crea un viaje vacío con valores por defecto
  */
 export const crearViajeVacio = () => ({
-  id: '',
-  nombre: '',
+  descripcion: '',
   conductor: '',
   matricula: '',
   fecha: '',
+  origen: '',
+  destino: '',
+  gastoGasolina: 0,
+  visible: true,
   estado: ESTADO_VIAJE.PENDIENTE,
-  trayectos: [crearTrayectoDeViajeVacio()],
+  trayectos: [],
 });
+
+

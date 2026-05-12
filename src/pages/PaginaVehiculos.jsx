@@ -32,6 +32,8 @@ import {
   MessageBarBody,
   MessageBarTitle,
   Badge,
+  TabList,
+  Tab,
 } from '@fluentui/react-components';
 import {
   Add24Regular,
@@ -39,6 +41,10 @@ import {
   Delete24Regular,
   Filter24Regular,
   VehicleCar24Regular,
+  Info24Regular,
+  Wrench24Regular,
+  ReceiptMoney24Regular,
+  Search24Regular,
 } from '@fluentui/react-icons';
 import { useAuth } from '../context/ContextoAuth.jsx';
 import BadgeEstado from '../components/shared/BadgeEstado.jsx';
@@ -47,10 +53,11 @@ import {
   obtenerVehiculos,
   crearVehiculo,
   actualizarVehiculo,
-  eliminarVehiculo,
   obtenerPeriodicidadITV,
   calcularProximaItvSugerida,
+  obtenerVehiculoPorMatricula,
 } from '../services/servicioVehiculos.js';
+import { obtenerAverias } from '../services/servicioAverias.js';
 import { subirImagen, subirImagenPorUrl } from '../services/servicioImagenes.js';
 import {
   ESTADO_VEHICULO,
@@ -144,6 +151,7 @@ const useEstilos = makeStyles({
     borderBottomWidth: '1px',
     borderLeftWidth: '1px',
     borderRightWidth: '1px',
+    cursor: 'pointer',
     ':hover': {
       transform: 'translateY(-4px)',
       boxShadow: '0 12px 30px rgba(0,0,0,0.12)',
@@ -152,6 +160,10 @@ const useEstilos = makeStyles({
       borderLeftColor: tokens.colorBrandStroke1,
       borderRightColor: tokens.colorBrandStroke1,
     },
+    '@media (max-width: 768px)': {
+      padding: tokens.spacingHorizontalM,
+      alignItems: 'center',
+    }
   },
   contenedorImagen: {
     width: '420px',
@@ -168,6 +180,14 @@ const useEstilos = makeStyles({
     paddingLeft: tokens.spacingHorizontalS,
     paddingRight: tokens.spacingHorizontalS,
     boxSizing: 'border-box',
+    '@media (max-width: 768px)': {
+      width: '80px',
+      minWidth: '80px',
+      height: '80px',
+      padding: 0,
+      marginRight: tokens.spacingHorizontalM,
+      borderRadius: tokens.borderRadiusMedium,
+    }
   },
   imagenVehiculo: {
     width: 'calc(100% - 16px)',
@@ -273,6 +293,10 @@ const useEstilos = makeStyles({
     flexGrow: 1,
     padding: tokens.spacingHorizontalL,
     gap: tokens.spacingVerticalS,
+    '@media (max-width: 768px)': {
+      padding: 0,
+      justifyContent: 'center',
+    }
   },
   cabeceraTarjeta: {
     display: 'flex',
@@ -292,6 +316,9 @@ const useEstilos = makeStyles({
     borderTopStyle: 'solid',
     borderTopWidth: '1px',
     marginTop: tokens.spacingVerticalS,
+    '@media (max-width: 768px)': {
+      display: 'none',
+    }
   },
   datoEtiqueta: {
     fontSize: tokens.fontSizeBase200,
@@ -305,6 +332,11 @@ const useEstilos = makeStyles({
   accionesTarjeta: {
     display: 'flex',
     gap: tokens.spacingHorizontalS,
+    '@media (max-width: 768px)': {
+      flexDirection: 'column',
+      alignItems: 'flex-end',
+      gap: tokens.spacingVerticalXS,
+    }
   },
   botonBorrar: {
     color: tokens.colorPaletteRedForeground1,
@@ -326,13 +358,104 @@ const columnas = [
   { nombre: 'Acciones', campo: 'acciones' },
 ];
 
+const ModalDetallesVehiculo = ({ vehiculo: vehiculoBase, onCerrar }) => {
+  const [tabActiva, setTabActiva] = useState('general');
+  const [vehiculoCompleto, setVehiculoCompleto] = useState(vehiculoBase);
+  const [cargando, setCargando] = useState(false);
+
+  useEffect(() => {
+    if (vehiculoBase?.matricula) {
+      setCargando(true);
+      obtenerVehiculoPorMatricula(vehiculoBase.matricula)
+        .then((datosCompletos) => {
+          if (datosCompletos) {
+            setVehiculoCompleto(datosCompletos);
+          }
+        })
+        .catch(err => console.error("Error cargando detalles del vehículo:", err))
+        .finally(() => setCargando(false));
+    }
+  }, [vehiculoBase]);
+
+  if (!vehiculoCompleto) return null;
+
+  return (
+    <Dialog open={true} onOpenChange={(_, d) => { if (!d.open) onCerrar(); }}>
+      <DialogSurface style={{ maxWidth: '600px', padding: '24px' }}>
+        <DialogBody>
+          <DialogTitle>Ficha del Vehículo</DialogTitle>
+          <DialogContent style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+            <div style={{ display: 'flex', justifyContent: 'center', padding: '16px', backgroundColor: tokens.colorNeutralBackground2, borderRadius: tokens.borderRadiusLarge }}>
+              {vehiculoCompleto.foto ? (
+                <img src={vehiculoCompleto.foto} alt={vehiculoCompleto.modelo} style={{ maxWidth: '100%', maxHeight: '150px', objectFit: 'contain' }} />
+              ) : (
+                <VehicleCar24Regular style={{ fontSize: '60px', color: tokens.colorNeutralForeground4 }} />
+              )}
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+               <Text size={500} weight="bold">{vehiculoCompleto.marca} {vehiculoCompleto.modelo}</Text>
+               <BadgeEstado estado={vehiculoCompleto.estado} />
+            </div>
+            <Text size={400} style={{ color: tokens.colorBrandForeground1, fontWeight: 'bold' }}>{vehiculoCompleto.matricula}</Text>
+            
+            <TabList selectedValue={tabActiva} onTabSelect={(_, d) => setTabActiva(d.value)} size="small" style={{ marginTop: '8px' }}>
+              <Tab value="general" icon={<Info24Regular />}>General</Tab>
+              <Tab value="finanzas" icon={<ReceiptMoney24Regular />}>Finanzas</Tab>
+              <Tab value="historial" icon={<Wrench24Regular />}>Historial</Tab>
+            </TabList>
+
+            <div style={{ paddingTop: '16px', minHeight: '140px' }}>
+              {cargando ? (
+                <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%' }}>
+                  <Spinner size="medium" label="Cargando historial..." />
+                </div>
+              ) : (
+                <>
+                  {tabActiva === 'general' && (
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+                      <div><Text size={200} style={{ color: tokens.colorNeutralForeground3 }} block>Tipo</Text><Text size={300} weight="semibold">{vehiculoCompleto.tipo}</Text></div>
+                      <div><Text size={200} style={{ color: tokens.colorNeutralForeground3 }} block>Alimentación</Text><Text size={300} weight="semibold">{vehiculoCompleto.alimentacion}</Text></div>
+                      <div><Text size={200} style={{ color: tokens.colorNeutralForeground3 }} block>Kilometraje</Text><Text size={300} weight="semibold">{vehiculoCompleto.kilometrosTotales.toLocaleString('es-ES')} km</Text></div>
+                      <div><Text size={200} style={{ color: tokens.colorNeutralForeground3 }} block>Antigüedad</Text><Text size={300} weight="semibold">{vehiculoCompleto.anyosAntiguedad} años</Text></div>
+                    </div>
+                  )}
+                  {tabActiva === 'finanzas' && (
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+                      <div><Text size={200} style={{ color: tokens.colorNeutralForeground3 }} block>Precio compra</Text><Text size={300} weight="semibold">{vehiculoCompleto.precio.toLocaleString('es-ES', { style: 'currency', currency: 'EUR' })}</Text></div>
+                      <div><Text size={200} style={{ color: tokens.colorNeutralForeground3 }} block>Fecha compra</Text><Text size={300} weight="semibold">{vehiculoCompleto.fechaCompra ? new Date(vehiculoCompleto.fechaCompra).toLocaleDateString('es-ES') : '—'}</Text></div>
+                      <div><Text size={200} style={{ color: tokens.colorNeutralForeground3 }} block>Gasto por Km</Text><Text size={300} weight="semibold">{vehiculoCompleto.gastoPorKm.toLocaleString('es-ES', { style: 'currency', currency: 'EUR', minimumFractionDigits: 2 })}</Text></div>
+                    </div>
+                  )}
+                  {tabActiva === 'historial' && (
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+                      <div><Text size={200} style={{ color: tokens.colorNeutralForeground3 }} block>Próxima ITV</Text><Text size={300} weight="semibold" style={{ color: tokens.colorBrandForeground1 }}>{vehiculoCompleto.proximaItv || 'No definida'}</Text></div>
+                      <div><Text size={200} style={{ color: tokens.colorNeutralForeground3 }} block>Revisiones</Text><Text size={300} weight="semibold">{vehiculoCompleto.revisiones?.length || 0}</Text></div>
+                      <div><Text size={200} style={{ color: tokens.colorNeutralForeground3 }} block>Averías</Text><Text size={300} weight="semibold">{vehiculoCompleto.averias?.length || 0}</Text></div>
+                      <div><Text size={200} style={{ color: tokens.colorNeutralForeground3 }} block>Viajes</Text><Text size={300} weight="semibold">{vehiculoCompleto.trayectos?.length || 0}</Text></div>
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
+
+          </DialogContent>
+          <DialogActions>
+            <Button appearance="primary" onClick={onCerrar}>Cerrar</Button>
+          </DialogActions>
+        </DialogBody>
+      </DialogSurface>
+    </Dialog>
+  );
+};
+
 const PaginaVehiculos = () => {
   const estilos = useEstilos();
   const { esAdmin } = useAuth();
 
   const [vehiculos, setVehiculos] = useState([]);
+  const [averiasAbiertas, setAveriasAbiertas] = useState([]);
   const [cargando, setCargando] = useState(true);
-  const [soloAveriados, setSoloAveriados] = useState(false);
+  const [filtroEstado, setFiltroEstado] = useState('Todos');
   const [dialogoAbierto, setDialogoAbierto] = useState(false);
   const [confirmacionAbierta, setConfirmacionAbierta] = useState(false);
   const [vehiculoActual, setVehiculoActual] = useState(crearVehiculoVacio());
@@ -341,12 +464,26 @@ const PaginaVehiculos = () => {
   const [error, setError] = useState('');
   const [archivoFoto, setArchivoFoto] = useState(null);
   const [subiendoImagen, setSubiendoImagen] = useState(false);
+  const [vehiculoEnDetalle, setVehiculoEnDetalle] = useState(null);
+  const [terminoBusqueda, setTerminoBusqueda] = useState('');
+
+  const obtenerVehiculosAfectados = (averia) => {
+    if (!averia) return [];
+    if (Array.isArray(averia.vehiculosAveriados) && averia.vehiculosAveriados.length > 0) {
+      return averia.vehiculosAveriados.map((mat) => String(mat).trim()).filter(Boolean);
+    }
+    if (averia.vehiculoMatricula) {
+      return [String(averia.vehiculoMatricula).trim()];
+    }
+    return [];
+  };
 
   const cargarVehiculos = useCallback(async () => {
     setCargando(true);
     try {
-      const datos = await obtenerVehiculos();
-      setVehiculos(datos);
+      const [datosVehiculos, datosAverias] = await Promise.all([obtenerVehiculos(), obtenerAverias()]);
+      setVehiculos(datosVehiculos);
+      setAveriasAbiertas(datosAverias.filter((a) => !a.resuelta && !(a.fechaFinReparacion && a.fechaFinReparacion.trim())));
     } catch (err) {
       setError(err.message || 'Error al cargar los vehículos');
     }
@@ -357,6 +494,27 @@ const PaginaVehiculos = () => {
     cargarVehiculos();
   }, [cargarVehiculos]);
 
+  // Recargar vehículos cuando la ventana vuelve a tener foco (p. ej., cuando se vuelve desde otra pestaña)
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        cargarVehiculos();
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
+  }, [cargarVehiculos]);
+
+  // Recargar vehículos cuando otra parte de la app actualiza el estado de un vehículo
+  useEffect(() => {
+    const handleVehiculosActualizados = () => {
+      cargarVehiculos();
+    };
+    window.addEventListener('vehiculosActualizados', handleVehiculosActualizados);
+    return () => window.removeEventListener('vehiculosActualizados', handleVehiculosActualizados);
+  }, [cargarVehiculos]);
+
   // Efecto para auto-calcular la próxima ITV cuando cambian tipo o antigüedad en el modo creación
   useEffect(() => {
     if (!editando && dialogoAbierto) {
@@ -365,15 +523,39 @@ const PaginaVehiculos = () => {
     }
   }, [vehiculoActual.tipo, vehiculoActual.anyosAntiguedad, editando, dialogoAbierto]);
 
-  const vehiculosFiltrados = soloAveriados
-    ? vehiculos.filter((v) => v.estado === ESTADO_VEHICULO.AVERIADO)
-    : vehiculos;
+  const vehiculosAveriadosActivos = new Set(
+    averiasAbiertas.flatMap((a) => obtenerVehiculosAfectados(a))
+  );
+
+  const vehiculosConEstado = vehiculos.map((v) => ({
+    ...v,
+    estado: vehiculosAveriadosActivos.has(v.matricula)
+      ? ESTADO_VEHICULO.AVERIADO
+      : v.estado,
+  }));
+
+  const vehiculosFiltrados = vehiculosConEstado.filter((v) => {
+    // Filtro categórico
+    if (filtroEstado !== 'Todos' && v.estado !== filtroEstado) return false;
+    
+    // Luego filtro por búsqueda global
+    if (!terminoBusqueda) return true;
+    const term = terminoBusqueda.toLowerCase();
+    return (
+      (v.matricula || '').toLowerCase().includes(term) ||
+      (v.marca || '').toLowerCase().includes(term) ||
+      (v.modelo || '').toLowerCase().includes(term) ||
+      (v.tipo || '').toLowerCase().includes(term) ||
+      (v.alimentacion || '').toLowerCase().includes(term) ||
+      (v.estado || '').toLowerCase().includes(term)
+    );
+  });
 
   const contadores = {
-    total: vehiculos.length,
-    disponibles: vehiculos.filter((v) => v.estado === ESTADO_VEHICULO.DISPONIBLE).length,
-    enTrayecto: vehiculos.filter((v) => v.estado === ESTADO_VEHICULO.EN_TRAYECTO).length,
-    averiados: vehiculos.filter((v) => v.estado === ESTADO_VEHICULO.AVERIADO).length,
+    total: vehiculosConEstado.length,
+    disponibles: vehiculosConEstado.filter((v) => v.estado === ESTADO_VEHICULO.DISPONIBLE).length,
+    enTrayecto: vehiculosConEstado.filter((v) => v.estado === ESTADO_VEHICULO.EN_TRAYECTO).length,
+    averiados: vehiculosConEstado.filter((v) => v.estado === ESTADO_VEHICULO.AVERIADO).length,
   };
 
   const abrirDialogoCrear = () => {
@@ -486,14 +668,22 @@ const PaginaVehiculos = () => {
           <VehicleCar24Regular style={{ fontSize: '28px', color: tokens.colorBrandForeground1 }} />
           <Title2>Vehículos</Title2>
         </div>
-        <Toolbar>
-          <div className={estilos.switchFiltro}>
-            <Filter24Regular />
-            <Switch
-              label="Solo averiados"
-              checked={soloAveriados}
-              onChange={(_, datos) => setSoloAveriados(datos.checked)}
-            />
+        <Toolbar style={{ flexWrap: 'wrap', gap: '8px' }}>
+          <Input 
+            contentBefore={<Search24Regular />} 
+            placeholder="Buscar vehículo..." 
+            value={terminoBusqueda}
+            onChange={(e) => setTerminoBusqueda(e.target.value)}
+            style={{ minWidth: '200px' }}
+          />
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <Filter24Regular style={{ color: tokens.colorNeutralForeground3 }} />
+            <Select value={filtroEstado} onChange={(e, d) => setFiltroEstado(d.value)}>
+              <option value="Todos">Todos los estados</option>
+              <option value={ESTADO_VEHICULO.DISPONIBLE}>Disponibles</option>
+              <option value={ESTADO_VEHICULO.EN_TRAYECTO}>En trayecto</option>
+              <option value={ESTADO_VEHICULO.AVERIADO}>Averiados</option>
+            </Select>
           </div>
           {esAdmin && (
             <ToolbarButton
@@ -543,6 +733,7 @@ const PaginaVehiculos = () => {
           <Card
             key={vehiculo.matricula}
             className={estilos.tarjetaVehiculo}
+            onClick={() => setVehiculoEnDetalle(vehiculo)}
           >
             <div className={`${estilos.contenedorImagen} ${vehiculo.fotoHover ? estilos.contenedorImagenActive : ''}`}>
               {vehiculo.foto ? (
@@ -853,6 +1044,14 @@ const PaginaVehiculos = () => {
         onConfirmar={manejarEliminar}
         onCancelar={() => setConfirmacionAbierta(false)}
       />
+
+      {/* Diálogo Detalles */}
+      {vehiculoEnDetalle && (
+        <ModalDetallesVehiculo
+          vehiculo={vehiculoEnDetalle}
+          onCerrar={() => setVehiculoEnDetalle(null)}
+        />
+      )}
     </div>
   );
 };
