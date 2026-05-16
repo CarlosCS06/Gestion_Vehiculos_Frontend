@@ -25,6 +25,7 @@ export const crearViaje = async (viaje) => {
 };
 
 export const actualizarViaje = async (id, datosActualizados) => {
+  console.log(`[API PATCH] Actualizando viaje ${id} con cuerpo:`, datosActualizados);
   const response = await fetchWithLogging(`${AUTH_API_URL}/${id}`, {
     method: 'PATCH',
     headers: {
@@ -36,9 +37,12 @@ export const actualizarViaje = async (id, datosActualizados) => {
 };
 
 export const eliminarViaje = async (id) => {
+  const token = sessionStorage.getItem('token');
   const response = await fetchWithLogging(`${AUTH_API_URL}/${id}`, {
     method: 'DELETE',
-    headers: {}
+    headers: {
+      'Authorization': `Bearer ${token}`
+    }
   });
   return response.json();
 };

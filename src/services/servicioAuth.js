@@ -67,7 +67,14 @@ export const iniciarSesion = async (dni, contrasena) => {
  * se le muestra su nombre y puede crear contraseña + email.
  */
 export const verificarDniConductor = async (dni) => {
-  const usuarioExistente = await obtenerUsuarioPorDni(dni);
+  // Intentamos ver si el usuario ya existe. Si falla por falta de token (401),
+  // simplemente seguimos adelante ya que el registro final se encargará de validar.
+  let usuarioExistente = null;
+  try {
+    usuarioExistente = await obtenerUsuarioPorDni(dni);
+  } catch (e) {
+    if (e.status !== 401) throw e;
+  }
 
   // Si el usuario existe y NO tiene un email temporal, es que ya está registrado de verdad
   if (usuarioExistente && !usuarioExistente.email.endsWith('@temporal.com')) {
@@ -152,12 +159,13 @@ export const obtenerUsuarioPorDni = async (dni) => {
   try {
     const response = await fetchWithLogging(`${USERS_API_URL}/${dni}`, {
       skipLog: 404,
-      skipAuth: true,
     });
     const data = await response.json();
     return mapearUsuario(data);
   } catch (error) {
     if (error.status === 404) return null;
+    // Si no hay token y nos da 401, devolvemos null para no bloquear flujos públicos
+    if (error.status === 401 && !sessionStorage.getItem('token')) return null;
     console.error('Error fetching user by DNI:', error);
     throw error;
   }

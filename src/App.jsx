@@ -8,6 +8,7 @@ import PaginaRevisiones from './pages/PaginaRevisiones.jsx';
 import PaginaConductores from './pages/PaginaConductores.jsx';
 import PaginaAverias from './pages/PaginaAverias.jsx';
 import PaginaViajes from './pages/PaginaViajes.jsx';
+import PaginaTrayectos from './pages/PaginaTrayectos.jsx';
 import { useAuth } from './context/ContextoAuth.jsx';
 import { Spinner } from '@fluentui/react-components';
 
@@ -47,6 +48,7 @@ function App() {
         <Route path="revisiones" element={<PaginaRevisiones />} />
         <Route path="conductores" element={<PaginaConductores />} />
         <Route path="averias" element={<PaginaAverias />} />
+        <Route path="trayectos" element={<PaginaTrayectos />} />
       </Route>
 
       {/* Ruta por defecto */}

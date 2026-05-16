@@ -16,6 +16,11 @@ export const subirImagen = async (archivo, vehiculoMatricula = null, conductorDn
   if (vehiculoMatricula) formData.append('vehiculoMatricula', vehiculoMatricula);
   if (conductorDni) formData.append('conductorDNI', conductorDni);
 
+  console.log('--- ENVIANDO IMAGEN (FormData) ---');
+  console.log('vehiculoMatricula:', vehiculoMatricula);
+  console.log('conductorDNI:', conductorDni);
+  console.log('---------------------------------');
+
   const response = await fetchWithLogging(`${FILES_API_URL}/upload`, {
     method: 'POST',
     headers: {
@@ -54,6 +59,10 @@ export const subirImagenPorUrl = async (datosImagen) => {
     },
     body: JSON.stringify(datosImagen),
   });
+
+  console.log('--- ENVIANDO IMAGEN POR URL ---');
+  console.log('Datos:', datosImagen);
+  console.log('-------------------------------');
 
   return response.json();
 };

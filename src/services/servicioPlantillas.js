@@ -19,8 +19,13 @@ export const PLANTILLA_FRECUENCIA = {
  */
 export const obtenerPlantillas = async () => {
   try {
-    const response = await fetchWithLogging(API_URL);
-    return response;
+    const token = sessionStorage.getItem('token');
+    const response = await fetchWithLogging(API_URL, {
+      headers: {
+        'Authorization': `Bearer ${token}`
+      }
+    });
+    return response.json();
   } catch (error) {
     console.error('Error obteniendo plantillas:', error);
     throw error;
@@ -193,5 +198,72 @@ export const obtenerRevisionesDeplantilla = async (plantillaId) => {
   } catch (error) {
     console.error(`Error obteniendo revisiones de plantilla ${plantillaId}:`, error);
     return [];
+  }
+};
+/**
+ * Crea una nueva plantilla
+ * @param {Object} plantilla - Datos de la plantilla
+ * @returns {Promise<Object>} Plantilla creada
+ */
+export const crearPlantilla = async (plantilla) => {
+  try {
+    const token = sessionStorage.getItem('token');
+    const response = await fetchWithLogging(API_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify(plantilla)
+    });
+    return response.json();
+  } catch (error) {
+    console.error('Error creando plantilla:', error);
+    throw error;
+  }
+};
+
+/**
+ * Actualiza una plantilla existente
+ * @param {string} id - ID de la plantilla
+ * @param {Object} plantilla - Datos a actualizar
+ * @returns {Promise<Object>} Plantilla actualizada
+ */
+export const actualizarPlantilla = async (id, plantilla) => {
+  try {
+    const token = sessionStorage.getItem('token');
+    const response = await fetchWithLogging(`${API_URL}/${id}`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify(plantilla)
+    });
+    return response.json();
+  } catch (error) {
+    console.error(`Error actualizando plantilla ${id}:`, error);
+    throw error;
+  }
+};
+
+/**
+ * Elimina una plantilla
+ * @param {string} id - ID de la plantilla
+ * @returns {Promise<boolean>} True si se eliminó correctamente
+ */
+export const eliminarPlantilla = async (id) => {
+  try {
+    const token = sessionStorage.getItem('token');
+    await fetchWithLogging(`${API_URL}/${id}`, {
+      method: 'DELETE',
+      headers: {
+        'Authorization': `Bearer ${token}`
+      }
+    });
+    return true;
+  } catch (error) {
+    console.error(`Error eliminando plantilla ${id}:`, error);
+    throw error;
   }
 };

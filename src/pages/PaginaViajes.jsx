@@ -63,8 +63,12 @@ import {
   crearTrayecto 
 } from '../services/servicioTrayectos.js';
 import { obtenerVehiculos, actualizarVehiculo } from '../services/servicioVehiculos.js';
+import { obtenerConductores } from '../services/servicioConductores.js';
+import { formatForDateTimeLocal, formatDisplayDate, safeIsoString, formatForDate } from '../utils/dateUtils.js';
+import { validarFechasViaje } from '../utils/validaciones.js';
 import { ESTADO_VEHICULO } from '../models/Vehiculo.js';
-import { crearViajeVacio, crearTrayectoDeViajeVacio, ESTADO_VIAJE, normalizarEstadoViaje } from '../models/Viaje.js';
+import { crearViajeVacio, crearTrayectoDeViajeVacio, ESTADO_VIAJE, normalizarEstadoViaje, calcularEstadoViaje } from '../models/Viaje.js';
+import { crearTrayectoVacio } from '../models/Trayecto.js';
 
 const useEstilos = makeStyles({
   pagina: {
@@ -247,7 +251,8 @@ const columnas = [
   { nombre: 'Descripción', campo: 'descripcion' },
   { nombre: 'Vehículo', campo: 'matricula' },
   { nombre: 'Conductor', campo: 'conductor' },
-  { nombre: 'Fecha', campo: 'fecha' },
+  { nombre: 'Salida', campo: 'fechaSalida' },
+  { nombre: 'Llegada', campo: 'fechaLlegada' },
   { nombre: 'Trayectos', campo: 'numTrayectos' },
   { nombre: 'Km totales', campo: 'kmTotales' },
   { nombre: 'Gasto total', campo: 'gastoTotal' },
@@ -273,12 +278,21 @@ const PaginaViajes = () => {
   const [procesando, setProcesando] = useState(false);
   const [terminoBusqueda, setTerminoBusqueda] = useState('');
   const [filtroEstado, setFiltroEstado] = useState('Todos');
+  const [listaConductores, setListaConductores] = useState([]);
 
   const navegar = useNavigate();
 
   // Estados para eliminación de trayectos
   const [confirmacionTrayectoAbierta, setConfirmacionTrayectoAbierta] = useState(false);
   const [trayectoEliminarId, setTrayectoEliminarId] = useState('');
+  
+  // Estados para gestión inline de trayectos (Diálogo Trayectos)
+  const [dialogoTrayectoAbierto, setDialogoTrayectoAbierto] = useState(false);
+  const [trayectoActualInline, setTrayectoActualInline] = useState(crearTrayectoVacio());
+  const [editandoTrayectoInline, setEditandoTrayectoInline] = useState(false);
+  const [viajePadreId, setViajePadreId] = useState('');
+  const [origenFijado, setOrigenFijado] = useState(false);
+  const [erroresValidacion, setErroresValidacion] = useState({});
   
   // Función para asegurar la integridad de la cadena de trayectos
   const sincronizarCadenaTrayectos = (trayectos) => {
@@ -298,9 +312,14 @@ const PaginaViajes = () => {
   const cargarViajes = useCallback(async () => {
     setCargando(true);
     try {
-      const datos = await obtenerViajes();
+      const [datos, vehiculosActualizados] = await Promise.all([
+        obtenerViajes(),
+        obtenerVehiculos()
+      ]);
       
-      // Filtrar duplicados por ID (evitar el problema reportado por el usuario)
+      setListaVehiculos(vehiculosActualizados);
+
+      // Filtrar duplicados por ID
       const idsVistos = new Set();
       const datosUnicos = datos.filter(v => {
         if (!v.id || idsVistos.has(v.id)) return false;
@@ -313,20 +332,71 @@ const PaginaViajes = () => {
         const conductorDni = (typeof conductorObj === 'object' && conductorObj !== null) ? conductorObj.dni : conductorObj;
         return conductorDni === usuario?.dni;
       })).map(viaje => {
-        // LIMPIEZA AGRESIVA: Filtrar trayectos duplicados dentro de cada viaje
+        // LIMPIEZA AGRESIVA
         const trayectosIdsVistos = new Set();
         const trayectosUnicos = (viaje.trayectos || []).filter(t => {
-          if (!t.id) return true; // Si no tiene ID (nuevo), lo dejamos
+          if (!t.id) return true;
           if (trayectosIdsVistos.has(t.id)) return false;
           trayectosIdsVistos.add(t.id);
           return true;
         });
-        return {
+
+        const viajeLimpio = {
           ...viaje,
-          estado: normalizarEstadoViaje(viaje.estado),
           trayectos: trayectosUnicos,
         };
+
+        const estadoCalculado = calcularEstadoViaje(viajeLimpio);
+        const estadoActual = normalizarEstadoViaje(viaje.estado);
+        
+        // Aseguramos que el objeto viajeLimpio tenga el estado normalizado para las comparaciones
+        viajeLimpio.estado = estadoActual;
+
+        if (estadoCalculado !== estadoActual) {
+          const cuerpoActualizacion = { estado: estadoCalculado };
+          console.log(`[Viaje ${viaje.id}] Cambio de estado: ${estadoActual} -> ${estadoCalculado}`);
+          console.log(`[Viaje ${viaje.id}] Cuerpo enviado a la petición:`, cuerpoActualizacion);
+          viajeLimpio.estado = estadoCalculado;
+          
+          // Enviar SOLO el estado para evitar conflictos con relaciones en el backend
+          actualizarViaje(viaje.id, cuerpoActualizacion)
+            .catch(err => console.error(`Error actualizando viaje ${viaje.id}:`, err));
+        }
+
+        return viajeLimpio;
       });
+
+      // --- NUEVA LÓGICA DE SINCRONIZACIÓN GLOBAL DE VEHÍCULOS ---
+      // 1. Identificar qué vehículos DEBEN estar en trayecto (tienen al menos un viaje ACTIVO)
+      const matriculasEnTrayecto = new Set(
+        filtrados
+          .filter(v => v.estado === ESTADO_VIAJE.EN_CURSO && v.vehiculoMatricula)
+          .map(v => v.vehiculoMatricula.trim().toUpperCase())
+      );
+
+      // 2. Sincronizar estados basándonos en la realidad de los viajes actuales
+      for (const vehiculo of vehiculosActualizados) {
+        if (!vehiculo.matricula) continue;
+        
+        const matricula = vehiculo.matricula.trim().toUpperCase();
+        const vEstado = String(vehiculo.estado || '').toUpperCase();
+        const debeEstarEnTrayecto = matriculasEnTrayecto.has(matricula);
+        
+        // No tocamos vehículos averiados
+        if (vEstado === ESTADO_VEHICULO.AVERIADO) continue;
+
+        if (debeEstarEnTrayecto && vEstado !== ESTADO_VEHICULO.EN_TRAYECTO) {
+          console.log(`[SYNC] Vehículo ${matricula} -> EN TRAYECTO (Tiene viajes activos)`);
+          actualizarVehiculo(matricula, { estado: ESTADO_VEHICULO.EN_TRAYECTO })
+            .catch(err => console.error(`[SYNC] Error activando ${matricula}:`, err));
+        } 
+        else if (!debeEstarEnTrayecto && vEstado === ESTADO_VEHICULO.EN_TRAYECTO) {
+          console.log(`[SYNC] Vehículo ${matricula} -> DISPONIBLE (No tiene viajes activos)`);
+          actualizarVehiculo(matricula, { estado: ESTADO_VEHICULO.DISPONIBLE })
+            .catch(err => console.error(`[SYNC] Error liberando ${matricula}:`, err));
+        }
+      }
+
       setViajes(filtrados);
     } catch (err) {
       setError(err.message || 'Error al cargar los viajes');
@@ -334,8 +404,9 @@ const PaginaViajes = () => {
     setCargando(false);
   }, [esAdmin, usuario?.dni]);
 
-  const confirmarEliminarTrayecto = (id) => {
-    setTrayectoEliminarId(id);
+  const confirmarEliminarTrayecto = (viajeId, trayectoId) => {
+    setViajePadreId(viajeId);
+    setTrayectoEliminarId(trayectoId);
     setConfirmacionTrayectoAbierta(true);
   };
 
@@ -344,13 +415,141 @@ const PaginaViajes = () => {
     setProcesando(true);
     try {
       await eliminarTrayecto(trayectoEliminarId);
+      
+      // Sincronizar viajeActual si es el viaje que estamos editando
+      if (editando && viajeActual.id === viajePadreId) {
+        setViajeActual(prev => ({
+          ...prev,
+          trayectos: (prev.trayectos || []).filter(t => t.id !== trayectoEliminarId)
+        }));
+      }
+
       setConfirmacionTrayectoAbierta(false);
       setTrayectoEliminarId('');
       await cargarViajes();
       setError('');
     } catch (err) {
       console.error('Error eliminando trayecto:', err);
-      setError(err.message);
+      setError('Error eliminando trayecto: ' + err.message);
+    } finally {
+      setProcesando(false);
+    }
+  };
+
+  // Alias para mantener compatibilidad con lo reportado por el usuario
+  const eliminarTrayectoInline = manejarEliminarTrayecto;
+
+  const abrirDialogoCrearTrayectoInline = (viajeId) => {
+    const nuevoTrayecto = crearTrayectoVacio();
+    // Pre-poblamos con datos del viaje si es necesario
+    const viaje = viajes.find(v => v.id === viajeId);
+    setOrigenFijado(false);
+
+    if (viaje) {
+      nuevoTrayecto.conductor = (typeof viaje.conductor === 'object' && viaje.conductor !== null) ? viaje.conductor.dni : (viaje.conductor || '');
+      
+      // LOGICA DE ENCADENAMIENTO: El origen del nuevo trayecto es el destino del último
+      if (viaje.trayectos && viaje.trayectos.length > 0) {
+        // Ordenamos por hora de salida o simplemente tomamos el último del array
+        const ultimoTrayecto = [...viaje.trayectos].sort((a, b) => new Date(a.horaSalida) - new Date(b.horaSalida)).pop();
+        if (ultimoTrayecto && ultimoTrayecto.destino) {
+          nuevoTrayecto.origen = ultimoTrayecto.destino;
+          setOrigenFijado(true);
+          console.log(`Encadenando nuevo trayecto: Origen pre-poblado con '${ultimoTrayecto.destino}'`);
+        }
+      }
+    }
+    
+    setTrayectoActualInline(nuevoTrayecto);
+    setViajePadreId(viajeId);
+    setEditandoTrayectoInline(false);
+    setDialogoTrayectoAbierto(true);
+  };
+
+  const abrirDialogoEditarTrayectoInline = (viajeId, trayecto) => {
+    setTrayectoActualInline({ ...trayecto });
+    setViajePadreId(viajeId);
+    setEditandoTrayectoInline(true);
+    setOrigenFijado(true);
+    setDialogoTrayectoAbierto(true);
+  };
+
+  const guardarTrayectoInline = async () => {
+    if (procesando) return;
+    setProcesando(true);
+    setError('');
+
+    // Validar horas del trayecto
+    if (trayectoActualInline.horaSalida && trayectoActualInline.horaLlegada) {
+      const resFechas = validarFechasViaje(trayectoActualInline.horaSalida, trayectoActualInline.horaLlegada);
+      if (!resFechas.valido) {
+        setError('La hora de llegada del trayecto debe ser posterior a la hora de salida.');
+        setProcesando(false);
+        return;
+      }
+    }
+
+    try {
+      const datosGuardar = {
+        ...trayectoActualInline,
+        viajeId: viajePadreId,
+        distanciaEnKm: Number(trayectoActualInline.distanciaEnKm || trayectoActualInline.kmRecorridos || 0),
+        gastoGasolina: Number(trayectoActualInline.gastoGasolina || 0),
+      };
+
+      // Limpieza de campos para el backend (evitar enviar IDs temporales o datos nulos)
+      if (!editandoTrayectoInline) {
+        delete datosGuardar.id;
+      }
+
+      console.log('Guardando trayecto inline:', datosGuardar);
+
+      if (editandoTrayectoInline) {
+        // Al actualizar, quitamos el ID del cuerpo para evitar confusiones en el backend (el ID ya va en la URL)
+        const { id, ...datosSinId } = datosGuardar;
+        const actualizado = await actualizarTrayecto(trayectoActualInline.id, datosSinId);
+        
+        // Sincronizar viajeActual si es el viaje que estamos editando
+        if (editando && viajeActual.id === viajePadreId) {
+          setViajeActual(prev => ({
+            ...prev,
+            trayectos: (prev.trayectos || []).map(t => t.id === trayectoActualInline.id ? { ...t, ...actualizado } : t)
+          }));
+        }
+
+        // LOGICA DE ENCADENAMIENTO...
+        const viaje = viajes.find(v => v.id === viajePadreId);
+        if (viaje && viaje.trayectos) {
+          const trayectosOrdenados = [...viaje.trayectos].sort((a, b) => new Date(a.horaSalida) - new Date(b.horaSalida));
+          const indiceActual = trayectosOrdenados.findIndex(t => t.id === trayectoActualInline.id);
+          
+          if (indiceActual !== -1 && indiceActual < trayectosOrdenados.length - 1) {
+            const siguienteTrayecto = trayectosOrdenados[indiceActual + 1];
+            if (siguienteTrayecto.origen !== datosGuardar.destino) {
+              const { id: sId, ...sDatosSinId } = siguienteTrayecto;
+              await actualizarTrayecto(sId, { ...sDatosSinId, origen: datosGuardar.destino });
+            }
+          }
+        }
+      } else {
+        const nuevo = await crearTrayecto(datosGuardar);
+        
+        // Sincronizar viajeActual si es el viaje que estamos editando
+        if (editando && viajeActual.id === viajePadreId) {
+          setViajeActual(prev => ({
+            ...prev,
+            trayectos: [...(prev.trayectos || []), nuevo]
+          }));
+        }
+      }
+
+      setDialogoTrayectoAbierto(false);
+      await cargarViajes();
+      // Forzar recarga de vehículos para ver el cambio de estado
+      obtenerVehiculos().then(setListaVehiculos).catch(console.error);
+    } catch (err) {
+      console.error('Error guardando trayecto inline:', err);
+      setError('Error al guardar trayecto: ' + err.message);
     } finally {
       setProcesando(false);
     }
@@ -360,6 +559,16 @@ const PaginaViajes = () => {
     cargarViajes();
     // Cargamos lista de vehículos para el desplegable
     obtenerVehiculos().then(setListaVehiculos).catch(console.error);
+    // Cargamos lista de conductores para el desplegable
+    obtenerConductores().then(setListaConductores).catch(console.error);
+
+    // TEMPORIZADOR DE ACTUALIZACIÓN AUTOMÁTICA: Revisar estados cada minuto
+    const intervalo = setInterval(() => {
+      console.log('Comprobación automática de estados de viaje...');
+      cargarViajes();
+    }, 60000);
+
+    return () => clearInterval(intervalo);
   }, [cargarViajes]);
 
   const toggleExpandir = (id) => {
@@ -376,9 +585,10 @@ const PaginaViajes = () => {
     setViajeActual({
       ...viaje,
       descripcion: viaje.descripcion || '',
-      conductor: (typeof viaje.conductor === 'object' && viaje.conductor !== null) ? viaje.conductor.dni : (viaje.conductor || ''),
-      matricula: (typeof viaje.matricula === 'object' && viaje.matricula !== null) ? viaje.matricula.matricula : (viaje.matricula || ''),
-      fecha: viaje.fecha || '',
+      conductorDni: (typeof viaje.conductor === 'object' && viaje.conductor !== null) ? viaje.conductor.dni : (viaje.conductor || viaje.conductorDni || ''),
+      vehiculoMatricula: (typeof viaje.matricula === 'object' && viaje.matricula !== null) ? viaje.matricula.matricula : (viaje.matricula || viaje.vehiculoMatricula || ''),
+      fechaSalida: viaje.fechaSalida || '',
+      fechaLlegada: viaje.fechaLlegada || '',
       kmSalida: viaje.kmSalida ?? '',
       kmLlegada: viaje.kmLlegada ?? '',
       trayectos: viaje.trayectos.map((t) => ({ ...t })),
@@ -388,12 +598,32 @@ const PaginaViajes = () => {
   };
 
   const vehiculosSeleccionables = listaVehiculos.filter((v) =>
-    v.estado !== ESTADO_VEHICULO.AVERIADO || v.matricula === viajeActual.matricula
+    v.estado !== ESTADO_VEHICULO.AVERIADO || v.matricula === viajeActual.vehiculoMatricula
   );
 
 const manejarGuardar = async () => {
   if (procesando) return;
   setProcesando(true);
+
+  // --- VALIDACIONES ---
+  const errores = {};
+
+  // Validar fechas: llegada debe ser posterior a salida
+  if (viajeActual.fechaSalida && viajeActual.fechaLlegada) {
+    const resFechas = validarFechasViaje(viajeActual.fechaSalida, viajeActual.fechaLlegada);
+    if (!resFechas.valido) {
+      errores.fechaLlegada = resFechas.mensaje;
+    }
+  }
+
+  if (Object.keys(errores).length > 0) {
+    setErroresValidacion(errores);
+    setProcesando(false);
+    return;
+  }
+  setErroresValidacion({});
+  // --- FIN VALIDACIONES ---
+
   try {
     if (
       viajeActual.kmSalida !== '' &&
@@ -410,28 +640,26 @@ const manejarGuardar = async () => {
 
       const datosGuardar = {
         ...viajeActual,
+        conductorDni: String(viajeActual.conductorDni || ''),
+        vehiculoMatricula: String(viajeActual.vehiculoMatricula || ''),
         kmSalida: viajeActual.kmSalida === '' ? null : Number(viajeActual.kmSalida),
         kmLlegada: viajeActual.kmLlegada === '' ? null : Number(viajeActual.kmLlegada),
         origen: viajeActual.origen || '',
         destino: viajeActual.destino || '',
-        // trayectos: trayectosLimpios
       };
 
-      // Solo enviar trayectos si hay elementos
-      // if (datosGuardar.trayectos.length === 0) {
-      //   delete datosGuardar.trayectos;
-      // }
-
-      console.log('Enviando datos de viaje (machacando info anterior):', datosGuardar);
-
+      // Eliminar campos antiguos o innecesarios para el backend
+      delete datosGuardar.conductor;
+      delete datosGuardar.matricula;
       if (editando) {
+        delete datosGuardar.trayectos; // Evitar duplicados: los trayectos se gestionan por separado de forma inline
         await actualizarViaje(viajeActual.id, datosGuardar);
       } else {
         await crearViaje(datosGuardar);
       }
 
       // Lógica de automatización de estado del vehículo
-      if (viajeActual.matricula) {
+      if (viajeActual.vehiculoMatricula) {
         const estadoViajeNormalizado = normalizarEstadoViaje(viajeActual.estado);
         
         let nuevoEstadoVehiculo = null;
@@ -441,8 +669,8 @@ const manejarGuardar = async () => {
           nuevoEstadoVehiculo = ESTADO_VEHICULO.DISPONIBLE;
         } else if (estadoViajeNormalizado === ESTADO_VIAJE.PENDIENTE) {
           const vehiculoSeleccionado = listaVehiculos.find(v => 
-            v.matricula && viajeActual.matricula && 
-            v.matricula.trim().toUpperCase() === viajeActual.matricula.trim().toUpperCase()
+            v.matricula && viajeActual.vehiculoMatricula && 
+            v.matricula.trim().toUpperCase() === viajeActual.vehiculoMatricula.trim().toUpperCase()
           );
           nuevoEstadoVehiculo = vehiculoSeleccionado?.estado === ESTADO_VEHICULO.AVERIADO
             ? ESTADO_VEHICULO.AVERIADO
@@ -450,7 +678,7 @@ const manejarGuardar = async () => {
         }
 
         if (nuevoEstadoVehiculo) {
-          await actualizarVehiculo(viajeActual.matricula.trim().toUpperCase(), { estado: nuevoEstadoVehiculo });
+          await actualizarVehiculo(viajeActual.vehiculoMatricula.trim().toUpperCase(), { estado: nuevoEstadoVehiculo });
         }
       }
 
@@ -480,17 +708,22 @@ const manejarGuardar = async () => {
       const viajeOriginal = viajes.find(v => v.id === idEliminar);
       if (!viajeOriginal) throw new Error('Viaje no encontrado');
 
-      // Normalizar datos: enviar solo DNI y Matrícula, no objetos completos
+      // Normalizar datos: enviar solo DNI y Matrícula como strings
       const datosNormalizados = {
         ...viajeOriginal,
         visible: false,
-        conductor: (typeof viajeOriginal.conductor === 'object' && viajeOriginal.conductor !== null) ? viajeOriginal.conductor.dni : (viajeOriginal.conductor || ''),
-        matricula: (typeof viajeOriginal.matricula === 'object' && viajeOriginal.matricula !== null) ? viajeOriginal.matricula.matricula : (viajeOriginal.matricula || ''),
+        conductorDni: (typeof viajeOriginal.conductor === 'object' && viajeOriginal.conductor !== null) ? viajeOriginal.conductor.dni : (viajeOriginal.conductor || viajeOriginal.conductorDni || ''),
+        vehiculoMatricula: (typeof viajeOriginal.matricula === 'object' && viajeOriginal.matricula !== null) ? viajeOriginal.matricula.matricula : (viajeOriginal.matricula || viajeOriginal.vehiculoMatricula || ''),
       };
+      const viajeEliminar = viajes.find(v => v.id === idEliminar);
+      if (!viajeEliminar) throw new Error('Viaje no encontrado');
+
+      // Limpieza de campos antiguos
+      delete datosNormalizados.conductor;
+      delete datosNormalizados.matricula;
 
       console.log('Soft delete - Enviando datos normalizados:', datosNormalizados);
-      await actualizarViaje(idEliminar, datosNormalizados);
-      
+      await eliminarViaje(viajeEliminar.id);
       setConfirmacionAbierta(false);
       setIdEliminar('');
       await cargarViajes();
@@ -505,12 +738,21 @@ const manejarGuardar = async () => {
 
   const manejarCompletarViaje = async (viaje) => {
     try {
-      const viajeActualizado = { ...viaje, estado: ESTADO_VIAJE.COMPLETADO };
+      const viajeActualizado = { 
+        ...viaje, 
+        estado: ESTADO_VIAJE.COMPLETADO,
+        conductorDni: (typeof viaje.conductor === 'object' && viaje.conductor !== null) ? viaje.conductor.dni : (viaje.conductor || viaje.conductorDni || ''),
+        vehiculoMatricula: (typeof viaje.matricula === 'object' && viaje.matricula !== null) ? viaje.matricula.matricula : (viaje.matricula || viaje.vehiculoMatricula || ''),
+      };
+      
+      delete viajeActualizado.conductor;
+      delete viajeActualizado.matricula;
+
       await actualizarViaje(viaje.id, viajeActualizado);
       
       // Actualizar vehículo a disponible
-      if (viaje.matricula) {
-        await actualizarVehiculo(viaje.matricula.trim().toUpperCase(), { estado: ESTADO_VEHICULO.DISPONIBLE });
+      if (viajeActualizado.vehiculoMatricula) {
+        await actualizarVehiculo(viajeActualizado.vehiculoMatricula.trim().toUpperCase(), { estado: ESTADO_VEHICULO.DISPONIBLE });
       }
       
       await cargarViajes();
@@ -523,7 +765,17 @@ const manejarGuardar = async () => {
   };
 
   const manejarCambioViaje = (campo, valor) => {
-    setViajeActual((prev) => ({ ...prev, [campo]: valor }));
+    setViajeActual((prev) => {
+      // Si cambiamos fechas, recalculamos el estado automáticamente
+      if (campo === 'fechaSalida' || campo === 'fechaLlegada') {
+        const isoValor = safeIsoString(valor);
+        const nuevo = { ...prev, [campo]: isoValor };
+        nuevo.estado = calcularEstadoViaje(nuevo);
+        return nuevo;
+      }
+      
+      return { ...prev, [campo]: valor };
+    });
   };
 
   if (cargando) {
@@ -635,9 +887,10 @@ const manejarGuardar = async () => {
                       }
                     </TableCell>
                     <TableCell>{viaje.descripcion}</TableCell>
-                    <TableCell><strong>{(typeof viaje.matricula === 'object' && viaje.matricula !== null) ? viaje.matricula.matricula : (viaje.matricula || '—')}</strong></TableCell>
-                    <TableCell>{(typeof viaje.conductor === 'object' && viaje.conductor !== null) ? `${viaje.conductor.nombre} ${viaje.conductor.apellidos} (${viaje.conductor.dni})` : (viaje.conductor || 'Sin asignar')}</TableCell>
-                    <TableCell>{viaje.fecha}</TableCell>
+                    <TableCell><strong>{(typeof viaje.matricula === 'object' && viaje.matricula !== null) ? viaje.matricula.matricula : (viaje.vehiculoMatricula || viaje.matricula || '—')}</strong></TableCell>
+                    <TableCell>{(typeof viaje.conductor === 'object' && viaje.conductor !== null) ? `${viaje.conductor.nombre} ${viaje.conductor.apellidos} (${viaje.conductor.dni})` : (viaje.conductorDni || viaje.conductor || 'Sin asignar')}</TableCell>
+                    <TableCell>{viaje.fechaSalida ? new Date(viaje.fechaSalida).toLocaleDateString('es-ES') : '—'}</TableCell>
+                    <TableCell>{viaje.fechaLlegada ? new Date(viaje.fechaLlegada).toLocaleDateString('es-ES') : '—'}</TableCell>
                     <TableCell>
                       <Badge appearance="outline" color="informative">{viaje.trayectos.length}</Badge>
                     </TableCell>
@@ -699,9 +952,10 @@ const manejarGuardar = async () => {
                           <Divider style={{ margin: `${tokens.spacingVerticalS} 0` }} />
                           <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: tokens.spacingVerticalS }}>
                             <Button
+                              type="button"
                               appearance="outline"
                               icon={<Add24Regular />}
-                              onClick={() => navegar('/trayectos?viajeId=' + viaje.id)}
+                              onClick={(e) => { e.stopPropagation(); abrirDialogoCrearTrayectoInline(viaje.id); }}
                               size="small"
                             >
                               Añadir trayecto
@@ -727,27 +981,29 @@ const manejarGuardar = async () => {
                                   <TableCell>{t.destino}</TableCell>
                                   <TableCell>{t.distanciaEnKm.toLocaleString('es-ES')} km</TableCell>
                                   <TableCell>
-                                    <Caption1>{t.horaSalida ? new Date(t.horaSalida).toLocaleString('es-ES') : '—'}</Caption1>
+                                    <Caption1>{formatDisplayDate(t.horaSalida)}</Caption1>
                                   </TableCell>
                                   <TableCell>
-                                    <Caption1>{t.horaLlegada ? new Date(t.horaLlegada).toLocaleString('es-ES') : '—'}</Caption1>
+                                    <Caption1>{formatDisplayDate(t.horaLlegada)}</Caption1>
                                   </TableCell>
                                   {esAdmin && (
                                     <TableCell>
                                       <Tooltip content="Editar trayecto" relationship="label">
                                         <Button
+                                          type="button"
                                           icon={<Edit24Regular />}
                                           appearance="subtle"
                                           size="small"
-                                          onClick={() => navegar('/trayectos?editar=' + t.id)}
+                                          onClick={(e) => { e.stopPropagation(); abrirDialogoEditarTrayectoInline(viaje.id, t); }}
                                         />
                                       </Tooltip>
                                       <Tooltip content="Eliminar trayecto" relationship="label">
                                         <Button
+                                          type="button"
                                           icon={<Delete24Regular />}
                                           appearance="subtle"
                                           size="small"
-                                          onClick={() => confirmarEliminarTrayecto(t.id)}
+                                          onClick={(e) => { e.stopPropagation(); confirmarEliminarTrayecto(viaje.id, t.id); }}
                                         />
                                       </Tooltip>
                                     </TableCell>
@@ -794,11 +1050,15 @@ const manejarGuardar = async () => {
                 <div className={estilos.tarjetaMovilCuerpo}>
                   <div>
                     <div className={estilos.datoEtiqueta}>Vehículo</div>
-                    <div className={estilos.datoValor}>{obtenerTextoMatricula(viaje.matricula)}</div>
+                    <div className={estilos.datoValor}>{(typeof viaje.matricula === 'object' && viaje.matricula !== null) ? viaje.matricula.matricula : (viaje.vehiculoMatricula || viaje.matricula || '—')}</div>
                   </div>
                   <div>
-                    <div className={estilos.datoEtiqueta}>Fecha</div>
-                    <div className={estilos.datoValor}>{viaje.fecha ? new Date(viaje.fecha).toLocaleDateString('es-ES') : '—'}</div>
+                    <div className={estilos.datoEtiqueta}>Salida</div>
+                    <div className={estilos.datoValor}>{viaje.fechaSalida ? new Date(viaje.fechaSalida).toLocaleDateString('es-ES') : '—'}</div>
+                  </div>
+                  <div>
+                    <div className={estilos.datoEtiqueta}>Llegada</div>
+                    <div className={estilos.datoValor}>{viaje.fechaLlegada ? new Date(viaje.fechaLlegada).toLocaleDateString('es-ES') : '—'}</div>
                   </div>
                   <div>
                     <div className={estilos.datoEtiqueta}>Km totales</div>
@@ -810,7 +1070,7 @@ const manejarGuardar = async () => {
                   </div>
                   <div style={{ gridColumn: 'span 2' }}>
                     <div className={estilos.datoEtiqueta}>Conductor</div>
-                    <div className={estilos.datoValor}>{obtenerTextoConductor(viaje.conductor)}</div>
+                    <div className={estilos.datoValor}>{(typeof viaje.conductor === 'object' && viaje.conductor !== null) ? `${viaje.conductor.nombre} ${viaje.conductor.apellidos} (${viaje.conductor.dni})` : (viaje.conductorDni || viaje.conductor || 'Sin asignar')}</div>
                   </div>
                 </div>
 
@@ -913,17 +1173,27 @@ const manejarGuardar = async () => {
                       placeholder="Ruta sur peninsular"
                     />
                   </Field>
-                  <Field label="DNI Conductor" required>
-                    <Input
-                      value={viajeActual.conductor || ''}
-                      onChange={(_, d) => manejarCambioViaje('conductor', d.value)}
-                      placeholder="12345678A"
-                    />
+                </div>
+                <div className={estilos.filaFormulario}>
+                  <Field label="Conductor" required>
+                    <Select
+                      value={viajeActual.conductorDni || ''}
+                      onChange={(_, d) => manejarCambioViaje('conductorDni', d.value)}
+                    >
+                      <option value="">Selecciona un conductor...</option>
+                      {listaConductores.map(c => (
+                        <option key={c.dni} value={c.dni}>
+                          {c.dni} - {c.nombre} {c.apellidos}
+                        </option>
+                      ))}
+                    </Select>
                   </Field>
+                </div>
+                <div className={estilos.filaFormulario}>
                   <Field label="Vehículo (Matrícula)" required>
                     <Select
-                      value={viajeActual.matricula}
-                      onChange={(_, d) => manejarCambioViaje('matricula', d.value)}
+                      value={viajeActual.vehiculoMatricula}
+                      onChange={(_, d) => manejarCambioViaje('vehiculoMatricula', d.value)}
                     >
                       <option value="">Selecciona un vehículo...</option>
                       {vehiculosSeleccionables.map(v => (
@@ -933,6 +1203,8 @@ const manejarGuardar = async () => {
                       ))}
                     </Select>
                   </Field>
+                </div>
+                <div className={estilos.filaFormulario}>
                   <Field label="Km salida">
                     <Input
                       type="number"
@@ -951,22 +1223,19 @@ const manejarGuardar = async () => {
                       placeholder="Ej: 12680"
                     />
                   </Field>
-                  <Field label="Fecha">
+                  <Field label="Fecha Salida">
                     <Input
                       type="date"
-                      value={viajeActual.fecha || ''}
-                      onChange={(_, d) => manejarCambioViaje('fecha', d.value)}
+                      value={formatForDate(viajeActual.fechaSalida)}
+                      onChange={(_, d) => { manejarCambioViaje('fechaSalida', d.value); setErroresValidacion(prev => ({ ...prev, fechaLlegada: undefined })); }}
                     />
                   </Field>
-                  <Field label="Estado">
-                    <Select
-                      value={viajeActual.estado}
-                      onChange={(_, d) => manejarCambioViaje('estado', d.value)}
-                    >
-                      <option value={ESTADO_VIAJE.PENDIENTE}>Pendiente</option>
-                      <option value={ESTADO_VIAJE.EN_CURSO}>En curso</option>
-                      <option value={ESTADO_VIAJE.COMPLETADO}>Completado</option>
-                    </Select>
+                  <Field label="Fecha Llegada" validationState={erroresValidacion.fechaLlegada ? 'error' : undefined} validationMessage={erroresValidacion.fechaLlegada}>
+                    <Input
+                      type="date"
+                      value={formatForDate(viajeActual.fechaLlegada)}
+                      onChange={(_, d) => { manejarCambioViaje('fechaLlegada', d.value); setErroresValidacion(prev => ({ ...prev, fechaLlegada: undefined })); }}
+                    />
                   </Field>
                   <Field label="Gasto gasolina total (€)">
                     <Input
@@ -1041,6 +1310,125 @@ const manejarGuardar = async () => {
           setTrayectoEliminarId('');
         }}
       />
+
+      {/* Diálogo para gestión INLINE de trayectos */}
+      <Dialog open={dialogoTrayectoAbierto} onOpenChange={(_, d) => { 
+        if (!d.open) {
+          setDialogoTrayectoAbierto(false);
+        }
+      }}>
+        <DialogSurface style={{ maxWidth: '600px' }}>
+          <DialogBody>
+            <DialogTitle>{editandoTrayectoInline ? 'Editar trayecto' : 'Nuevo trayecto'}</DialogTitle>
+            <DialogContent>
+              <div className={estilos.formulario}>
+                <div className={estilos.filaFormulario}>
+                  <Field label="Origen" required>
+                    <Input 
+                      disabled={origenFijado}
+                      value={trayectoActualInline.origen || ''} 
+                      onChange={(_, d) => setTrayectoActualInline(prev => ({ ...prev, origen: d.value }))} 
+                      placeholder="Madrid" 
+                    />
+                  </Field>
+                  <Field label="Destino" required>
+                    <Input 
+                      value={trayectoActualInline.destino || ''} 
+                      onChange={(_, d) => setTrayectoActualInline(prev => ({ ...prev, destino: d.value }))} 
+                      placeholder="Barcelona" 
+                    />
+                  </Field>
+                </div>
+                <div className={estilos.filaFormulario}>
+                  <Field label="Hora salida">
+                    <Input 
+                      type="datetime-local" 
+                      value={formatForDateTimeLocal(trayectoActualInline.horaSalida)} 
+                      onChange={(_, d) => {
+                        const isoHora = safeIsoString(d.value);
+                        setTrayectoActualInline(prev => {
+                          const actualizado = { ...prev, horaSalida: isoHora };
+                          // Intentamos recalcular el estado sugerido para el viaje si estamos en modo edición
+                          if (editando) {
+                            const viajeSimulado = { 
+                              ...viajeActual, 
+                              trayectos: viajeActual.trayectos.map(t => t.id === actualizado.id ? actualizado : t)
+                            };
+                            if (!viajeSimulado.trayectos.some(t => t.id === actualizado.id) && !editandoTrayectoInline) {
+                              viajeSimulado.trayectos.push(actualizado);
+                            }
+                            const nuevoEstado = calcularEstadoViaje(viajeSimulado);
+                            setViajeActual(v => ({ ...v, estado: nuevoEstado }));
+                          }
+                          return actualizado;
+                        });
+                      }} 
+                    />
+                  </Field>
+                  <Field label="Hora llegada">
+                    <Input 
+                      type="datetime-local" 
+                      value={formatForDateTimeLocal(trayectoActualInline.horaLlegada)} 
+                      onChange={(_, d) => {
+                        const isoHora = safeIsoString(d.value);
+                        setTrayectoActualInline(prev => {
+                          const actualizado = { ...prev, horaLlegada: isoHora };
+                          if (editando) {
+                            const viajeSimulado = { 
+                              ...viajeActual, 
+                              trayectos: viajeActual.trayectos.map(t => t.id === actualizado.id ? actualizado : t)
+                            };
+                            if (!viajeSimulado.trayectos.some(t => t.id === actualizado.id) && !editandoTrayectoInline) {
+                              viajeSimulado.trayectos.push(actualizado);
+                            }
+                            const nuevoEstado = calcularEstadoViaje(viajeSimulado);
+                            setViajeActual(v => ({ ...v, estado: nuevoEstado }));
+                          }
+                          return actualizado;
+                        });
+                      }} 
+                    />
+                  </Field>
+                </div>
+                <div className={estilos.filaFormulario}>
+                  <Field label="Km recorridos">
+                    <Input 
+                      type="number" 
+                      value={String(trayectoActualInline.distanciaEnKm || trayectoActualInline.kmRecorridos || 0)} 
+                      onChange={(_, d) => setTrayectoActualInline(prev => ({ ...prev, distanciaEnKm: Number(d.value) }))} 
+                    />
+                  </Field>
+                  <Field label="Gasto gasolina (€)">
+                    <Input 
+                      type="number" 
+                      step="0.01" 
+                      value={String(trayectoActualInline.gastoGasolina || 0)} 
+                      onChange={(_, d) => setTrayectoActualInline(prev => ({ ...prev, gastoGasolina: Number(d.value) }))} 
+                    />
+                  </Field>
+                </div>
+                <Field label="Conductor">
+                  <Select
+                    value={trayectoActualInline.conductor || ''}
+                    onChange={(_, d) => setTrayectoActualInline(prev => ({ ...prev, conductor: d.value }))}
+                  >
+                    <option value="">Selecciona un conductor...</option>
+                    {listaConductores.map(c => (
+                      <option key={c.dni} value={c.dni}>
+                        {c.dni} - {c.nombre} {c.apellidos}
+                      </option>
+                    ))}
+                  </Select>
+                </Field>
+              </div>
+            </DialogContent>
+            <DialogActions>
+              <Button type="button" appearance="secondary" onClick={() => setDialogoTrayectoAbierto(false)}>Cancelar</Button>
+              <Button type="button" appearance="primary" onClick={guardarTrayectoInline}>{editandoTrayectoInline ? 'Guardar cambios' : 'Añadir trayecto'}</Button>
+            </DialogActions>
+          </DialogBody>
+        </DialogSurface>
+      </Dialog>
 
     </div>
   );

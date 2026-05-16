@@ -50,6 +50,8 @@ import { actualizarUsuario } from '../services/servicioAuth.js';
 import { subirImagen, subirImagenPorUrl } from '../services/servicioImagenes.js';
 import { crearConductorVacio } from '../models/Conductor.js';
 import { crearImagenVacia } from '../models/Imagenes.js';
+import { formatForDate } from '../utils/dateUtils.js';
+import { validarDNI, validarTelefono, validarEdadMinima } from '../utils/validaciones.js';
 
 const useEstilos = makeStyles({
   pagina: {
@@ -199,6 +201,7 @@ const PaginaConductores = () => {
   const [subiendoImagen, setSubiendoImagen] = useState(false);
   const [previewUrl, setPreviewUrl] = useState(null);
   const [isDragging, setIsDragging] = useState(false);
+  const [erroresValidacion, setErroresValidacion] = useState({});
 
   useEffect(() => {
     // Cleanup preview URL
@@ -235,6 +238,40 @@ const PaginaConductores = () => {
   };
 
   const manejarGuardar = async () => {
+    // --- VALIDACIONES ---
+    const errores = {};
+
+    // Validar DNI
+    const resDni = validarDNI(conductorActual.dni);
+    if (!resDni.valido) errores.dni = resDni.mensaje;
+
+    // Validar teléfono (solo si se ha rellenado)
+    if (conductorActual.telefono && conductorActual.telefono.trim()) {
+      const resTel = validarTelefono(conductorActual.telefono);
+      if (!resTel.valido) errores.telefono = resTel.mensaje;
+    }
+
+    // Validar edad (mayor de 18)
+    if (conductorActual.fechaNacimiento) {
+      const resEdad = validarEdadMinima(conductorActual.fechaNacimiento, 18);
+      if (!resEdad.valido) errores.fechaNacimiento = resEdad.mensaje;
+    }
+
+    // Validar nombre y apellidos obligatorios
+    if (!conductorActual.nombre || !conductorActual.nombre.trim()) {
+      errores.nombre = 'El nombre es obligatorio.';
+    }
+    if (!conductorActual.apellidos || !conductorActual.apellidos.trim()) {
+      errores.apellidos = 'Los apellidos son obligatorios.';
+    }
+
+    if (Object.keys(errores).length > 0) {
+      setErroresValidacion(errores);
+      return;
+    }
+    setErroresValidacion({});
+    // --- FIN VALIDACIONES ---
+
     setGuardando(true);
     try {
       if (editando) {
@@ -521,8 +558,8 @@ const PaginaConductores = () => {
             </DialogTitle>
             <DialogContent>
               <div className={estilos.formulario}>
-                <Field label="DNI" required>
-                  <Input value={conductorActual.dni} onChange={(_, d) => manejarCambio('dni', d.value)} disabled={editando} placeholder="12345678A" />
+                <Field label="DNI" required validationState={erroresValidacion.dni ? 'error' : undefined} validationMessage={erroresValidacion.dni}>
+                  <Input value={conductorActual.dni} onChange={(_, d) => { manejarCambio('dni', d.value.toUpperCase()); setErroresValidacion(prev => ({ ...prev, dni: undefined })); }} disabled={editando} placeholder="12345678A" />
                 </Field>
                 <Field label="Foto de perfil (Cloudinary)" hint="Se subirá automáticamente al seleccionar archivo o pegar URL">
                   <div className={estilos.formulario}>
@@ -584,29 +621,29 @@ const PaginaConductores = () => {
                   </div>
                 </Field>
                 <div className={estilos.filaFormulario}>
-                  <Field label="Nombre" required>
+                    <Field label="Nombre" required validationState={erroresValidacion.nombre ? 'error' : undefined} validationMessage={erroresValidacion.nombre}>
                     <Input
                       value={conductorActual.nombre}
-                      onChange={(_, d) => manejarCambio('nombre', d.value)}
+                      onChange={(_, d) => { manejarCambio('nombre', d.value); setErroresValidacion(prev => ({ ...prev, nombre: undefined })); }}
                       placeholder="Carlos"
                       disabled={!esAdmin && usuario && usuario.dni === conductorActual.dni}
                     />
                   </Field>
-                  <Field label="Apellidos" required>
+                  <Field label="Apellidos" required validationState={erroresValidacion.apellidos ? 'error' : undefined} validationMessage={erroresValidacion.apellidos}>
                     <Input
                       value={conductorActual.apellidos}
-                      onChange={(_, d) => manejarCambio('apellidos', d.value)}
+                      onChange={(_, d) => { manejarCambio('apellidos', d.value); setErroresValidacion(prev => ({ ...prev, apellidos: undefined })); }}
                       placeholder="García López"
                       disabled={!esAdmin && usuario && usuario.dni === conductorActual.dni}
                     />
                   </Field>
                 </div>
                 <div className={estilos.filaFormulario}>
-                  <Field label="Teléfono">
+                  <Field label="Teléfono" validationState={erroresValidacion.telefono ? 'error' : undefined} validationMessage={erroresValidacion.telefono} hint="Formato: +34 612 345 678">
                     <Input
                       value={conductorActual.telefono}
-                      onChange={(_, d) => manejarCambio('telefono', d.value)}
-                      placeholder="612345678"
+                      onChange={(_, d) => { manejarCambio('telefono', d.value); setErroresValidacion(prev => ({ ...prev, telefono: undefined })); }}
+                      placeholder="+34 612 345 678"
                       disabled={!esAdmin && usuario && usuario.dni === conductorActual.dni}
                     />
                   </Field>
@@ -618,11 +655,11 @@ const PaginaConductores = () => {
                       disabled={!esAdmin && usuario && usuario.dni === conductorActual.dni}
                     />
                   </Field>
-                  <Field label="Fecha de nacimiento">
+                  <Field label="Fecha de nacimiento" validationState={erroresValidacion.fechaNacimiento ? 'error' : undefined} validationMessage={erroresValidacion.fechaNacimiento}>
                     <Input
                       type="date"
-                      value={conductorActual.fechaNacimiento}
-                      onChange={(_, d) => manejarCambio('fechaNacimiento', d.value)}
+                      value={formatForDate(conductorActual.fechaNacimiento)}
+                      onChange={(_, d) => { manejarCambio('fechaNacimiento', d.value); setErroresValidacion(prev => ({ ...prev, fechaNacimiento: undefined })); }}
                       disabled={!esAdmin && usuario && usuario.dni === conductorActual.dni}
                     />
                   </Field>

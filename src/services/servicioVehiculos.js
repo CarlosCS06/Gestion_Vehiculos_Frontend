@@ -1,4 +1,5 @@
 import { fetchWithLogging } from './apiUtils';
+import { ESTADO_VEHICULO } from '../models/Vehiculo.js';
 
 const AUTH_API_URL = 'https://gestion-vehiculos-backend.vercel.app/api/vehiculos';
 
@@ -18,14 +19,20 @@ const mapearVehiculo = (v) => {
     kilometrosTotales: v.kilometrosTotales || 0,
     anyosAntiguedad: Number(v.anyosAntiguedad || 0),
     precio: v.precio || 0,
-    gastoPorKm: v.gastoPorKm || 0,
+    gastoCombustiblePorKiloetro: v.gastoCombustiblePorKiloetro || v.gastoPorKm || 0,
+    tipoGastoVehiculo: v.tipoGastoVehiculo || 'LITROS',
+    capacidadTanqueCombustible: v.capacidadTanqueCombustible || 0,
+    fechaMatriculacion: v.fechaMatriculacion || '',
     foto: fotoUrl,
     fotoHover: hoverUrl,
     trayectos: v.trayectos || [],
     revisiones: v.revisiones || [],
     averias: v.averias || [],
     proximaItv: v.proximaItv || '',
-    estado: v.estado ? v.estado.toLowerCase() : 'disponible',
+    plantillas: Array.isArray(v.plantillas)
+      ? v.plantillas.map((p) => (typeof p === 'object' ? p.id : p)).filter((id) => id !== undefined && id !== null).map(String)
+      : [],
+    estado: v.estado ? v.estado.toUpperCase() : ESTADO_VEHICULO.DISPONIBLE,
     idImagen: v.idImagen || null,
   };
 
@@ -85,12 +92,19 @@ export const crearVehiculo = async (vehiculo) => {
     alimentacion: vehiculo.alimentacion,
     precio: Number(vehiculo.precio || 0),
     nuevo: Boolean(vehiculo.nuevo),
-    gastoPorKm: Number(vehiculo.gastoPorKm || 0),
+    gastoCombustiblePorKiloetro: Number(vehiculo.gastoCombustiblePorKiloetro || 0),
+    tipoGastoVehiculo: vehiculo.tipoGastoVehiculo || 'LITROS',
+    capacidadTanqueCombustible: Number(vehiculo.capacidadTanqueCombustible || 0),
+    fechaMatriculacion: vehiculo.fechaMatriculacion ? new Date(vehiculo.fechaMatriculacion).toISOString() : undefined,
     estado: vehiculo.estado,
     proximaItv: vehiculo.proximaItv,
+    plantillas: Array.isArray(vehiculo.plantillas)
+      ? vehiculo.plantillas.map((p) => (typeof p === 'object' ? p.id : p)).filter((id) => id !== undefined && id !== null)
+      : [],
     foto: vehiculo.foto,
     idImagen: vehiculo.idImagen,
     fotoHover: vehiculo.fotoHover,
+    imagenes: Array.isArray(vehiculo.imagenes) ? vehiculo.imagenes.map(img => typeof img === 'object' ? img.id : img) : [],
   };
 
   const response = await fetchWithLogging(AUTH_API_URL, {
@@ -105,28 +119,39 @@ export const crearVehiculo = async (vehiculo) => {
 };
 
 export const actualizarVehiculo = async (matricula, datosActualizados) => {
+
+  // Construir objeto solo con los campos que vienen en datosActualizados
+  const normalizedDatos = {};
+  
+  if (datosActualizados.matricula !== undefined) normalizedDatos.matricula = datosActualizados.matricula;
+  if (datosActualizados.marca !== undefined) normalizedDatos.marca = datosActualizados.marca;
+  if (datosActualizados.modelo !== undefined) normalizedDatos.modelo = datosActualizados.modelo;
+  if (datosActualizados.fechaCompra !== undefined) normalizedDatos.fechaCompra = new Date(datosActualizados.fechaCompra).toISOString();
+  if (datosActualizados.anyosAntiguedad !== undefined) normalizedDatos.anyosAntiguedad = Number(datosActualizados.anyosAntiguedad);
+  if (datosActualizados.tipo !== undefined) normalizedDatos.tipo = datosActualizados.tipo;
+  if (datosActualizados.kilometrosTotales !== undefined) normalizedDatos.kilometrosTotales = Number(datosActualizados.kilometrosTotales);
+  if (datosActualizados.alimentacion !== undefined) normalizedDatos.alimentacion = datosActualizados.alimentacion;
+  if (datosActualizados.precio !== undefined) normalizedDatos.precio = Number(datosActualizados.precio);
+  if (datosActualizados.nuevo !== undefined) normalizedDatos.nuevo = Boolean(datosActualizados.nuevo);
+  if (datosActualizados.gastoCombustiblePorKiloetro !== undefined) normalizedDatos.gastoCombustiblePorKiloetro = Number(datosActualizados.gastoCombustiblePorKiloetro);
+  if (datosActualizados.tipoGastoVehiculo !== undefined) normalizedDatos.tipoGastoVehiculo = datosActualizados.tipoGastoVehiculo;
+  if (datosActualizados.capacidadTanqueCombustible !== undefined) normalizedDatos.capacidadTanqueCombustible = Number(datosActualizados.capacidadTanqueCombustible);
+  if (datosActualizados.fechaMatriculacion !== undefined) normalizedDatos.fechaMatriculacion = new Date(datosActualizados.fechaMatriculacion).toISOString();
+  if (datosActualizados.estado !== undefined) normalizedDatos.estado = datosActualizados.estado;
+  if (datosActualizados.proximaItv !== undefined) normalizedDatos.proximaItv = datosActualizados.proximaItv;
+  if (datosActualizados.foto !== undefined) normalizedDatos.foto = datosActualizados.foto;
+  if (datosActualizados.idImagen !== undefined) normalizedDatos.idImagen = datosActualizados.idImagen;
+  if (datosActualizados.fotoHover !== undefined) normalizedDatos.fotoHover = datosActualizados.fotoHover;
+  if (datosActualizados.plantillas !== undefined) {
+    normalizedDatos.plantillas = Array.isArray(datosActualizados.plantillas)
+      ? datosActualizados.plantillas.map((p) => (typeof p === 'object' ? p.id : p)).filter((id) => id !== undefined && id !== null)
+      : [];
+  }
+  if (datosActualizados.imagenes !== undefined) {
+    normalizedDatos.imagenes = Array.isArray(datosActualizados.imagenes) ? datosActualizados.imagenes.map(img => typeof img === 'object' ? img.id : img) : [];
+  }
+
   const token = sessionStorage.getItem('token');
-
-  // Normalizar para el backend (Prisma schema)
-  const normalizedDatos = {
-    matricula: datosActualizados.matricula,
-    marca: datosActualizados.marca,
-    modelo: datosActualizados.modelo,
-    fechaCompra: datosActualizados.fechaCompra ? new Date(datosActualizados.fechaCompra).toISOString() : undefined,
-    anyosAntiguedad: datosActualizados.anyosAntiguedad !== undefined ? Number(datosActualizados.anyosAntiguedad) : undefined,
-    tipo: datosActualizados.tipo,
-    kilometrosTotales: datosActualizados.kilometrosTotales !== undefined ? Number(datosActualizados.kilometrosTotales) : undefined,
-    alimentacion: datosActualizados.alimentacion,
-    precio: datosActualizados.precio !== undefined ? Number(datosActualizados.precio) : undefined,
-    nuevo: datosActualizados.nuevo !== undefined ? Boolean(datosActualizados.nuevo) : undefined,
-    gastoPorKm: datosActualizados.gastoPorKm !== undefined ? Number(datosActualizados.gastoPorKm) : undefined,
-    estado: datosActualizados.estado,
-    proximaItv: datosActualizados.proximaItv,
-    foto: datosActualizados.foto,
-    idImagen: datosActualizados.idImagen,
-    fotoHover: datosActualizados.fotoHover,
-  };
-
   const response = await fetchWithLogging(`${AUTH_API_URL}/${matricula}`, {
     method: 'PATCH',
     headers: {

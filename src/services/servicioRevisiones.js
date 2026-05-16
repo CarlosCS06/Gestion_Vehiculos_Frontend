@@ -38,7 +38,7 @@ export const crearRevision = async (revision) => {
 export const actualizarRevision = async (id, datosActualizados) => {
   const token = sessionStorage.getItem('token');
   const response = await fetchWithLogging(`${AUTH_API_URL}/${id}`, {
-    method: 'PUT',
+    method: 'PATCH',
     headers: {
       'Content-Type': 'application/json',
       'Authorization': `Bearer ${token}`

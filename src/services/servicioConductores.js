@@ -45,11 +45,11 @@ const normalizarConductor = (c) => {
   // Y NO incluimos el objeto image para evitar conflictos en el backend (Prisma)
   if (c.imageId) {
     normalized.imageId = c.imageId;
-  } else if (c.image && !(c.image instanceof File)) {
-    // Solo si no hay imageId, intentamos mandar el objeto (compatibilidad)
+  } else if (c.image && !(c.image instanceof File) && c.image.url) {
+    // Solo enviamos el objeto image si tiene una URL válida
     normalized.image = {
       name: c.image.name || c.image.nombre || `conductor_${c.dni}`,
-      url: c.image.url || ''
+      url: c.image.url
     };
   }
 
@@ -72,6 +72,8 @@ export const obtenerConductorPorDni = async (dni) => {
     return data ? mapearConductor(data) : null;
   } catch (error) {
     if (error.status === 404) return null;
+    // Si no hay token y nos da 401, devolvemos null para no bloquear flujos públicos
+    if (error.status === 401 && !sessionStorage.getItem('token')) return null;
     throw error;
   }
 };

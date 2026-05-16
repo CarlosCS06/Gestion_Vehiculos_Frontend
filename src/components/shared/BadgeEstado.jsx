@@ -8,8 +8,8 @@ const mapaEstado = {
 };
 
 const BadgeEstado = ({ estado }) => {
-  // Aseguramos que el estado sea comparable (minúsculas y no nulo)
-  const estadoNormalizado = (estado || '').toLowerCase();
+  // Aseguramos que el estado sea comparable (mayúsculas y no nulo)
+  const estadoNormalizado = (estado || '').toUpperCase();
   const config = mapaEstado[estadoNormalizado] || mapaEstado[ESTADO_VEHICULO.DISPONIBLE];
 
   return (

@@ -26,54 +26,77 @@ export const obtenerProductosPetroliferos = async () => {
   return obtenerJsonCarburantes('Listados/ProductosPetroliferos/');
 };
 
-export const obtenerEstacionesPorFiltros = async ({
-  idComunidad,
-  idProvincia,
-  idMunicipio,
-  idProducto,
-}) => {
-  if (idMunicipio && idProducto) {
-    return obtenerJsonCarburantes(
-      `EstacionesTerrestres/FiltroMunicipioProducto/${idMunicipio}/${idProducto}`
-    );
+/**
+ * Obtiene las estaciones procesadas (precios medios, más barata, etc.) desde el backend
+ * @param {Object} filtros - Estructura PLANTILLA_ESTACION
+ */
+export const obtenerEstacionesPorFiltros = async (filtros) => {
+  const { idComunidad, idProvincia, idMunicipio, idProducto, matriculaVehiculo } = filtros;
+  
+  // URL de vuestro backend
+  const API_BACKEND = 'https://gestion-vehiculos-backend.vercel.app/api/estaciones';
+
+  const payload = {
+    matriculaVehiculo: matriculaVehiculo || null,
+    IDCCAA: idComunidad || null,
+    idProvincia: idProvincia || null,
+    idMunicipio: idMunicipio || null,
+    idProducto: String(idProducto), // El backend lo espera como string obligatorio
+  };
+
+  const token = sessionStorage.getItem('token');
+
+  const response = await fetch(API_BACKEND, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${token}`
+    },
+    body: JSON.stringify(payload),
+  });
+
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}));
+    throw new Error(errorData.error || 'Error al obtener datos de carburantes del backend');
   }
 
-  if (idProvincia && idProducto) {
-    return obtenerJsonCarburantes(
-      `EstacionesTerrestres/FiltroProvinciaProducto/${idProvincia}/${idProducto}`
-    );
-  }
-
-  if (idComunidad && idProducto) {
-    return obtenerJsonCarburantes(
-      `EstacionesTerrestres/FiltroCCAAProducto/${idComunidad}/${idProducto}`
-    );
-  }
-
-  throw new Error('Debes seleccionar al menos Comunidad Autónoma y carburante');
+  // Devuelve la estructura ESTACIONES_PROCESADAS
+  return response.json();
 };
 
-export const obtenerPrecioMedio = (respuestaApi, nombreProducto) => {
-  const estaciones = respuestaApi?.ListaEESSPrecio || [];
+/**
+ * Función de utilidad para extraer el precio medio según el nivel de detalle disponible
+ */
+export const obtenerPrecioMedio = (datosProcesados) => {
+  if (!datosProcesados) return null;
+  
+  // Prioridad: Municipio > Provincia > CCAA
+  return datosProcesados.precioMedioMunicipio || 
+         datosProcesados.precioMedioProvincia || 
+         datosProcesados.precioMedioCCAA || 
+         null;
+};
 
-  const clavesPrecio = [
-    nombreProducto,
-    `Precio ${nombreProducto}`,
-  ].map((c) => c.toLowerCase());
-
-  const precios = estaciones
-    .map((estacion) => {
-      const claveEncontrada = Object.keys(estacion).find((clave) =>
-        clavesPrecio.includes(clave.toLowerCase())
-      );
-
-      if (!claveEncontrada) return null;
-
-      return Number(String(estacion[claveEncontrada]).replace(',', '.'));
-    })
-    .filter((precio) => Number.isFinite(precio) && precio > 0);
-
-  if (precios.length === 0) return null;
-
-  return precios.reduce((total, precio) => total + precio, 0) / precios.length;
+/**
+ * Genera una URL de Google Maps para una gasolinera con coordenadas
+ * @param {string|number} latitud - Latitud de la gasolinera
+ * @param {string|number} longitud - Longitud de la gasolinera
+ * @param {string} nombre - Nombre o dirección de la gasolinera (opcional)
+ * @returns {string} URL de Google Maps
+ */
+export const generarUrlGoogleMaps = (latitud, longitud, nombre = '') => {
+  if (!latitud || !longitud) {
+    if (nombre) {
+      return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(nombre)}`;
+    }
+    return null;
+  }
+  
+  const lat = parseFloat(String(latitud).replace(',', '.'));
+  const lng = parseFloat(String(longitud).replace(',', '.'));
+  
+  if (isNaN(lat) || isNaN(lng)) return null;
+  
+  const query = nombre ? `${nombre} ${lat},${lng}` : `${lat},${lng}`;
+  return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(query)}`;
 };

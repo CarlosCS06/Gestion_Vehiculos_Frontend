@@ -13,7 +13,7 @@ export const normalizarEstadoViaje = (estado) => {
   }
 
   const valor = String(estado).trim().toLowerCase();
-  if (valor === 'pendiente') {
+  if (valor === 'pendiente' || valor === 'programado') {
     return ESTADO_VIAJE.PENDIENTE;
   }
   if (valor === 'en_curso' || valor === 'en curso' || valor === 'activo') {
@@ -28,6 +28,49 @@ export const normalizarEstadoViaje = (estado) => {
   }
 
   return ESTADO_VIAJE.PENDIENTE;
+};
+
+/**
+ * Calcula el estado de un viaje basándose en las horas de sus trayectos
+ * y la hora actual.
+ */
+export const calcularEstadoViaje = (viaje) => {
+  if (!viaje.trayectos || viaje.trayectos.length === 0) {
+    return normalizarEstadoViaje(viaje.estado);
+  }
+
+  const ahora = new Date();
+  
+  // Extraer todas las horas válidas
+  const horasSalida = viaje.trayectos
+    .map(t => t.horaSalida ? new Date(t.horaSalida) : null)
+    .filter(d => d && !isNaN(d.getTime()));
+  
+  const horasLlegada = viaje.trayectos
+    .map(t => t.horaLlegada ? new Date(t.horaLlegada) : null)
+    .filter(d => d && !isNaN(d.getTime()));
+
+  if (horasSalida.length === 0) {
+    return normalizarEstadoViaje(viaje.estado);
+  }
+
+  // El viaje empieza con el primer trayecto y termina con el último
+  const primeraSalida = new Date(Math.min(...horasSalida.map(h => h.getTime())));
+  
+  // Si no hay horas de llegada, no podemos marcarlo como completado automáticamente por tiempo
+  const ultimaLlegada = horasLlegada.length > 0 
+    ? new Date(Math.max(...horasLlegada.map(h => h.getTime()))) 
+    : null;
+
+  if (ahora < primeraSalida) {
+    return ESTADO_VIAJE.PENDIENTE;
+  }
+
+  if (ultimaLlegada && ahora >= ultimaLlegada) {
+    return ESTADO_VIAJE.COMPLETADO;
+  }
+
+  return ESTADO_VIAJE.EN_CURSO;
 };
 
 /**
@@ -47,9 +90,10 @@ export const crearTrayectoDeViajeVacio = () => ({
 
 export const crearViajeVacio = () => ({
   descripcion: '',
-  conductor: '',
-  matricula: '',
-  fecha: '',
+  conductorDni: '',
+  vehiculoMatricula: '',
+  fechaSalida: '',
+  fechaLlegada: '',
   origen: '',
   destino: '',
   kmSalida: '',

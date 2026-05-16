@@ -1,5 +1,6 @@
 import { createContext, useContext, useState, useEffect } from 'react';
 import { iniciarSesion, verificarDniConductor, registrarConductor, preRegistrarUsuario as preRegistrar } from '../services/servicioAuth.js';
+import { obtenerConductorPorDni } from '../services/servicioConductores.js';
 
 const ContextoAuth = createContext(null);
 
@@ -24,6 +25,28 @@ export const ProveedorAuth = ({ children }) => {
     return null;
   });
   const [cargando, setCargando] = useState(false);
+  const [cargandoFoto, setCargandoFoto] = useState(false);
+
+  // Efecto para cargar la foto del conductor si no está presente
+  useEffect(() => {
+    const cargarFotoSiFalta = async () => {
+      if (usuario && usuario.dni && !usuario.fotoUrl && usuario.rol === 'conductor' && !cargandoFoto) {
+        setCargandoFoto(true);
+        try {
+          const conductor = await obtenerConductorPorDni(usuario.dni);
+          if (conductor && conductor.image?.url) {
+            actualizarDatosUsuario({ fotoUrl: conductor.image.url });
+          }
+        } catch (error) {
+          console.warn('No se pudo cargar la foto del conductor:', error);
+        } finally {
+          setCargandoFoto(false);
+        }
+      }
+    };
+
+    cargarFotoSiFalta();
+  }, [usuario?.dni, usuario?.fotoUrl, usuario?.rol]);
 
   const login = async (dni, contrasena) => {
     const usuarioAuth = await iniciarSesion(dni, contrasena);

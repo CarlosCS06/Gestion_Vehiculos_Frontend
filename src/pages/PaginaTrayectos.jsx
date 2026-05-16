@@ -44,6 +44,8 @@ import {
   actualizarTrayecto,
   eliminarTrayecto,
 } from '../services/servicioTrayectos.js';
+import { obtenerConductores } from '../services/servicioConductores.js';
+import { formatForDateTimeLocal, formatDisplayDate, safeIsoString } from '../utils/dateUtils.js';
 import { crearTrayectoVacio } from '../models/Trayecto.js';
 
 const useEstilos = makeStyles({
@@ -111,6 +113,7 @@ const PaginaTrayectos = () => {
   const [idEliminar, setIdEliminar] = useState('');
   const [error, setError] = useState('');
   const [procesando, setProcesando] = useState(false);
+  const [listaConductores, setListaConductores] = useState([]);
 
   const cargarTrayectos = useCallback(async () => {
     setCargando(true);
@@ -146,6 +149,7 @@ const PaginaTrayectos = () => {
 
   useEffect(() => {
     cargarTrayectos();
+    obtenerConductores().then(setListaConductores).catch(console.error);
   }, [cargarTrayectos]);
 
   const abrirDialogoCrear = () => {
@@ -165,11 +169,11 @@ const PaginaTrayectos = () => {
     setProcesando(true);
     try {
       if (editando) {
-        // 1. Guardar el trayecto actual (Machacando info anterior)
-        await actualizarTrayecto(trayectoActual.id, trayectoActual);
+        // Al actualizar, quitamos el ID del cuerpo para evitar confusiones en el backend
+        const { id, ...datosSinId } = trayectoActual;
+        await actualizarTrayecto(trayectoActual.id, datosSinId);
         
-        // 2. Lógica de encadenamiento automático:
-        // Si hemos cambiado el destino, buscamos si hay un "siguiente" trayecto para este conductor
+        // Lógica de encadenamiento automático
         const siguienteTrayecto = trayectos.find(t => 
           t.conductor === trayectoActual.conductor && 
           t.id !== trayectoActual.id &&
@@ -177,14 +181,10 @@ const PaginaTrayectos = () => {
         );
 
         if (siguienteTrayecto && siguienteTrayecto.origen !== trayectoActual.destino) {
-          console.log(`Encadenando automáticamente: Actualizando origen de ${siguienteTrayecto.id} a ${trayectoActual.destino}`);
-          await actualizarTrayecto(siguienteTrayecto.id, { 
-            ...siguienteTrayecto, 
-            origen: trayectoActual.destino 
-          });
+          const { id: sId, ...sDatosSinId } = siguienteTrayecto;
+          await actualizarTrayecto(sId, { ...sDatosSinId, origen: trayectoActual.destino });
         }
       } else {
-        // Crear nuevo (asegurando que no lleve ID previo)
         const nuevoTrayecto = { ...trayectoActual };
         delete nuevoTrayecto.id;
         await crearTrayecto(nuevoTrayecto);
@@ -223,7 +223,12 @@ const PaginaTrayectos = () => {
   };
 
   const manejarCambio = (campo, valor) => {
-    setTrayectoActual((prev) => ({ ...prev, [campo]: valor }));
+    if (campo === 'horaSalida' || campo === 'horaLlegada') {
+      const isoValor = safeIsoString(valor);
+      setTrayectoActual((prev) => ({ ...prev, [campo]: isoValor }));
+    } else {
+      setTrayectoActual((prev) => ({ ...prev, [campo]: valor }));
+    }
   };
 
   if (cargando) {
@@ -311,7 +316,12 @@ const PaginaTrayectos = () => {
               <div className={estilos.formulario}>
                 <div className={estilos.filaFormulario}>
                   <Field label="Origen" required>
-                    <Input value={trayectoActual.origen || ''} onChange={(_, d) => manejarCambio('origen', d.value)} placeholder="Madrid" />
+                    <Input 
+                      disabled={editando}
+                      value={trayectoActual.origen || ''} 
+                      onChange={(_, d) => manejarCambio('origen', d.value)} 
+                      placeholder="Madrid" 
+                    />
                   </Field>
                   <Field label="Destino" required>
                     <Input value={trayectoActual.destino || ''} onChange={(_, d) => manejarCambio('destino', d.value)} placeholder="Barcelona" />
@@ -319,10 +329,10 @@ const PaginaTrayectos = () => {
                 </div>
                 <div className={estilos.filaFormulario}>
                   <Field label="Hora salida">
-                    <Input type="datetime-local" value={trayectoActual.horaSalida || ''} onChange={(_, d) => manejarCambio('horaSalida', d.value)} />
+                    <Input type="datetime-local" value={formatForDateTimeLocal(trayectoActual.horaSalida)} onChange={(_, d) => manejarCambio('horaSalida', d.value)} />
                   </Field>
                   <Field label="Hora llegada">
-                    <Input type="datetime-local" value={trayectoActual.horaLlegada || ''} onChange={(_, d) => manejarCambio('horaLlegada', d.value)} />
+                    <Input type="datetime-local" value={formatForDateTimeLocal(trayectoActual.horaLlegada)} onChange={(_, d) => manejarCambio('horaLlegada', d.value)} />
                   </Field>
                 </div>
                 <div className={estilos.filaFormulario}>
@@ -333,26 +343,19 @@ const PaginaTrayectos = () => {
                     <Input type="number" step="0.01" value={String(trayectoActual.gastoGasolina || 0)} onChange={(_, d) => manejarCambio('gastoGasolina', Number(d.value))} />
                   </Field>
                 </div>
-                <Field label="DNI Conductor">
-                  <Input value={trayectoActual.conductor || ''} onChange={(_, d) => manejarCambio('conductor', d.value)} placeholder="12345678A" />
+                <Field label="Conductor">
+                  <Select
+                    value={trayectoActual.conductor || ''}
+                    onChange={(_, d) => manejarCambio('conductor', d.value)}
+                  >
+                    <option value="">Selecciona un conductor...</option>
+                    {listaConductores.map(c => (
+                      <option key={c.dni} value={c.dni}>
+                        {c.dni} - {c.nombre} {c.apellidos}
+                      </option>
+                    ))}
+                  </Select>
                 </Field>
-                <div className={estilos.filaFormulario}>
-                  <Field label="Estado">
-                    <Select
-                      value={trayectoActual.activo ? 'activo' : trayectoActual.completado ? 'completado' : 'programado'}
-                      onChange={(_, d) => {
-                        const val = d.value;
-                        manejarCambio('activo', val === 'activo');
-                        manejarCambio('completado', val === 'completado');
-                        manejarCambio('programado', val === 'programado');
-                      }}
-                    >
-                      <option value="programado">Programado</option>
-                      <option value="activo">Activo</option>
-                      <option value="completado">Completado</option>
-                    </Select>
-                  </Field>
-                </div>
               </div>
             </DialogContent>
             <DialogActions>

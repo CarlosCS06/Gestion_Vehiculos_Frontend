@@ -1,9 +1,9 @@
 // Modelo de Vehículo
 // Estados posibles del vehículo
 export const ESTADO_VEHICULO = {
-  DISPONIBLE: 'disponible',
-  EN_TRAYECTO: 'en_trayecto',
-  AVERIADO: 'averiado',
+  DISPONIBLE: 'DISPONIBLE',
+  EN_TRAYECTO: 'EN_TRAYECTO',
+  AVERIADO: 'AVERIADO',
 };
 
 // Tipos de alimentación
@@ -33,14 +33,18 @@ export const crearVehiculoVacio = () => ({
   matricula: '',
   marca: '',
   modelo: '',
-  tipo: TIPO_VEHICULO.COCHE,
+  tipo: TIPO_VEHICULO.TURISMO,
   alimentacion: TIPO_ALIMENTACION.GASOLINA,
+  estado: ESTADO_VEHICULO.DISPONIBLE,
   precio: 0,
   fechaCompra: '',
   kilometrosTotales: 0,
-  gastoPorKm: 0,
+  gastoCombustiblePorKiloetro: 0,
+  tipoGastoVehiculo: 'LITROS',
+  capacidadTanqueCombustible: 0,
   anyosAntiguedad: 0,
   proximaItv: '',
+  fechaMatriculacion: '',
   foto: '',
   fotoHover: '',
   nuevo: true,
@@ -54,4 +58,6 @@ export const crearVehiculoVacio = () => ({
   carburanteId: '',
   carburanteNombre: '',
   precioCarburanteActual: 0,
+  imagenes: [],
+  plantillas: [],
 });

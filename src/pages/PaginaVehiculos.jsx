@@ -45,10 +45,12 @@ import {
   Wrench24Regular,
   ReceiptMoney24Regular,
   Search24Regular,
+  Image24Regular,
 } from '@fluentui/react-icons';
 import { useAuth } from '../context/ContextoAuth.jsx';
 import BadgeEstado from '../components/shared/BadgeEstado.jsx';
 import DialogoConfirmacion from '../components/shared/DialogoConfirmacion.jsx';
+import ModalGestionPlantilla from '../components/shared/ModalGestionPlantilla.jsx';
 import {
   obtenerComunidadesAutonomas,
   obtenerProvinciasPorComunidad,
@@ -56,11 +58,13 @@ import {
   obtenerProductosPetroliferos,
   obtenerEstacionesPorFiltros,
   obtenerPrecioMedio,
+  generarUrlGoogleMaps,
 } from '../services/servicioCarburantes.js';
 import {
   obtenerVehiculos,
   crearVehiculo,
   actualizarVehiculo,
+  eliminarVehiculo,
   obtenerPeriodicidadITV,
   calcularProximaItvSugerida,
   obtenerVehiculoPorMatricula,
@@ -74,6 +78,13 @@ import {
   crearVehiculoVacio,
 } from '../models/Vehiculo.js';
 import { crearImagenVacia } from '../models/Imagenes.js';
+import { obtenerPlantillas,
+  eliminarPlantilla,
+  crearPlantilla,
+  actualizarPlantilla
+} from '../services/servicioPlantillas.js';
+import { obtenerViajes } from '../services/servicioViajes.js';
+import { validarFechasVehiculo } from '../utils/validaciones.js';
 
 const useEstilos = makeStyles({
   pagina: {
@@ -511,12 +522,10 @@ const ModalDetallesVehiculo = ({ vehiculo: vehiculoBase, onCerrar }) => {
         idProvincia: vehiculoCompleto.provinciaId,
         idMunicipio: vehiculoCompleto.municipioId,
         idProducto: vehiculoCompleto.carburanteId,
+        matriculaVehiculo: vehiculoCompleto.matricula,
       });
 
-      const precioMedio = obtenerPrecioMedio(
-        respuesta,
-        vehiculoCompleto.carburanteNombre
-      );
+      const precioMedio = obtenerPrecioMedio(respuesta);
 
       if (!precioMedio) {
         alert('No se ha encontrado precio para ese carburante con esos filtros.');
@@ -526,6 +535,7 @@ const ModalDetallesVehiculo = ({ vehiculo: vehiculoBase, onCerrar }) => {
       setVehiculoCompleto((prev) => ({
         ...prev,
         precioCarburanteActual: Number(precioMedio.toFixed(3)),
+        datosCarburante: respuesta, // Guardamos TODO el objeto procesado para mostrarlo
       }));
 
       alert('Precio actualizado correctamente');
@@ -552,15 +562,16 @@ const ModalDetallesVehiculo = ({ vehiculo: vehiculoBase, onCerrar }) => {
               )}
             </div>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-               <Text size={500} weight="bold">{vehiculoCompleto.marca} {vehiculoCompleto.modelo}</Text>
-               <BadgeEstado estado={vehiculoCompleto.estado} />
+              <Text size={500} weight="bold">{vehiculoCompleto.marca} {vehiculoCompleto.modelo}</Text>
+              <BadgeEstado estado={vehiculoCompleto.estado} />
             </div>
             <Text size={400} style={{ color: tokens.colorBrandForeground1, fontWeight: 'bold' }}>{vehiculoCompleto.matricula}</Text>
-            
+
             <TabList selectedValue={tabActiva} onTabSelect={(_, d) => setTabActiva(d.value)} size="small" style={{ marginTop: '8px' }}>
               <Tab value="general" icon={<Info24Regular />}>General</Tab>
               <Tab value="finanzas" icon={<ReceiptMoney24Regular />}>Finanzas</Tab>
               <Tab value="historial" icon={<Wrench24Regular />}>Historial</Tab>
+              <Tab value="imagenes" icon={<Image24Regular />}>Imágenes</Tab>
             </TabList>
 
             <div style={{ paddingTop: '16px', minHeight: '140px' }}>
@@ -575,7 +586,7 @@ const ModalDetallesVehiculo = ({ vehiculo: vehiculoBase, onCerrar }) => {
                       <div><Text size={200} style={{ color: tokens.colorNeutralForeground3 }} block>Tipo</Text><Text size={300} weight="semibold">{vehiculoCompleto.tipo}</Text></div>
                       <div><Text size={200} style={{ color: tokens.colorNeutralForeground3 }} block>Alimentación</Text><Text size={300} weight="semibold">{vehiculoCompleto.alimentacion}</Text></div>
                       <div><Text size={200} style={{ color: tokens.colorNeutralForeground3 }} block>Kilometraje</Text><Text size={300} weight="semibold">{vehiculoCompleto.kilometrosTotales.toLocaleString('es-ES')} km</Text></div>
-                      <div><Text size={200} style={{ color: tokens.colorNeutralForeground3 }} block>Antigüedad</Text><Text size={300} weight="semibold">{vehiculoCompleto.anyosAntiguedad} años</Text></div>
+                      <div><Text size={200} style={{ color: tokens.colorNeutralForeground3 }} block>Matriculación</Text><Text size={300} weight="semibold">{vehiculoCompleto.fechaMatriculacion ? new Date(vehiculoCompleto.fechaMatriculacion).toLocaleDateString('es-ES') : '—'}</Text></div>
                     </div>
                   )}
                   {tabActiva === 'finanzas' && (
@@ -583,9 +594,105 @@ const ModalDetallesVehiculo = ({ vehiculo: vehiculoBase, onCerrar }) => {
                       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
                         <div><Text size={200} style={{ color: tokens.colorNeutralForeground3 }} block>Precio compra</Text><Text size={300} weight="semibold">{vehiculoCompleto.precio.toLocaleString('es-ES', { style: 'currency', currency: 'EUR' })}</Text></div>
                         <div><Text size={200} style={{ color: tokens.colorNeutralForeground3 }} block>Fecha compra</Text><Text size={300} weight="semibold">{vehiculoCompleto.fechaCompra ? new Date(vehiculoCompleto.fechaCompra).toLocaleDateString('es-ES') : '—'}</Text></div>
-                        <div><Text size={200} style={{ color: tokens.colorNeutralForeground3 }} block>Gasto por Km</Text><Text size={300} weight="semibold">{vehiculoCompleto.gastoPorKm.toLocaleString('es-ES', { style: 'currency', currency: 'EUR', minimumFractionDigits: 2 })}</Text></div>
-                        <div><Text size={200} style={{ color: tokens.colorNeutralForeground3 }} block>Precio carburante actual</Text><Text size={300} weight="semibold">{vehiculoCompleto.precioCarburanteActual ? `${Number(vehiculoCompleto.precioCarburanteActual).toFixed(3)} €/L` : '—'}</Text></div>
+                        <div><Text size={200} style={{ color: tokens.colorNeutralForeground3 }} block>Fecha Matriculación</Text><Text size={300} weight="semibold">{vehiculoCompleto.fechaMatriculacion ? new Date(vehiculoCompleto.fechaMatriculacion).toLocaleDateString('es-ES') : '—'}</Text></div>
+                        <div><Text size={200} style={{ color: tokens.colorNeutralForeground3 }} block>Gasto por Km</Text><Text size={300} weight="semibold">{(vehiculoCompleto.gastoCombustiblePorKiloetro || 0).toLocaleString('es-ES', { style: 'currency', currency: 'EUR', minimumFractionDigits: 2 })}</Text></div>
+                        <div>
+                          <Text size={200} style={{ color: tokens.colorNeutralForeground3 }} block>Precio carburante actual</Text>
+                          <Text size={300} weight="semibold" style={{ color: tokens.colorBrandForeground1 }}>
+                            {vehiculoCompleto.precioCarburanteActual ? `${Number(vehiculoCompleto.precioCarburanteActual).toFixed(3)} €/L` : '—'}
+                          </Text>
+                        </div>
                       </div>
+
+                      {/* --- PANEL DE INTELIGENCIA DE CARBURANTES --- */}
+                      {vehiculoCompleto.datosCarburante && (
+                        <div style={{
+                          marginTop: '12px',
+                          padding: '16px',
+                          backgroundColor: tokens.colorBrandBackground2,
+                          borderRadius: tokens.borderRadiusLarge,
+                          border: `1px solid ${tokens.colorBrandStroke1}`
+                        }}>
+                          <Text weight="bold" style={{ color: tokens.colorBrandForeground1, display: 'block', marginBottom: '12px' }}>
+                            📊 Análisis de Ahorro ({vehiculoCompleto.carburanteNombre})
+                          </Text>
+
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                            {/* Comparativa de Medias */}
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '8px', textAlign: 'center' }}>
+                              {vehiculoCompleto.datosCarburante.precioMedioCCAA && (
+                                <div style={{ padding: '8px', backgroundColor: tokens.colorNeutralBackground1, borderRadius: tokens.borderRadiusMedium }}>
+                                  <Text size={100} block>Media CCAA</Text>
+                                  <Text size={200} weight="bold">{vehiculoCompleto.datosCarburante.precioMedioCCAA.toFixed(3)}€</Text>
+                                </div>
+                              )}
+                              {vehiculoCompleto.datosCarburante.precioMedioProvincia && (
+                                <div style={{ padding: '8px', backgroundColor: tokens.colorNeutralBackground1, borderRadius: tokens.borderRadiusMedium }}>
+                                  <Text size={100} block>Media Prov.</Text>
+                                  <Text size={200} weight="bold">{vehiculoCompleto.datosCarburante.precioMedioProvincia.toFixed(3)}€</Text>
+                                </div>
+                              )}
+                              {vehiculoCompleto.datosCarburante.precioMedioMunicipio && (
+                                <div style={{ padding: '8px', backgroundColor: tokens.colorNeutralBackground1, borderRadius: tokens.borderRadiusMedium }}>
+                                  <Text size={100} block>Media Mun.</Text>
+                                  <Text size={200} weight="bold">{vehiculoCompleto.datosCarburante.precioMedioMunicipio.toFixed(3)}€</Text>
+                                </div>
+                              )}
+                            </div>
+
+                            {/* La más barata */}
+                            <div style={{ padding: '12px', backgroundColor: tokens.colorPaletteGreenBackground1, borderRadius: tokens.borderRadiusMedium, border: `1px solid ${tokens.colorPaletteGreenBorder1}` }}>
+                              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
+                                <Text size={200} weight="bold" style={{ color: tokens.colorPaletteGreenForeground1 }}>📍 Opción más económica encontrada</Text>
+                                <Badge color="success" appearance="filled">
+                                  {vehiculoCompleto.datosCarburante.precioEstacionMasBarataMunicipio || vehiculoCompleto.datosCarburante.precioEstacionMasBarataProvincia || vehiculoCompleto.datosCarburante.precioEstacionMasBarataCCAA} €/L
+                                </Badge>
+                              </div>
+                              <a 
+                                href={generarUrlGoogleMaps(
+                                  vehiculoCompleto.datosCarburante.latitudEstacionMasBarataMunicipio || vehiculoCompleto.datosCarburante.latitudEstacionMasBarataProvincia || vehiculoCompleto.datosCarburante.latitudEstacionMasBarataCCAA || vehiculoCompleto.datosCarburante.latitudEstacionMasBarata,
+                                  vehiculoCompleto.datosCarburante.longitudEstacionMasBarataMunicipio || vehiculoCompleto.datosCarburante.longitudEstacionMasBarataProvincia || vehiculoCompleto.datosCarburante.longitudEstacionMasBarataCCAA || vehiculoCompleto.datosCarburante.longitudEstacionMasBarata,
+                                  vehiculoCompleto.datosCarburante.direccionEstacionMasBarataMunicipio || vehiculoCompleto.datosCarburante.direccionEstacionMasBarataProvincia || vehiculoCompleto.datosCarburante.direccionEstacionMasBarataCCAA
+                                )}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                style={{ color: tokens.colorBrandForeground1, textDecoration: 'none', cursor: 'pointer' }}
+                                title="Abrir en Google Maps"
+                              >
+                                <Text size={200} block style={{ fontStyle: 'italic', textDecoration: 'underline' }}>
+                                  {vehiculoCompleto.datosCarburante.direccionEstacionMasBarataMunicipio || vehiculoCompleto.datosCarburante.direccionEstacionMasBarataProvincia || vehiculoCompleto.datosCarburante.direccionEstacionMasBarataCCAA}
+                                </Text>
+                              </a>
+                              <Text size={100} block style={{ marginTop: '4px', opacity: 0.8 }}>
+                                en {vehiculoCompleto.datosCarburante.municipioEstacionMasBarataMunicipio || vehiculoCompleto.datosCarburante.municipioEstacionMasBarataProvincia || 'su zona'}
+                              </Text>
+                            </div>
+
+                            {/* Listado mini si hay estaciones en municipio */}
+                            {vehiculoCompleto.datosCarburante.estacionesMunicipio?.length > 0 && (
+                              <div style={{ marginTop: '4px' }}>
+                                <Text size={100} weight="semibold" block style={{ marginBottom: '8px' }}>Otras gasolineras en {vehiculoCompleto.municipioNombre}:</Text>
+                                <div style={{ maxHeight: '100px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                                  {vehiculoCompleto.datosCarburante.estacionesMunicipio.slice(0, 5).map((est, idx) => (
+                                    <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', padding: '4px', borderBottom: `1px solid ${tokens.colorNeutralStroke2}` }}>
+                                      <a 
+                                        href={generarUrlGoogleMaps(est.latitud || est.Latitud || est.lat, est.longitud || est.Longitud || est.lng || est.lon, est.direccion)}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        style={{ color: tokens.colorBrandForeground1, textDecoration: 'underline', cursor: 'pointer', flex: 1, minWidth: 0 }}
+                                        title="Abrir en Google Maps"
+                                      >
+                                        <Text size={100} truncate>{est.direccion}</Text>
+                                      </a>
+                                      <Text size={100} weight="bold">{est.precio}€</Text>
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      )}
 
                       <div style={{ borderTop: `1px solid ${tokens.colorNeutralStroke2}`, paddingTop: '16px' }}>
                         <Text size={400} weight="semibold" style={{ marginBottom: '12px' }}>Configuración de Carburante</Text>
@@ -677,6 +784,25 @@ const ModalDetallesVehiculo = ({ vehiculo: vehiculoBase, onCerrar }) => {
                       <div><Text size={200} style={{ color: tokens.colorNeutralForeground3 }} block>Viajes</Text><Text size={300} weight="semibold">{vehiculoCompleto.trayectos?.length || 0}</Text></div>
                     </div>
                   )}
+                  {tabActiva === 'imagenes' && (
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(120px, 1fr))', gap: '12px' }}>
+                      {vehiculoCompleto.imagenes && vehiculoCompleto.imagenes.length > 1 ? (
+                        vehiculoCompleto.imagenes.slice(1).map((img, idx) => (
+                          <div key={idx} style={{ position: 'relative', aspectRatio: '1', backgroundColor: tokens.colorNeutralBackground2, borderRadius: tokens.borderRadiusMedium, overflow: 'hidden' }}>
+                            <img
+                              src={img.url}
+                              alt={`Imagen ${idx + 2}`}
+                              style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                            />
+                          </div>
+                        ))
+                      ) : (
+                        <div style={{ gridColumn: '1 / -1', textAlign: 'center', padding: '24px' }}>
+                          <Text size={300} style={{ color: tokens.colorNeutralForeground3 }}>No hay imágenes adicionales</Text>
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </>
               )}
             </div>
@@ -699,6 +825,10 @@ const PaginaVehiculos = () => {
   const [averiasAbiertas, setAveriasAbiertas] = useState([]);
   const [cargando, setCargando] = useState(true);
   const [filtroEstado, setFiltroEstado] = useState('Todos');
+  const [plantillas, setPlantillas] = useState([]);
+  const [confirmacionPlantillaAbierta, setConfirmacionPlantillaAbierta] = useState(false);
+  const [dialogoPlantillaAbierto, setDialogoPlantillaAbierto] = useState(false);
+  const [plantillaEditar, setPlantillaEditar] = useState(null);
   const [dialogoAbierto, setDialogoAbierto] = useState(false);
   const [confirmacionAbierta, setConfirmacionAbierta] = useState(false);
   const [vehiculoActual, setVehiculoActual] = useState(crearVehiculoVacio());
@@ -709,6 +839,7 @@ const PaginaVehiculos = () => {
   const [subiendoImagen, setSubiendoImagen] = useState(false);
   const [vehiculoEnDetalle, setVehiculoEnDetalle] = useState(null);
   const [terminoBusqueda, setTerminoBusqueda] = useState('');
+  const [erroresValidacion, setErroresValidacion] = useState({});
 
   const obtenerVehiculosAfectados = (averia) => {
     if (!averia) return [];
@@ -724,9 +855,39 @@ const PaginaVehiculos = () => {
   const cargarVehiculos = useCallback(async () => {
     setCargando(true);
     try {
-      const [datosVehiculos, datosAverias] = await Promise.all([obtenerVehiculos(), obtenerAverias()]);
-      setVehiculos(datosVehiculos);
-      setAveriasAbiertas(datosAverias.filter((a) => !a.resuelta && !(a.fechaFinReparacion && a.fechaFinReparacion.trim())));
+      const [datosVehiculos, datosAverias, datosViajes] = await Promise.all([
+        obtenerVehiculos(),
+        obtenerAverias(),
+        obtenerViajes()
+      ]);
+
+      const averiasActivas = datosAverias.filter((a) => !a.resuelta && !(a.fechaFinReparacion && a.fechaFinReparacion.trim()));
+
+      // Sincronización de estados basada en Viajes (Lógica de limpieza)
+      const matriculasEnTrayecto = new Set(
+        datosViajes
+          .filter(v => v.estado === 'ACTIVO' && v.vehiculoMatricula)
+          .map(v => v.vehiculoMatricula.trim().toUpperCase())
+      );
+
+      const vehiculosSincronizados = await Promise.all(datosVehiculos.map(async (vehiculo) => {
+        if (!vehiculo.matricula) return vehiculo;
+
+        const matricula = vehiculo.matricula.trim().toUpperCase();
+        const vEstado = String(vehiculo.estado || '').toUpperCase();
+        const debeEstarEnTrayecto = matriculasEnTrayecto.has(matricula);
+
+        // Si el vehículo dice estar EN_TRAYECTO pero no tiene viajes activos, lo corregimos en el backend
+        if (vEstado === 'EN_TRAYECTO' && !debeEstarEnTrayecto) {
+          console.log(`[SYNC-VEH] Corrigiendo ${matricula} a DISPONIBLE`);
+          await actualizarVehiculo(matricula, { estado: 'DISPONIBLE' });
+          return { ...vehiculo, estado: 'DISPONIBLE' };
+        }
+        return vehiculo;
+      }));
+
+      setVehiculos(vehiculosSincronizados);
+      setAveriasAbiertas(averiasActivas);
     } catch (err) {
       setError(err.message || 'Error al cargar los vehículos');
     }
@@ -735,6 +896,12 @@ const PaginaVehiculos = () => {
 
   useEffect(() => {
     cargarVehiculos();
+    obtenerPlantillas()
+      .then(datos => {
+        console.log('Plantillas cargadas:', datos);
+        setPlantillas(Array.isArray(datos) ? datos : []);
+      })
+      .catch(err => console.error('Error al cargar plantillas:', err));
   }, [cargarVehiculos]);
 
   // Recargar vehículos cuando la ventana vuelve a tener foco (p. ej., cuando se vuelve desde otra pestaña)
@@ -780,7 +947,7 @@ const PaginaVehiculos = () => {
   const vehiculosFiltrados = vehiculosConEstado.filter((v) => {
     // Filtro categórico
     if (filtroEstado !== 'Todos' && v.estado !== filtroEstado) return false;
-    
+
     // Luego filtro por búsqueda global
     if (!terminoBusqueda) return true;
     const term = terminoBusqueda.toLowerCase();
@@ -818,11 +985,24 @@ const PaginaVehiculos = () => {
     setSubiendoImagen(true);
     setError('');
     try {
-      const resp = await subirImagen(archivo, vehiculoActual.matricula);
+      // Si estamos editando, pasamos la matrícula para vincularla inmediatamente en el backend.
+      // Si es un vehículo nuevo, NO la pasamos para evitar el error 500 de matrícula inexistente.
+      const matriculaParaSubir = editando ? vehiculoActual.matricula : null;
+      const resp = await subirImagen(archivo, matriculaParaSubir);
+
       // Guardamos la URL para la vista previa, el ID y el Nombre para el backend
       manejarCambio('foto', resp.url);
       manejarCambio('idImagen', resp.id);
       manejarCambio('nombreImagen', resp.nombre || resp.display_name || 'vehiculo_archivo');
+
+      // Añadir al array de imágenes si no está ya (evitar duplicados)
+      setVehiculoActual(prev => {
+        const imagenesActuales = prev.imagenes || [];
+        if (!imagenesActuales.some(img => img.id === resp.id)) {
+          return { ...prev, imagenes: [...imagenesActuales, resp] };
+        }
+        return prev;
+      });
     } catch (err) {
       setError('Error al subir imagen local: ' + err.message);
     } finally {
@@ -838,13 +1018,26 @@ const PaginaVehiculos = () => {
       const datosImagen = crearImagenVacia();
       datosImagen.url = url;
       datosImagen.nombre = `vehiculo_${vehiculoActual.matricula || 'nuevo'}`;
-      datosImagen.vehiculoMatricula = vehiculoActual.matricula;
+
+      // Solo pasamos la matrícula si el vehículo ya existe para evitar error 500
+      if (editando) {
+        datosImagen.vehiculoMatricula = vehiculoActual.matricula;
+      }
 
       const resp = await subirImagenPorUrl(datosImagen);
       // Guardamos la URL para la vista previa, el ID y el Nombre para el backend
       manejarCambio('foto', resp.url);
       manejarCambio('idImagen', resp.id);
       manejarCambio('nombreImagen', resp.nombre || resp.display_name || 'vehiculo_internet');
+
+      // Añadir al array de imágenes
+      setVehiculoActual(prev => {
+        const imagenesActuales = prev.imagenes || [];
+        if (!imagenesActuales.some(img => img.id === resp.id)) {
+          return { ...prev, imagenes: [...imagenesActuales, resp] };
+        }
+        return prev;
+      });
     } catch (err) {
       setError('Error al procesar imagen de internet: ' + err.message);
     } finally {
@@ -853,14 +1046,42 @@ const PaginaVehiculos = () => {
   };
 
   const manejarGuardar = async () => {
+    // --- VALIDACIONES ---
+    const errores = {};
+
+    if (!vehiculoActual.matricula || !vehiculoActual.matricula.trim()) {
+      errores.matricula = 'La matrícula es obligatoria.';
+    }
+    if (!vehiculoActual.marca || !vehiculoActual.marca.trim()) {
+      errores.marca = 'La marca es obligatoria.';
+    }
+    if (!vehiculoActual.modelo || !vehiculoActual.modelo.trim()) {
+      errores.modelo = 'El modelo es obligatorio.';
+    }
+
+    // Validar fechas: matriculación no puede ser posterior a compra
+    const resFechas = validarFechasVehiculo(vehiculoActual.fechaMatriculacion, vehiculoActual.fechaCompra);
+    if (!resFechas.valido) {
+      errores.fechaMatriculacion = resFechas.mensaje;
+    }
+
+    if (Object.keys(errores).length > 0) {
+      setErroresValidacion(errores);
+      return;
+    }
+    setErroresValidacion({});
+    // --- FIN VALIDACIONES ---
+
     try {
       // Filtrar los campos que se envían al backend
       const camposPermitidos = [
         'matricula', 'marca', 'modelo', 'tipo', 'alimentacion', 'precio',
-        'fechaCompra', 'kilometrosTotales', 'gastoPorKm', 'anyosAntiguedad',
+        'fechaCompra', 'fechaMatriculacion', 'kilometrosTotales', 'gastoCombustiblePorKiloetro',
+        'tipoGastoVehiculo', 'capacidadTanqueCombustible',
         'proximaItv', 'foto', 'fotoHover', 'nuevo', 'idImagen', 'nombreImagen',
         'comunidadAutonomaId', 'comunidadAutonomaNombre', 'provinciaId', 'provinciaNombre',
-        'municipioId', 'municipioNombre', 'carburanteId', 'carburanteNombre', 'precioCarburanteActual'
+        'municipioId', 'municipioNombre', 'carburanteId', 'carburanteNombre', 'precioCarburanteActual',
+        'imagenes', 'plantillas'
       ];
 
       const vehiculoFiltrado = {};
@@ -875,9 +1096,11 @@ const PaginaVehiculos = () => {
       } else {
         await crearVehiculo(vehiculoFiltrado);
       }
+
       setDialogoAbierto(false);
       setArchivoFoto(null);
       cargarVehiculos();
+      obtenerPlantillas().then(setPlantillas).catch(console.error);
       setError('');
     } catch (err) {
       setError(err.message);
@@ -928,9 +1151,9 @@ const PaginaVehiculos = () => {
           <Title2>Vehículos</Title2>
         </div>
         <Toolbar style={{ flexWrap: 'wrap', gap: '8px' }}>
-          <Input 
-            contentBefore={<Search24Regular />} 
-            placeholder="Buscar vehículo..." 
+          <Input
+            contentBefore={<Search24Regular />}
+            placeholder="Buscar vehículo..."
             value={terminoBusqueda}
             onChange={(e) => setTerminoBusqueda(e.target.value)}
             style={{ minWidth: '200px' }}
@@ -1078,8 +1301,8 @@ const PaginaVehiculos = () => {
                   <div className={estilos.datoValor}>{vehiculo.alimentacion}</div>
                 </div>
                 <div>
-                  <div className={estilos.datoEtiqueta}>Antigüedad</div>
-                  <div className={estilos.datoValor}>{vehiculo.anyosAntiguedad} años</div>
+                  <div className={estilos.datoEtiqueta}>Matriculación</div>
+                  <div className={estilos.datoValor}>{vehiculo.fechaMatriculacion ? new Date(vehiculo.fechaMatriculacion).toLocaleDateString('es-ES') : '—'}</div>
                 </div>
                 <div>
                   <div className={estilos.datoEtiqueta}>Precio compra</div>
@@ -1094,9 +1317,11 @@ const PaginaVehiculos = () => {
                   </div>
                 </div>
                 <div>
-                  <div className={estilos.datoEtiqueta}>Gasto/km</div>
+                  <div className={estilos.datoEtiqueta}>Gasto combustible</div>
                   <div className={estilos.datoValor}>
-                    {vehiculo.gastoPorKm.toLocaleString('es-ES', { style: 'currency', currency: 'EUR', minimumFractionDigits: 2 })}
+                    {vehiculo.tipoGastoVehiculo === 'PORCENTAJE'
+                      ? `${(vehiculo.gastoCombustiblePorKiloetro || 0)}%`
+                      : `${(vehiculo.gastoCombustiblePorKiloetro || 0)} L`}
                   </div>
                 </div>
                 <div>
@@ -1139,35 +1364,42 @@ const PaginaVehiculos = () => {
             <DialogContent>
               <div className={estilos.formulario}>
                 <div className={estilos.filaFormulario}>
-                  <Field label="Matrícula" required>
+                  <Field label="Matrícula" required validationState={erroresValidacion.matricula ? 'error' : undefined} validationMessage={erroresValidacion.matricula}>
                     <Input
                       value={vehiculoActual.matricula}
-                      onChange={(_, d) => manejarCambio('matricula', d.value)}
+                      onChange={(_, d) => { manejarCambio('matricula', d.value); setErroresValidacion(prev => ({ ...prev, matricula: undefined })); }}
                       disabled={editando}
                       placeholder="1234-ABC"
                     />
                   </Field>
-                  <Field label="Marca" required>
+                  <Field label="Marca" required validationState={erroresValidacion.marca ? 'error' : undefined} validationMessage={erroresValidacion.marca}>
                     <Input
                       value={vehiculoActual.marca}
-                      onChange={(_, d) => manejarCambio('marca', d.value)}
+                      onChange={(_, d) => { manejarCambio('marca', d.value); setErroresValidacion(prev => ({ ...prev, marca: undefined })); }}
                       placeholder="Toyota"
                     />
                   </Field>
                 </div>
                 <div className={estilos.filaFormulario}>
-                  <Field label="Modelo" required>
+                  <Field label="Modelo" required validationState={erroresValidacion.modelo ? 'error' : undefined} validationMessage={erroresValidacion.modelo}>
                     <Input
                       value={vehiculoActual.modelo}
-                      onChange={(_, d) => manejarCambio('modelo', d.value)}
+                      onChange={(_, d) => { manejarCambio('modelo', d.value); setErroresValidacion(prev => ({ ...prev, modelo: undefined })); }}
                       placeholder="Hilux"
                     />
                   </Field>
                   <Field label="Fecha de compra">
                     <Input
                       type="date"
-                      value={vehiculoActual.fechaCompra}
-                      onChange={(_, d) => manejarCambio('fechaCompra', d.value)}
+                      value={vehiculoActual.fechaCompra ? (typeof vehiculoActual.fechaCompra === 'string' ? vehiculoActual.fechaCompra.split('T')[0] : '') : ''}
+                      onChange={(_, d) => { manejarCambio('fechaCompra', d.value); setErroresValidacion(prev => ({ ...prev, fechaMatriculacion: undefined })); }}
+                    />
+                  </Field>
+                  <Field label="Fecha de matriculación" validationState={erroresValidacion.fechaMatriculacion ? 'error' : undefined} validationMessage={erroresValidacion.fechaMatriculacion}>
+                    <Input
+                      type="date"
+                      value={vehiculoActual.fechaMatriculacion ? (typeof vehiculoActual.fechaMatriculacion === 'string' ? vehiculoActual.fechaMatriculacion.split('T')[0] : '') : ''}
+                      onChange={(_, d) => { manejarCambio('fechaMatriculacion', d.value); setErroresValidacion(prev => ({ ...prev, fechaMatriculacion: undefined })); }}
                     />
                   </Field>
                 </div>
@@ -1210,23 +1442,39 @@ const PaginaVehiculos = () => {
                   </Field>
                 </div>
                 <div className={estilos.filaFormulario}>
-                  <Field label="Gasto por Km (€)">
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                      <Text size={200} weight="semibold">Formato de Gasto</Text>
+                      <Switch 
+                        checked={vehiculoActual.tipoGastoVehiculo === 'PORCENTAJE'}
+                        onChange={(_, d) => manejarCambio('tipoGastoVehiculo', d.checked ? 'PORCENTAJE' : 'LITROS')}
+                        label={vehiculoActual.tipoGastoVehiculo === 'PORCENTAJE' ? '% del Tanque' : 'Litros'}
+                      />
+                    </div>
+                    <Field label={vehiculoActual.tipoGastoVehiculo === 'PORCENTAJE' ? 'Gasto de vehículo (%)' : 'Gasto de vehículo (L)'}>
+                      <Input
+                        type="number"
+                        step="0.01"
+                        value={String(vehiculoActual.gastoCombustiblePorKiloetro || 0)}
+                        onChange={(_, d) => manejarCambio('gastoCombustiblePorKiloetro', Number(d.value))}
+                        contentAfter={vehiculoActual.tipoGastoVehiculo === 'PORCENTAJE' ? '%' : 'L'}
+                      />
+                    </Field>
+                    {vehiculoActual.tipoGastoVehiculo === 'PORCENTAJE' && vehiculoActual.capacidadTanqueCombustible > 0 && (
+                      <Text size={100} style={{ color: tokens.colorNeutralForeground3 }}>
+                        Equivale a {((vehiculoActual.gastoCombustiblePorKiloetro / 100) * vehiculoActual.capacidadTanqueCombustible).toFixed(2)} Litros
+                      </Text>
+                    )}
+                  </div>
+                  <Field label="Capacidad Tanque (L)">
                     <Input
                       type="number"
-                      step="0.01"
-                      value={String(vehiculoActual.gastoPorKm)}
-                      onChange={(_, d) => manejarCambio('gastoPorKm', Number(d.value))}
+                      value={String(vehiculoActual.capacidadTanqueCombustible || 0)}
+                      onChange={(_, d) => manejarCambio('capacidadTanqueCombustible', Number(d.value))}
                     />
                   </Field>
                 </div>
                 <div className={estilos.filaFormulario}>
-                  <Field label="Años de antigüedad">
-                    <Input
-                      type="number"
-                      value={String(vehiculoActual.anyosAntiguedad)}
-                      onChange={(_, d) => manejarCambio('anyosAntiguedad', Number(d.value))}
-                    />
-                  </Field>
                   <Field label="Próxima ITV (Año o fecha)" hint="Se calcula automáticamente pero puedes editarlo">
                     <Input
                       value={vehiculoActual.proximaItv}
@@ -1234,6 +1482,55 @@ const PaginaVehiculos = () => {
                       placeholder="2028 (Pendiente)"
                     />
                   </Field>
+                </div>
+                <div className={estilos.filaFormulario}>
+                  <Field label="Plantillas de Revisión" hint="Asigna una o varias plantillas al vehículo">
+                    <Select
+                      value={(vehiculoActual.plantillas && vehiculoActual.plantillas.length > 0) ? String(vehiculoActual.plantillas[0]) : ''}
+                      onChange={(_, d) => manejarCambio('plantillas', d.value ? [d.value] : [])}
+                    >
+                      <option value="">Sin plantilla (Manual)</option>
+                      {plantillas.map((p) => (
+                        <option key={p.id} value={p.id}>{p.nombre} {p.esItv ? '(ITV)' : ''}</option>
+                      ))}
+                    </Select>
+                  </Field>
+                  <div style={{ display: 'flex', alignItems: 'flex-end', gap: '8px', paddingBottom: '4px' }}>
+                    <Tooltip content="Añadir nueva plantilla" relationship="label">
+                      <Button
+                        icon={<Add24Regular />}
+                        appearance="subtle"
+                        onClick={() => {
+                          setPlantillaEditar(null);
+                          setDialogoPlantillaAbierto(true);
+                        }}
+                      />
+                    </Tooltip>
+                    <Tooltip content="Editar plantilla seleccionada" relationship="label">
+                      <Button
+                        icon={<Edit24Regular />}
+                        appearance="subtle"
+                        disabled={!vehiculoActual.plantillas?.length}
+                        onClick={() => {
+                          const plantillaId = vehiculoActual.plantillas?.[0];
+                          const p = plantillas.find(x => String(x.id) === String(plantillaId));
+                          if (p) {
+                            setPlantillaEditar(p);
+                            setDialogoPlantillaAbierto(true);
+                          }
+                        }}
+                      />
+                    </Tooltip>
+                    <Tooltip content="Eliminar plantilla seleccionada" relationship="label">
+                      <Button
+                        icon={<Delete24Regular />}
+                        appearance="subtle"
+                        disabled={!vehiculoActual.plantillas?.length}
+                        style={{ color: vehiculoActual.plantillas?.length ? tokens.colorPaletteRedForeground1 : 'inherit' }}
+                        onClick={() => setConfirmacionPlantillaAbierta(true)}
+                      />
+                    </Tooltip>
+                  </div>
                 </div>
                 <Field label="Imagen del vehículo (Cloudinary)" hint="Se subirá automáticamente al seleccionar archivo o pegar URL">
                   <div className={estilos.formulario}>
@@ -1311,6 +1608,45 @@ const PaginaVehiculos = () => {
           onCerrar={() => setVehiculoEnDetalle(null)}
         />
       )}
+      <DialogoConfirmacion
+        abierto={confirmacionPlantillaAbierta}
+        titulo="Eliminar plantilla"
+        mensaje="¿Estás seguro de que deseas eliminar esta plantilla de mantenimiento? Los vehículos asociados perderán su configuración automática."
+        onConfirmar={async () => {
+          try {
+            const plantillaId = vehiculoActual.plantillas?.[0];
+            await eliminarPlantilla(plantillaId);
+            setConfirmacionPlantillaAbierta(false);
+            manejarCambio('plantillas', (vehiculoActual.plantillas || []).filter(id => String(id) !== String(plantillaId)));
+            // Recargar plantillas
+            const nuevas = await obtenerPlantillas();
+            setPlantillas(Array.isArray(nuevas) ? nuevas : []);
+          } catch (err) {
+            setError('Error al eliminar plantilla: ' + err.message);
+          }
+        }}
+        onCancelar={() => setConfirmacionPlantillaAbierta(false)}
+      />
+
+      <ModalGestionPlantilla
+        abierto={dialogoPlantillaAbierto}
+        alCerrar={() => setDialogoPlantillaAbierto(false)}
+        plantillaEditar={plantillaEditar}
+        alGuardar={async (datos) => {
+          try {
+            if (plantillaEditar) {
+              await actualizarPlantilla(plantillaEditar.id, datos);
+            } else {
+              const nueva = await crearPlantilla(datos);
+              manejarCambio('plantillas', [nueva.id]);
+            }
+            const nuevas = await obtenerPlantillas();
+            setPlantillas(Array.isArray(nuevas) ? nuevas : []);
+          } catch (err) {
+            setError('Error al guardar plantilla: ' + err.message);
+          }
+        }}
+      />
     </div>
   );
 };

@@ -48,6 +48,7 @@ import {
 } from '../services/servicioRevisiones.js';
 import { obtenerVehiculos } from '../services/servicioVehiculos.js';
 import { crearRevisionVacia } from '../models/Revision.js';
+import { formatForDate } from '../utils/dateUtils.js';
 
 const useEstilos = makeStyles({
   pagina: {
@@ -519,7 +520,7 @@ const PaginaRevisiones = () => {
                   </Select>
                 </Field>
                 <Field label="Fecha" required>
-                  <Input type="date" value={revisionActual.fecha} onChange={(_, d) => manejarCambio('fecha', d.value)} />
+                  <Input type="date" value={formatForDate(revisionActual.fecha)} onChange={(_, d) => manejarCambio('fecha', d.value)} />
                 </Field>
                 <Field label="Lugar" required>
                   <Input value={revisionActual.lugar} onChange={(_, d) => manejarCambio('lugar', d.value)} placeholder="Taller Central Madrid" />

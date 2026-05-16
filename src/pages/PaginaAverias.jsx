@@ -47,7 +47,9 @@ import {
   eliminarAveria,
 } from '../services/servicioAverias.js';
 import { obtenerVehiculos, actualizarVehiculo } from '../services/servicioVehiculos.js';
+import { obtenerConductores } from '../services/servicioConductores.js';
 import { ESTADO_VEHICULO } from '../models/Vehiculo.js';
+import { formatForDate } from '../utils/dateUtils.js';
 import { crearAveriaVacia } from '../models/Averia.js';
 
 const useEstilos = makeStyles({
@@ -159,6 +161,7 @@ const PaginaAverias = () => {
   const [filtroEstado, setFiltroEstado] = useState('Todas');
   const [vehiculosTexto, setVehiculosTexto] = useState('');
   const [listaVehiculos, setListaVehiculos] = useState([]);
+  const [listaConductores, setListaConductores] = useState([]);
 
   const cargarAverias = useCallback(async () => {
     setCargando(true);
@@ -183,6 +186,7 @@ const PaginaAverias = () => {
   useEffect(() => {
     cargarAverias();
     obtenerVehiculos().then(setListaVehiculos).catch(console.error);
+    obtenerConductores().then(setListaConductores).catch(console.error);
   }, [cargarAverias]);
 
   const abrirDialogoCrear = () => {
@@ -471,12 +475,16 @@ const PaginaAverias = () => {
                           />
                         </Tooltip>
                       )}
-                      <Tooltip content="Editar" relationship="label">
-                        <Button icon={<Edit24Regular />} appearance="subtle" size="small" onClick={() => abrirDialogoEditar(averia)} />
-                      </Tooltip>
-                      <Tooltip content="Eliminar" relationship="label">
-                        <Button icon={<Delete24Regular />} appearance="subtle" size="small" onClick={() => confirmarEliminar(averia.id)} />
-                      </Tooltip>
+                      {esAdmin && (
+                        <>
+                          <Tooltip content="Editar" relationship="label">
+                            <Button icon={<Edit24Regular />} appearance="subtle" size="small" onClick={() => abrirDialogoEditar(averia)} />
+                          </Tooltip>
+                          <Tooltip content="Eliminar" relationship="label">
+                            <Button icon={<Delete24Regular />} appearance="subtle" size="small" onClick={() => confirmarEliminar(averia.id)} />
+                          </Tooltip>
+                        </>
+                      )}
                     </>
                 </TableCell>
               </TableRow>
@@ -554,12 +562,16 @@ const PaginaAverias = () => {
                   Resolver
                 </Button>
               )}
-              <Button icon={<Edit24Regular />} appearance="subtle" onClick={() => abrirDialogoEditar(averia)}>
-                Editar
-              </Button>
-              <Button icon={<Delete24Regular />} appearance="subtle" style={{ color: tokens.colorPaletteRedForeground1 }} onClick={() => confirmarEliminar(averia.id)}>
-                Borrar
-              </Button>
+              {esAdmin && (
+                <>
+                  <Button icon={<Edit24Regular />} appearance="subtle" onClick={() => abrirDialogoEditar(averia)}>
+                    Editar
+                  </Button>
+                  <Button icon={<Delete24Regular />} appearance="subtle" style={{ color: tokens.colorPaletteRedForeground1 }} onClick={() => confirmarEliminar(averia.id)}>
+                    Borrar
+                  </Button>
+                </>
+              )}
             </div>
           </Card>
         ))}
@@ -640,18 +652,28 @@ const PaginaAverias = () => {
                       <Field label="Fecha avería">
                         <Input 
                           type="date" 
-                          value={averiaActual.fechaAveria || ''} 
+                          value={formatForDate(averiaActual.fechaAveria)} 
                           onChange={(_, d) => manejarCambio('fechaAveria', d.value)} 
                         />
                       </Field>
                       <Field label="Conductor">
-                        <Input value={averiaActual.conductorDNI || averiaActual.userDni || ''} onChange={(_, d) => manejarCambio('conductorDNI', d.value)} placeholder="DNI..." />
+                        <Select
+                          value={averiaActual.conductorDNI || averiaActual.userDni || ''}
+                          onChange={(_, d) => manejarCambio('conductorDNI', d.value)}
+                        >
+                          <option value="">Selecciona un conductor...</option>
+                          {listaConductores.map(c => (
+                            <option key={c.dni} value={c.dni}>
+                              {c.dni} - {c.nombre} {c.apellidos}
+                            </option>
+                          ))}
+                        </Select>
                       </Field>
                       <Field label="Fecha comienzo reparación">
-                        <Input type="date" value={averiaActual.fechaComienzoReparacion || ''} onChange={(_, d) => manejarCambio('fechaComienzoReparacion', d.value)} />
+                        <Input type="date" value={formatForDate(averiaActual.fechaComienzoReparacion)} onChange={(_, d) => manejarCambio('fechaComienzoReparacion', d.value)} />
                       </Field>
                       <Field label="Fecha fin reparación">
-                        <Input type="date" value={averiaActual.fechaFinReparacion || ''} onChange={(_, d) => manejarCambio('fechaFinReparacion', d.value)} />
+                        <Input type="date" value={formatForDate(averiaActual.fechaFinReparacion)} onChange={(_, d) => manejarCambio('fechaFinReparacion', d.value)} />
                       </Field>
                       <Field label="Lugar reparación">
                         <Input value={averiaActual.lugarReparacion || ''} onChange={(_, d) => manejarCambio('lugarReparacion', d.value)} placeholder="Taller Central" />

@@ -5,7 +5,7 @@
  */
 export const crearConductorVacio = () => ({
   dni: '',
-  image: { url: '', name: '' },
+  image: null,
   nombre: '',
   apellidos: '',
   telefono: '',
