@@ -842,14 +842,8 @@ const PaginaVehiculos = () => {
   const [erroresValidacion, setErroresValidacion] = useState({});
 
   const obtenerVehiculosAfectados = (averia) => {
-    if (!averia) return [];
-    if (Array.isArray(averia.vehiculosAveriados) && averia.vehiculosAveriados.length > 0) {
-      return averia.vehiculosAveriados.map((mat) => String(mat).trim()).filter(Boolean);
-    }
-    if (averia.vehiculoMatricula) {
-      return [String(averia.vehiculoMatricula).trim()];
-    }
-    return [];
+    if (!averia || !averia.vehiculoMatricula) return [];
+    return [String(averia.vehiculoMatricula).trim()];
   };
 
   const cargarVehiculos = useCallback(async () => {

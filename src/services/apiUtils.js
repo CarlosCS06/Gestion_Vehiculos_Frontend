@@ -13,6 +13,19 @@ export const fetchWithLogging = async (url, options = {}) => {
     const finalOptions = { ...options, headers };
     const method = options.method || 'GET';
 
+    // Log para debuggeo: mostrar qué se envía
+    if (method !== 'GET') {
+      console.log(`[API ${method}] URL: ${url}`);
+      if (options.body) {
+        try {
+          const bodyObj = typeof options.body === 'string' ? JSON.parse(options.body) : options.body;
+          console.log(`Payload enviado:`, bodyObj);
+        } catch (e) {
+          console.log(`Payload enviado:`, options.body);
+        }
+      }
+    }
+
     const response = await fetch(url, finalOptions);
 
     if (!response.ok) {
@@ -46,7 +59,15 @@ export const fetchWithLogging = async (url, options = {}) => {
         console.log('Status:', response.status);
         console.log('Status Text:', response.statusText);
         console.log('Token enviado:', !!headers['Authorization'] || !!headers['authorization']);
-        console.log('Detalles:', errorDetails);
+        console.log('Detalles del error:', errorDetails);
+        if (options.body) {
+          try {
+            const bodyObj = typeof options.body === 'string' ? JSON.parse(options.body) : options.body;
+            console.log('Payload que se envió:', bodyObj);
+          } catch (e) {
+            console.log('Payload que se envió:', options.body);
+          }
+        }
         console.groupEnd();
       }
 

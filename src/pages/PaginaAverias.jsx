@@ -134,8 +134,8 @@ const useEstilos = makeStyles({
 
 const columnas = [
   { nombre: 'Descripción', campo: 'descripcion' },
-  { nombre: 'Vehículos afectados', campo: 'vehiculosAveriados' },
-  { nombre: 'Conductor', campo: 'conductorDNI' },
+  { nombre: 'Vehículo', campo: 'vehiculoMatricula' },
+  { nombre: 'Usuario', campo: 'userDni' },
   { nombre: 'Fecha avería', campo: 'fechaAveria' },
   { nombre: 'Fecha comienzo reparación', campo: 'fechaComienzoReparacion' },
   { nombre: 'Fecha fin reparación', campo: 'fechaFinReparacion' },
@@ -189,10 +189,50 @@ const PaginaAverias = () => {
     obtenerConductores().then(setListaConductores).catch(console.error);
   }, [cargarAverias]);
 
+  // Funciones helper para mostrar datos con fallback a campos "Hard"
+  const obtenerUserDniMostrar = (averia) => {
+    if (!averia) return '—';
+    
+    // Verificar si el userDni existe en la lista de conductores
+    const userExiste = listaConductores.some(c => c.dni === averia.userDni);
+    
+    // Si existe, mostrar userDni; si no, mostrar userDniHard
+    if (userExiste) {
+      return averia.userDni;
+    }
+    
+    // Si no existe y hay un campo Hard, mostrarlo
+    if (averia.userDniHard) {
+      return `${averia.userDniHard} (eliminado)`;
+    }
+    
+    // Fallback al userDni original
+    return averia.userDni || '—';
+  };
+
+  const obtenerVehiculoMatriculaMostrar = (averia) => {
+    if (!averia) return '—';
+    
+    // Verificar si el vehiculoMatricula existe en la lista de vehículos
+    const vehiculoExiste = listaVehiculos.some(v => v.matricula === averia.vehiculoMatricula);
+    
+    // Si existe, mostrar vehiculoMatricula; si no, mostrar vehiculoMatriculaHard
+    if (vehiculoExiste) {
+      return averia.vehiculoMatricula;
+    }
+    
+    // Si no existe y hay un campo Hard, mostrarlo
+    if (averia.vehiculoMatriculaHard) {
+      return `${averia.vehiculoMatriculaHard} (eliminado)`;
+    }
+    
+    // Fallback al vehiculoMatricula original
+    return averia.vehiculoMatricula || '—';
+  };
+
   const abrirDialogoCrear = () => {
     const nueva = crearAveriaVacia();
-    if (!esAdmin) {
-      nueva.conductorDNI = usuario.dni;
+    if (!esAdmin && usuario?.dni) {
       nueva.userDni = usuario.dni;
       nueva.fechaAveria = new Date().toISOString().split('T')[0];
     }
@@ -208,19 +248,18 @@ const PaginaAverias = () => {
       ...averia,
       // Asegurar que todos los campos tengan valores válidos
       descripcion: averia.descripcion || '',
-      conductorDNI: averia.conductorDNI || averia.userDni || '',
-      userDni: averia.userDni || averia.conductorDNI || '',
+      userDni: averia.userDni || '',
       fechaAveria: averia.fechaAveria || '',
       fechaComienzoReparacion: averia.fechaComienzoReparacion || '',
       fechaFinReparacion: averia.fechaFinReparacion || '',
       lugarReparacion: averia.lugarReparacion || '',
-      costeReparacion: averia.costeReparacion || 0,
+      costeReparacion: averia.costeReparacion || '',
       resuelta: !!averia.resuelta,
     };
     setAveriaActual(averiaEditada);
-    // Proteger contra vehiculosAveriados indefinido o nulo
-    const listaVehiculos = averia.vehiculosAveriados || (averia.vehiculoMatricula ? [averia.vehiculoMatricula] : []);
-    setVehiculosTexto(listaVehiculos.join(', '));
+    // Proteger contra vehiculoMatricula indefinido o nulo
+    const vehiculoMatricula = averia.vehiculoMatricula ? averia.vehiculoMatricula : '';
+    setVehiculosTexto(vehiculoMatricula);
     setEditando(true);
     setDialogoAbierto(true);
   };
@@ -240,26 +279,51 @@ const PaginaAverias = () => {
         setError('Debe proporcionar una descripción de la avería');
         return;
       }
+
+      // Datos que se envían al backend - solo campos que espera el backend
+      const userDniValue = averiaActual.userDni || usuario?.dni || '';
+      const vehiculoMatriculaValue = matriculas[0] || '';
+      
+      // VALIDACIÓN: Verificar que userDni no está vacío
+      if (!userDniValue || userDniValue.trim() === '') {
+        setError('Error: No se pudo determinar el DNI del usuario. Por favor, intenta de nuevo.');
+        console.error('ERROR CRÍTICO: userDni vacío', { 
+          averiaActual_userDni: averiaActual.userDni,
+          usuario_dni: usuario?.dni,
+          usuario_completo: usuario
+        });
+        return;
+      }
+
+      // VALIDACIÓN: Verificar que vehiculoMatricula no está vacío
+      if (!vehiculoMatriculaValue || vehiculoMatriculaValue.trim() === '') {
+        setError('Error: No se ha seleccionado un vehículo válido.');
+        return;
+      }
+      
+      console.log('DEBUG - Datos a enviar:', { 
+        userDni: userDniValue, 
+        vehiculoMatricula: vehiculoMatriculaValue,
+        descripcion: averiaActual.descripcion,
+        fechaAveria: averiaActual.fechaAveria,
+        resuelta: !!averiaActual.resuelta,
+        'averiaActual.resuelta (raw)': averiaActual.resuelta,
+        'typeof resuelta': typeof averiaActual.resuelta
+      });
       
       const datosGuardar = {
         descripcion: averiaActual.descripcion || '',
-        vehiculosAveriados: matriculas,
-        vehiculoMatricula: matriculas[0] || '',
-        conductorDNI: averiaActual.conductorDNI || averiaActual.userDni || usuario?.dni || '',
-        userDni: averiaActual.userDni || averiaActual.conductorDNI || usuario?.dni || '',
+        vehiculoMatricula: vehiculoMatriculaValue,
+        userDni: userDniValue,
         fechaAveria: averiaActual.fechaAveria || new Date().toISOString().split('T')[0],
-        fechaComienzoReparacion: averiaActual.fechaComienzoReparacion || '',
-        fechaFinReparacion: averiaActual.fechaFinReparacion || '',
-        lugarReparacion: averiaActual.lugarReparacion || '',
-        costeReparacion: parseFloat(averiaActual.costeReparacion) || 0,
-        resuelta: !!averiaActual.resuelta,
-        enReparacion: !averiaActual.resuelta && !averiaActual.fechaFinReparacion,
+        fechaComienzoReparacion: averiaActual.fechaComienzoReparacion || null,
+        fechaFinReparacion: averiaActual.fechaFinReparacion || null,
+        lugarReparacion: averiaActual.lugarReparacion || null,
+        costeReparacion: averiaActual.costeReparacion ? parseFloat(averiaActual.costeReparacion) : null,
+        resuelta: averiaActual.resuelta === true ? true : false,  // Explícitamente asegurar booleano
       };
-
-      // Remover campos que no deben enviarse al crear
-      if (!editando) {
-        delete datosGuardar.id;
-      }
+      
+      console.log('DEBUG - FINAL datosGuardar.resuelta:', datosGuardar.resuelta, 'typeof:', typeof datosGuardar.resuelta);
 
       if (editando) {
         await actualizarAveria(averiaActual.id, datosGuardar);
@@ -275,7 +339,7 @@ const PaginaAverias = () => {
       const estadoFinal = averiaResuelta ? ESTADO_VEHICULO.DISPONIBLE : ESTADO_VEHICULO.AVERIADO;
 
       // Actualizar estado de todos los vehículos afectados
-      for (const matricula of datosGuardar.vehiculosAveriados) {
+      for (const matricula of matriculas) {
         if (matricula) {
           try {
             await actualizarVehiculo(matricula, { estado: estadoFinal });
@@ -289,7 +353,7 @@ const PaginaAverias = () => {
       setDialogoAbierto(false);
       await cargarAverias();
       window.dispatchEvent(new CustomEvent('vehiculosActualizados', {
-        detail: { matriculas: datosGuardar.vehiculosAveriados }
+        detail: { matriculas: matriculas }
       }));
       setError('');
     } catch (err) {
@@ -307,27 +371,19 @@ const PaginaAverias = () => {
       const averiaAEliminar = averias.find(a => a.id === idEliminar);
       await eliminarAveria(idEliminar);
       
-      // Al eliminar la avería, los vehículos vuelven a estar disponibles
-      if (averiaAEliminar) {
-        const listaVehiculos = averiaAEliminar.vehiculosAveriados || 
-                               (averiaAEliminar.vehiculoMatricula ? [averiaAEliminar.vehiculoMatricula] : []);
-        
-        for (const matricula of listaVehiculos) {
-          if (matricula) {
-            try {
-              await actualizarVehiculo(matricula, { estado: ESTADO_VEHICULO.DISPONIBLE });
-            } catch (err) {
-              console.error(`Error actualizando estado de vehículo ${matricula}:`, err);
-              // Continuar con los demás vehículos aunque falle uno
-            }
-          }
+      // Al eliminar la avería, el vehículo vuelve a estar disponible
+      if (averiaAEliminar && averiaAEliminar.vehiculoMatricula) {
+        try {
+          await actualizarVehiculo(averiaAEliminar.vehiculoMatricula, { estado: ESTADO_VEHICULO.DISPONIBLE });
+        } catch (err) {
+          console.error(`Error actualizando estado de vehículo ${averiaAEliminar.vehiculoMatricula}:`, err);
         }
       }
 
       setConfirmacionAbierta(false);
       await cargarAverias();
       window.dispatchEvent(new CustomEvent('vehiculosActualizados', {
-        detail: { matriculas: averiaAEliminar ? (averiaAEliminar.vehiculosAveriados || [averiaAEliminar.vehiculoMatricula]) : [] }
+        detail: { matriculas: averiaAEliminar?.vehiculoMatricula ? [averiaAEliminar.vehiculoMatricula] : [] }
       }));
       setError('');
     } catch (err) {
@@ -354,15 +410,12 @@ const PaginaAverias = () => {
 
     if (!terminoBusqueda) return true;
     const term = terminoBusqueda.toLowerCase();
-    const vehiculosStr = a.vehiculosAveriados ? a.vehiculosAveriados.join(' ').toLowerCase() : '';
     return (
       (a.id || '').toLowerCase().includes(term) ||
       (a.descripcion || '').toLowerCase().includes(term) ||
-      (a.conductorDNI || '').toLowerCase().includes(term) ||
       (a.userDni || '').toLowerCase().includes(term) ||
       (a.vehiculoMatricula || '').toLowerCase().includes(term) ||
-      (a.lugarReparacion || '').toLowerCase().includes(term) ||
-      vehiculosStr.includes(term)
+      (a.lugarReparacion || '').toLowerCase().includes(term)
     );
   });
 
@@ -415,13 +468,13 @@ const PaginaAverias = () => {
               <TableRow key={averia.id}>
                 <TableCell>{averia.descripcion}</TableCell>
                 <TableCell>
-                  {(averia.vehiculosAveriados || (averia.vehiculoMatricula ? [averia.vehiculoMatricula] : [])).map((matricula) => (
-                    <Badge key={matricula} appearance="outline" style={{ marginRight: '4px' }}>
-                      {matricula}
+                  {obtenerVehiculoMatriculaMostrar(averia) !== '—' ? (
+                    <Badge appearance="outline">
+                      {obtenerVehiculoMatriculaMostrar(averia)}
                     </Badge>
-                  ))}
+                  ) : '—'}
                 </TableCell>
-                <TableCell>{averia.conductorDNI || averia.userDni || '—'}</TableCell>
+                <TableCell>{obtenerUserDniMostrar(averia)}</TableCell>
                 <TableCell>
                   {averia.fechaAveria
                     ? new Date(averia.fechaAveria).toLocaleDateString('es-ES')
@@ -461,14 +514,19 @@ const PaginaAverias = () => {
                             size="small" 
                             onClick={async () => {
                               const datosActualizados = { 
-                                ...averia, 
-                                resuelta: true, 
+                                descripcion: averia.descripcion,
+                                vehiculoMatricula: averia.vehiculoMatricula,
+                                userDni: averia.userDni,
+                                fechaAveria: averia.fechaAveria,
+                                fechaComienzoReparacion: averia.fechaComienzoReparacion,
                                 fechaFinReparacion: new Date().toISOString().split('T')[0],
-                                costeReparacion: parseFloat(averia.costeReparacion) || 0
+                                lugarReparacion: averia.lugarReparacion,
+                                costeReparacion: averia.costeReparacion ? parseFloat(averia.costeReparacion) : null,
+                                resuelta: true
                               };
                               await actualizarAveria(averia.id, datosActualizados);
-                              for (const m of (averia.vehiculosAveriados || [averia.vehiculoMatricula])) {
-                                if (m) await actualizarVehiculo(m, { estado: ESTADO_VEHICULO.DISPONIBLE });
+                              if (averia.vehiculoMatricula) {
+                                await actualizarVehiculo(averia.vehiculoMatricula, { estado: ESTADO_VEHICULO.DISPONIBLE });
                               }
                               await cargarAverias();
                             }}
@@ -516,11 +574,11 @@ const PaginaAverias = () => {
                 </div>
                 <Text size={300} weight="semibold" block style={{ marginBottom: '8px' }}>{averia.descripcion}</Text>
                 <div>
-                  {(averia.vehiculosAveriados || (averia.vehiculoMatricula ? [averia.vehiculoMatricula] : [])).map((matricula) => (
-                    <Badge key={matricula} appearance="outline" style={{ marginRight: '4px' }}>
-                      {matricula}
+                  {obtenerVehiculoMatriculaMostrar(averia) !== '—' ? (
+                    <Badge appearance="outline">
+                      {obtenerVehiculoMatriculaMostrar(averia)}
                     </Badge>
-                  ))}
+                  ) : null}
                 </div>
               </div>
             </div>
@@ -535,8 +593,8 @@ const PaginaAverias = () => {
                 <div className={estilos.datoValor}>{averia.costeReparacion ? `${averia.costeReparacion} €` : '—'}</div>
               </div>
               <div style={{ gridColumn: 'span 2' }}>
-                <div className={estilos.datoEtiqueta}>Conductor</div>
-                <div className={estilos.datoValor}>{averia.conductorDNI || averia.userDni || '—'}</div>
+                <div className={estilos.datoEtiqueta}>Usuario</div>
+                <div className={estilos.datoValor}>{obtenerUserDniMostrar(averia)}</div>
               </div>
             </div>
 
@@ -547,14 +605,19 @@ const PaginaAverias = () => {
                   appearance="subtle" 
                   onClick={async () => {
                     const datosActualizados = { 
-                      ...averia, 
-                      resuelta: true, 
+                      descripcion: averia.descripcion,
+                      vehiculoMatricula: averia.vehiculoMatricula,
+                      userDni: averia.userDni,
+                      fechaAveria: averia.fechaAveria,
+                      fechaComienzoReparacion: averia.fechaComienzoReparacion,
                       fechaFinReparacion: new Date().toISOString().split('T')[0],
-                      costeReparacion: parseFloat(averia.costeReparacion) || 0
+                      lugarReparacion: averia.lugarReparacion,
+                      costeReparacion: averia.costeReparacion ? parseFloat(averia.costeReparacion) : null,
+                      resuelta: true
                     };
                     await actualizarAveria(averia.id, datosActualizados);
-                    for (const m of (averia.vehiculosAveriados || [averia.vehiculoMatricula])) {
-                      if (m) await actualizarVehiculo(m, { estado: ESTADO_VEHICULO.DISPONIBLE });
+                    if (averia.vehiculoMatricula) {
+                      await actualizarVehiculo(averia.vehiculoMatricula, { estado: ESTADO_VEHICULO.DISPONIBLE });
                     }
                     await cargarAverias();
                   }}
@@ -656,12 +719,12 @@ const PaginaAverias = () => {
                           onChange={(_, d) => manejarCambio('fechaAveria', d.value)} 
                         />
                       </Field>
-                      <Field label="Conductor">
+                      <Field label="Usuario">
                         <Select
-                          value={averiaActual.conductorDNI || averiaActual.userDni || ''}
-                          onChange={(_, d) => manejarCambio('conductorDNI', d.value)}
+                          value={averiaActual.userDni || ''}
+                          onChange={(_, d) => manejarCambio('userDni', d.value)}
                         >
-                          <option value="">Selecciona un conductor...</option>
+                          <option value="">Selecciona un usuario...</option>
                           {listaConductores.map(c => (
                             <option key={c.dni} value={c.dni}>
                               {c.dni} - {c.nombre} {c.apellidos}
@@ -722,7 +785,7 @@ const PaginaAverias = () => {
                       />
                     </Field>
                     <div style={{ display: 'flex', gap: '20px', marginTop: '10px' }}>
-                      <Text size={200}><b>Conductor:</b> {usuario.dni}</Text>
+                      <Text size={200}><b>Conductor:</b> {usuario?.dni || 'No disponible'}</Text>
                       <Text size={200}><b>Fecha:</b> {new Date().toLocaleDateString()}</Text>
                     </div>
                   </>

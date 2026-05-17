@@ -9,8 +9,10 @@ export const crearAveriaVacia = () => ({
   fechaComienzoReparacion: '',
   fechaFinReparacion: '',
   lugarReparacion: '',
-  costeReparacion: 0,
+  costeReparacion: '',
   userDni: '',
   vehiculoMatricula: '',
+  userDniHard: '',
+  vehiculoMatriculaHard: '',
   resuelta: false,
 });

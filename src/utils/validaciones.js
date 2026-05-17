@@ -201,8 +201,8 @@ export const validarFechasViaje = (fechaSalida, fechaLlegada) => {
     return { valido: true, mensaje: '' };
   }
 
-  if (llegada <= salida) {
-    return { valido: false, mensaje: 'La fecha y hora de llegada debe ser posterior a la de salida.' };
+  if (llegada < salida) {
+    return { valido: false, mensaje: 'La fecha y hora de llegada debe ser igual o posterior a la de salida.' };
   }
 
   return { valido: true, mensaje: '' };
