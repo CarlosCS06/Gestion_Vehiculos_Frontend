@@ -537,8 +537,6 @@ const ModalDetallesVehiculo = ({ vehiculo: vehiculoBase, onCerrar }) => {
         precioCarburanteActual: Number(precioMedio.toFixed(3)),
         datosCarburante: respuesta, // Guardamos TODO el objeto procesado para mostrarlo
       }));
-
-      alert('Precio actualizado correctamente');
     } catch (err) {
       alert('Error al calcular precio del carburante: ' + err.message);
     } finally {
@@ -846,8 +844,10 @@ const PaginaVehiculos = () => {
     return [String(averia.vehiculoMatricula).trim()];
   };
 
-  const cargarVehiculos = useCallback(async () => {
-    setCargando(true);
+  const cargarVehiculos = useCallback(async (silencioso = false) => {
+    if (!silencioso) {
+      setCargando(true);
+    }
     try {
       const [datosVehiculos, datosAverias, datosViajes] = await Promise.all([
         obtenerVehiculos(),
@@ -889,7 +889,7 @@ const PaginaVehiculos = () => {
   }, []);
 
   useEffect(() => {
-    cargarVehiculos();
+    cargarVehiculos(false); // Carga inicial: muestra spinner
     obtenerPlantillas()
       .then(datos => {
         console.log('Plantillas cargadas:', datos);
@@ -902,7 +902,7 @@ const PaginaVehiculos = () => {
   useEffect(() => {
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'visible') {
-        cargarVehiculos();
+        cargarVehiculos(true); // Recarga silenciosa en segundo plano (sin spinner)
       }
     };
 
@@ -913,7 +913,7 @@ const PaginaVehiculos = () => {
   // Recargar vehículos cuando otra parte de la app actualiza el estado de un vehículo
   useEffect(() => {
     const handleVehiculosActualizados = () => {
-      cargarVehiculos();
+      cargarVehiculos(true); // Recarga silenciosa en segundo plano (sin spinner)
     };
     window.addEventListener('vehiculosActualizados', handleVehiculosActualizados);
     return () => window.removeEventListener('vehiculosActualizados', handleVehiculosActualizados);
