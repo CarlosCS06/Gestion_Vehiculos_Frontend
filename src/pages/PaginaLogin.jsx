@@ -162,14 +162,6 @@ const PaginaLogin = () => {
             </Link>
           </Text>
         </div>
-
-        <div style={{ marginTop: '24px', padding: '12px', backgroundColor: tokens.colorNeutralBackground3, borderRadius: '8px' }}>
-          <Text size={100} style={{ color: tokens.colorNeutralForeground3 }}>
-            <strong>Credenciales de prueba:</strong><br />
-            Admin: DNI <code>00000000Z</code> / Contraseña <code>admin123</code><br />
-            Conductor: DNI <code>12478784R</code> / Contraseña <code>alfredo123</code>
-          </Text>
-        </div>
       </Card>
     </div>
   );
