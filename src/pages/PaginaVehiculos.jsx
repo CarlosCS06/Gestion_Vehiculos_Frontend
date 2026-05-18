@@ -68,7 +68,7 @@ import {
   obtenerVehiculoPorMatricula,
 } from '../services/servicioVehiculos.js';
 import { obtenerAverias } from '../services/servicioAverias.js';
-import { subirImagen, subirImagenPorUrl } from '../services/servicioImagenes.js';
+import { subirImagen } from '../services/servicioImagenes.js';
 import {
   ESTADO_VEHICULO,
   TIPO_VEHICULO,
@@ -375,7 +375,8 @@ const columnas = [
   { nombre: 'Acciones', campo: 'acciones' },
 ];
 
-const ModalDetallesVehiculo = ({ vehiculo: vehiculoBase, onCerrar }) => {
+const ModalDetallesVehiculo = ({ vehiculo: vehiculoBase, onCerrar, onVehiculoActualizado }) => {
+  const { esAdmin } = useAuth();
   const [tabActiva, setTabActiva] = useState('general');
   const [vehiculoCompleto, setVehiculoCompleto] = useState(vehiculoBase);
   const [cargando, setCargando] = useState(false);
@@ -784,12 +785,59 @@ const ModalDetallesVehiculo = ({ vehiculo: vehiculoBase, onCerrar }) => {
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(120px, 1fr))', gap: '12px' }}>
                       {vehiculoCompleto.imagenes && vehiculoCompleto.imagenes.length > 1 ? (
                         vehiculoCompleto.imagenes.slice(1).map((img, idx) => (
-                          <div key={idx} style={{ position: 'relative', aspectRatio: '1', backgroundColor: tokens.colorNeutralBackground2, borderRadius: tokens.borderRadiusMedium, overflow: 'hidden' }}>
+                          <div key={img.id || idx} style={{ position: 'relative', aspectRatio: '1', backgroundColor: tokens.colorNeutralBackground2, borderRadius: tokens.borderRadiusMedium, overflow: 'hidden' }}>
                             <img
                               src={img.url}
                               alt={`Imagen ${idx + 2}`}
                               style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                             />
+                            {esAdmin && (
+                              <Button
+                                icon={<Delete24Regular style={{ fontSize: '14px' }} />}
+                                size="small"
+                                shape="circular"
+                                appearance="primary"
+                                style={{
+                                  position: 'absolute',
+                                  top: '4px',
+                                  right: '4px',
+                                  backgroundColor: tokens.colorPaletteRedBackground3,
+                                  color: tokens.colorPaletteRedForeground3,
+                                  border: 'none',
+                                  minWidth: '24px',
+                                  height: '24px',
+                                  padding: 0,
+                                  boxShadow: tokens.shadow4,
+                                  cursor: 'pointer',
+                                  zIndex: 10,
+                                }}
+                                onClick={async (e) => {
+                                  e.stopPropagation();
+                                  if (window.confirm('¿Estás seguro de que deseas eliminar esta imagen de la galería?')) {
+                                    try {
+                                      const nuevasImagenes = vehiculoCompleto.imagenes.filter(x => x.id !== img.id);
+                                      // Llamada a la API para actualizar el vehículo
+                                      await actualizarVehiculo(vehiculoCompleto.matricula, {
+                                        imagenes: nuevasImagenes
+                                      });
+                                      
+                                      // Actualizar estado local
+                                      setVehiculoCompleto(prev => ({
+                                        ...prev,
+                                        imagenes: nuevasImagenes
+                                      }));
+
+                                      // Notificar al padre para que refresque la lista de vehículos
+                                      if (onVehiculoActualizado) {
+                                        onVehiculoActualizado();
+                                      }
+                                    } catch (err) {
+                                      alert('Error al eliminar imagen: ' + err.message);
+                                    }
+                                  }
+                                }}
+                              />
+                            )}
                           </div>
                         ))
                       ) : (
@@ -998,41 +1046,6 @@ const PaginaVehiculos = () => {
       });
     } catch (err) {
       setError('Error al subir imagen local: ' + err.message);
-    } finally {
-      setSubiendoImagen(false);
-    }
-  };
-
-  const manejarSubidaUrl = async (url) => {
-    if (!url || !url.startsWith('http')) return;
-    setSubiendoImagen(true);
-    setError('');
-    try {
-      const datosImagen = crearImagenVacia();
-      datosImagen.url = url;
-      datosImagen.nombre = `vehiculo_${vehiculoActual.matricula || 'nuevo'}`;
-
-      // Solo pasamos la matrícula si el vehículo ya existe para evitar error 500
-      if (editando) {
-        datosImagen.vehiculoMatricula = vehiculoActual.matricula;
-      }
-
-      const resp = await subirImagenPorUrl(datosImagen);
-      // Guardamos la URL para la vista previa, el ID y el Nombre para el backend
-      manejarCambio('foto', resp.url);
-      manejarCambio('idImagen', resp.id);
-      manejarCambio('nombreImagen', resp.nombre || resp.display_name || 'vehiculo_internet');
-
-      // Añadir al array de imágenes
-      setVehiculoActual(prev => {
-        const imagenesActuales = prev.imagenes || [];
-        if (!imagenesActuales.some(img => img.id === resp.id)) {
-          return { ...prev, imagenes: [...imagenesActuales, resp] };
-        }
-        return prev;
-      });
-    } catch (err) {
-      setError('Error al procesar imagen de internet: ' + err.message);
     } finally {
       setSubiendoImagen(false);
     }
@@ -1535,15 +1548,6 @@ const PaginaVehiculos = () => {
                       />
                     </div>
 
-                    <div style={{ display: 'flex', gap: '8px', alignItems: 'flex-end' }}>
-                      <Field label="O pega una URL de internet" style={{ flexGrow: 1 }}>
-                        <Input
-                          placeholder="https://ejemplo.com/foto.jpg"
-                          onBlur={(e) => manejarSubidaUrl(e.target.value)}
-                        />
-                      </Field>
-                    </div>
-
                     {vehiculoActual.foto && (
                       <div style={{ position: 'relative', height: '200px', borderRadius: tokens.borderRadiusLarge, overflow: 'hidden', border: `1px solid ${tokens.colorNeutralStroke1}` }}>
                         <img
@@ -1586,6 +1590,7 @@ const PaginaVehiculos = () => {
         <ModalDetallesVehiculo
           vehiculo={vehiculoEnDetalle}
           onCerrar={() => setVehiculoEnDetalle(null)}
+          onVehiculoActualizado={() => cargarVehiculos(true)}
         />
       )}
       <DialogoConfirmacion

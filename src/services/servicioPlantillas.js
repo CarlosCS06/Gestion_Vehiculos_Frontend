@@ -55,11 +55,11 @@ export const obtenerPlantillaPorId = async (id) => {
 export const obtenerPlantillasParaTipo = async (tipoVehiculo) => {
   try {
     const plantillas = await obtenerPlantillas();
-    
+
     // Filtrar plantillas que aplican a este tipo de vehículo
     return plantillas.filter(plantilla => {
       // Buscar si el tipoVehiculo coincide en la lista de vehiculos
-      return plantilla.vehiculos && plantilla.vehiculos.some(v => 
+      return plantilla.vehiculos && plantilla.vehiculos.some(v =>
         v.toLowerCase().includes(tipoVehiculo.toLowerCase())
       );
     });
@@ -77,7 +77,7 @@ export const obtenerPlantillasParaTipo = async (tipoVehiculo) => {
 export const obtenerPlantillasITV = async (tipoVehiculo) => {
   try {
     const plantillas = await obtenerPlantillasParaTipo(tipoVehiculo);
-    
+
     // Filtrar solo las plantillas que son ITV
     return plantillas.filter(plantilla => plantilla.esItv === true);
   } catch (error) {
@@ -233,7 +233,7 @@ export const actualizarPlantilla = async (id, plantilla) => {
   try {
     const token = sessionStorage.getItem('token');
     const response = await fetchWithLogging(`${API_URL}/${id}`, {
-      method: 'PUT',
+      method: 'PATCH',
       headers: {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${token}`

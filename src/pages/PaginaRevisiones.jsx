@@ -170,6 +170,7 @@ const useEstilos = makeStyles({
 
 const columnas = [
   { nombre: 'Vehículo', campo: 'vehiculoMatricula' },
+  { nombre: 'Descripción', campo: 'descripcion' },
   { nombre: 'Fecha', campo: 'fecha' },
   { nombre: 'Lugar', campo: 'lugar' },
   { nombre: 'Coste', campo: 'costo' },
@@ -268,6 +269,7 @@ const PaginaRevisiones = () => {
     return (
       (r.id || '').toLowerCase().includes(term) ||
       (r.vehiculoMatricula || '').toLowerCase().includes(term) ||
+      (r.descripcion || '').toLowerCase().includes(term) ||
       (r.lugar || '').toLowerCase().includes(term) ||
       (r.activo ? 'activa' : 'inactiva').includes(term) ||
       (r.aprobada ? 'aprobada' : 'pendiente').includes(term)
@@ -404,6 +406,7 @@ const PaginaRevisiones = () => {
                     {revision.vehiculoMatricula}
                   </Text>
                 </TableCell>
+                <TableCell>{revision.descripcion || '—'}</TableCell>
                 <TableCell>{new Date(revision.fecha).toLocaleDateString('es-ES')}</TableCell>
                 <TableCell>{revision.lugar}</TableCell>
                 <TableCell>
@@ -466,6 +469,10 @@ const PaginaRevisiones = () => {
             </div>
             
             <div className={estilos.tarjetaMovilCuerpo}>
+              <div style={{ gridColumn: 'span 2' }}>
+                <div className={estilos.datoEtiqueta}>Descripción</div>
+                <div className={estilos.datoValor}>{revision.descripcion || '—'}</div>
+              </div>
               <div>
                 <div className={estilos.datoEtiqueta}>Fecha</div>
                 <div className={estilos.datoValor}>{new Date(revision.fecha).toLocaleDateString('es-ES')}</div>
@@ -518,6 +525,13 @@ const PaginaRevisiones = () => {
                       </option>
                     ))}
                   </Select>
+                </Field>
+                <Field label="Descripción" required>
+                  <Input 
+                    value={revisionActual.descripcion || ''} 
+                    onChange={(_, d) => manejarCambio('descripcion', d.value)} 
+                    placeholder="Ej: Revisión rutinaria de filtros e ITV" 
+                  />
                 </Field>
                 <Field label="Fecha" required>
                   <Input type="date" value={formatForDate(revisionActual.fecha)} onChange={(_, d) => manejarCambio('fecha', d.value)} />

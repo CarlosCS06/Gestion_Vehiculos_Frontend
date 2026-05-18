@@ -22,10 +22,11 @@
   - **Backend y API**: Conexión a una API REST (Node.js/Express) que utiliza **Prisma ORM** como capa de datos.
   - **Manejo de Imágenes**: Integración con **Cloudinary** para carga y hosting dinámico de perfiles y vehículos.
 - **Modelo de datos**: El sistema pivota alrededor de entidades fuertemente tipadas:
-  - `Vehículo` (información técnica, consumo de combustible, revisiones ITV e historial).
+  - `Vehículo` (información técnica, consumo de combustible, revisiones ITV con descripción detallada e historial).
   - `Conductor` (perfiles validados algorítmicamente y enlazados a rutas).
   - `Viajes y Trayectos` (modelo jerárquico donde 1 Viaje = N Trayectos encadenados lógicamente por horarios y destinos).
-  - `Averías / Revisiones` (gestión del ciclo de vida del mantenimiento).
+  - `Averías / Revisiones` (gestión del ciclo de vida del mantenimiento, incluyendo campos descriptivos en revisiones e informes de taller).
+  - `Usuario` (control de acceso y credenciales con roles `admin`, `user` o mixtos, y control de activación).
 
 ## 3. Enlace de Producción y Despliegue
 - **Enlace al proyecto en vivo**: https://gestion-vehiculos-frontend.vercel.app/
@@ -62,9 +63,10 @@ Para poder correr este proyecto en tu propia máquina necesitarás tener instala
 
 ## 5. Validación y Pruebas del Proyecto
 El proyecto cuenta con un sistema de prevención de errores muy estricto para garantizar que los datos siempre sean fiables:
-- **Validaciones reales (Identidad)**: Algoritmo real matemático para validar la letra del DNI o NIE español en el alta de conductores. Validación de formato de teléfono (+34) estricto.
+- **Validaciones reales (Identidad)**: Algoritmo real matemático para validar la letra del DNI o NIE español en el alta de conductores y en la creación de usuarios. Validación de formato de teléfono (+34) estricto.
 - **Validaciones de negocio (Fechas y Edad)**: El sistema bloquea altas de conductores menores de edad (18 años). En vehículos, verifica que la fecha de matriculación no sea posterior a la de compra.
 - **Coherencia de rutas**: Al registrar un viaje con múltiples trayectos, el formulario exige que la "Fecha y hora de llegada" del trayecto siempre sea posterior a la de "Salida", y fuerza la lógica de encadenamiento (el destino de un trayecto es el origen del siguiente).
+- **Seguridad Multirrol (Admin vs Conductor)**: Implementación de guardia de rutas en el cliente (bloqueando y redirigiendo a usuarios sin privilegios que intenten acceder al panel de `/usuarios`) y filtrado estricto de campos (*payload hardening*) al guardar incidencias. Esto garantiza que un conductor normal jamás pueda alterar campos de taller o resolver averías, ni siquiera manipulando el estado del navegador local.
 
 ## 6. Retos Técnicos y Lecciones Aprendidas
 - **Sincronización global del estado**:
@@ -73,6 +75,9 @@ El proyecto cuenta con un sistema de prevención de errores muy estricto para ga
 - **Manipulación de fechas entre Sistemas (ISO vs HTML5)**:
   - *Desafío*: Las disparidades de formato de fechas al enviar objetos JSON al Backend y al leerlos en inputs nativos de tipo `date` o `datetime-local` en React causaban caídas (crashes).
   - *Solución*: Creación de utilidades universales de formateo (`dateUtils.js`) para parsear de forma segura toda fecha entrante y saliente del sistema.
+- **Seguridad en Payload frente a Modificación Local de Estados**:
+  - *Desafío*: Para cumplir con el requerimiento de que los conductores no pudiesen resolver averías ni ver/escribir datos técnicos de taller, no era suficiente con ocultar inputs en el formulario (un conductor avanzado podría usar las herramientas del desarrollador del navegador para forzar propiedades).
+  - *Solución*: Diseñamos un blindaje en la construcción de los datos de envío (*payload hardening*) en el método de guardado. Si el usuario logueado no es administrador, cualquier campo de fechas de taller o estado de resolución se descarta y se fuerza estrictamente a `null` / `false` antes de salir al backend, blindando la lógica de negocio contra intrusiones locales.
 
 ## 7. Conclusión e Información Relevante
 - **Información importante / Limitaciones**: 

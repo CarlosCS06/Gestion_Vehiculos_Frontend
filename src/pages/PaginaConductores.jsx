@@ -47,7 +47,7 @@ import {
   eliminarConductor,
 } from '../services/servicioConductores.js';
 import { actualizarUsuario } from '../services/servicioAuth.js';
-import { subirImagen, subirImagenPorUrl } from '../services/servicioImagenes.js';
+import { subirImagen } from '../services/servicioImagenes.js';
 import { crearConductorVacio } from '../models/Conductor.js';
 import { crearImagenVacia } from '../models/Imagenes.js';
 import { formatForDate } from '../utils/dateUtils.js';
@@ -313,34 +313,6 @@ const PaginaConductores = () => {
     setPreviewUrl(URL.createObjectURL(archivo));
   };
 
-  const manejarSubidaUrl = async (url) => {
-    if (!url || !url.startsWith('http')) return;
-    setSubiendoImagen(true);
-    setError('');
-    try {
-      const datosImagen = {
-        url: url,
-        name: `conductor_${conductorActual.dni || 'nuevo'}`,
-      };
-
-      // Guardamos la URL para la vista previa y el ID para el backend
-      manejarCambio('image', {
-        name: datosImagen.name,
-        url: datosImagen.url
-      });
-
-      // Si había una previsualización de archivo, la quitamos
-      if (previewUrl) {
-        URL.revokeObjectURL(previewUrl);
-        setPreviewUrl(null);
-      }
-    } catch (err) {
-      setError('Error al procesar imagen de internet: ' + err.message);
-    } finally {
-      setSubiendoImagen(false);
-    }
-  };
-
   const onDragOver = (e) => {
     e.preventDefault();
     e.stopPropagation();
@@ -590,15 +562,6 @@ const PaginaConductores = () => {
                         accept="image/*"
                         onChange={(e) => manejarSubidaArchivo(e.target.files[0])}
                       />
-                    </div>
-
-                    <div style={{ display: 'flex', gap: '8px', alignItems: 'flex-end' }}>
-                      <Field label="O pega una URL de internet" style={{ flexGrow: 1 }}>
-                        <Input
-                          placeholder="https://ejemplo.com/foto_conductor.jpg"
-                          onBlur={(e) => manejarSubidaUrl(e.target.value)}
-                        />
-                      </Field>
                     </div>
 
                     {(previewUrl || conductorActual.image?.url) && (
