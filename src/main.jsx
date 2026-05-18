@@ -28,3 +28,15 @@ createRoot(document.getElementById('root')).render(
     </BrowserRouter>
   </StrictMode>,
 );
+
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/sw.js')
+      .then(registration => {
+        console.log('ServiceWorker registrado con éxito con el scope: ', registration.scope);
+      })
+      .catch(err => {
+        console.log('Error al registrar el ServiceWorker: ', err);
+      });
+  });
+}
