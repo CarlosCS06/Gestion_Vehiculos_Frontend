@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../context/ContextoAuth.jsx';
+import { useTema } from '../../context/ContextoTema.jsx';
 import {
   makeStyles,
   tokens,
@@ -21,6 +22,8 @@ import {
   SignOut24Regular,
   ShieldCheckmark24Regular,
   PersonAccounts24Regular,
+  WeatherSunny24Regular,
+  WeatherMoon24Regular,
 } from '@fluentui/react-icons';
 import MenuPerfilConductor from './MenuPerfilConductor.jsx';
 
@@ -153,6 +156,7 @@ const pestanas = [
 
 const BarraNavegacion = () => {
   const { usuario, logout, esAdmin } = useAuth();
+  const { modoOscuro, alternarTema } = useTema();
   const [perfilAbierto, setPerfilAbierto] = useState(false);
   const navegar = useNavigate();
   const ubicacion = useLocation();
@@ -237,6 +241,14 @@ const BarraNavegacion = () => {
               />
             </Tooltip>
           )}
+
+          <Tooltip content={modoOscuro ? 'Cambiar a modo claro' : 'Cambiar a modo oscuro'} relationship="label">
+            <Button
+              icon={modoOscuro ? <WeatherSunny24Regular /> : <WeatherMoon24Regular />}
+              appearance="subtle"
+              onClick={alternarTema}
+            />
+          </Tooltip>
 
           <Tooltip content="Cerrar sesión" relationship="label">
             <Button
