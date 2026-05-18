@@ -9,6 +9,7 @@ import PaginaConductores from './pages/PaginaConductores.jsx';
 import PaginaAverias from './pages/PaginaAverias.jsx';
 import PaginaViajes from './pages/PaginaViajes.jsx';
 import PaginaTrayectos from './pages/PaginaTrayectos.jsx';
+import PaginaUsuarios from './pages/PaginaUsuarios.jsx';
 import { useAuth } from './context/ContextoAuth.jsx';
 import { Spinner } from '@fluentui/react-components';
 
@@ -49,6 +50,7 @@ function App() {
         <Route path="conductores" element={<PaginaConductores />} />
         <Route path="averias" element={<PaginaAverias />} />
         <Route path="trayectos" element={<PaginaTrayectos />} />
+        <Route path="usuarios" element={<PaginaUsuarios />} />
       </Route>
 
       {/* Ruta por defecto */}

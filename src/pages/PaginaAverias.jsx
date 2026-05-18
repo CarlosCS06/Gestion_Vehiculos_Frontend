@@ -311,16 +311,23 @@ const PaginaAverias = () => {
         'typeof resuelta': typeof averiaActual.resuelta
       });
       
+      const esResuelta = esAdmin && !!(
+        averiaActual.fechaFinReparacion && 
+        averiaActual.fechaFinReparacion !== 'null' && 
+        averiaActual.fechaFinReparacion !== 'undefined' && 
+        String(averiaActual.fechaFinReparacion).trim() !== ''
+      );
+
       const datosGuardar = {
         descripcion: averiaActual.descripcion || '',
         vehiculoMatricula: vehiculoMatriculaValue,
         userDni: userDniValue,
         fechaAveria: averiaActual.fechaAveria || new Date().toISOString().split('T')[0],
-        fechaComienzoReparacion: averiaActual.fechaComienzoReparacion || null,
-        fechaFinReparacion: averiaActual.fechaFinReparacion || null,
-        lugarReparacion: averiaActual.lugarReparacion || null,
-        costeReparacion: averiaActual.costeReparacion ? parseFloat(averiaActual.costeReparacion) : null,
-        resuelta: averiaActual.resuelta === true ? true : false,  // Explícitamente asegurar booleano
+        fechaComienzoReparacion: esAdmin ? (averiaActual.fechaComienzoReparacion || null) : null,
+        fechaFinReparacion: esAdmin ? (averiaActual.fechaFinReparacion || null) : null,
+        lugarReparacion: esAdmin ? (averiaActual.lugarReparacion || null) : null,
+        costeReparacion: esAdmin && averiaActual.costeReparacion ? parseFloat(averiaActual.costeReparacion) : null,
+        resuelta: esResuelta,
       };
       
       console.log('DEBUG - FINAL datosGuardar.resuelta:', datosGuardar.resuelta, 'typeof:', typeof datosGuardar.resuelta);
@@ -403,8 +410,17 @@ const PaginaAverias = () => {
     );
   }
 
+  const esAveriaResuelta = (a) => {
+    return a.resuelta === true || (
+      a.fechaFinReparacion && 
+      a.fechaFinReparacion !== 'null' && 
+      a.fechaFinReparacion !== 'undefined' && 
+      String(a.fechaFinReparacion).trim() !== ''
+    );
+  };
+
   const averiasFiltradas = averias.filter(a => {
-    const estaResuelta = a.resuelta || a.fechaFinReparacion;
+    const estaResuelta = esAveriaResuelta(a);
     if (filtroEstado === 'Resueltas' && !estaResuelta) return false;
     if (filtroEstado === 'En taller' && estaResuelta) return false;
 
@@ -498,7 +514,7 @@ const PaginaAverias = () => {
                   {averia.costeReparacion ? `${averia.costeReparacion} €` : '—'}
                 </TableCell>
                  <TableCell>
-                  {averia.resuelta || averia.fechaFinReparacion ? (
+                  {esAveriaResuelta(averia) ? (
                     <Badge appearance="filled" color="success">Resuelta / Reparado</Badge>
                   ) : (
                     <Badge appearance="filled" color="warning">En reparación</Badge>
@@ -506,33 +522,6 @@ const PaginaAverias = () => {
                 </TableCell>
                 <TableCell>
                      <>
-                      {!averia.resuelta && (
-                        <Tooltip content="Marcar como resuelta" relationship="label">
-                          <Button 
-                            icon={<Badge color="success" size="extra-small" style={{ minWidth: 0, padding: 0 }} />} 
-                            appearance="subtle" 
-                            size="small" 
-                            onClick={async () => {
-                              const datosActualizados = { 
-                                descripcion: averia.descripcion,
-                                vehiculoMatricula: averia.vehiculoMatricula,
-                                userDni: averia.userDni,
-                                fechaAveria: averia.fechaAveria,
-                                fechaComienzoReparacion: averia.fechaComienzoReparacion,
-                                fechaFinReparacion: new Date().toISOString().split('T')[0],
-                                lugarReparacion: averia.lugarReparacion,
-                                costeReparacion: averia.costeReparacion ? parseFloat(averia.costeReparacion) : null,
-                                resuelta: true
-                              };
-                              await actualizarAveria(averia.id, datosActualizados);
-                              if (averia.vehiculoMatricula) {
-                                await actualizarVehiculo(averia.vehiculoMatricula, { estado: ESTADO_VEHICULO.DISPONIBLE });
-                              }
-                              await cargarAverias();
-                            }}
-                          />
-                        </Tooltip>
-                      )}
                       {esAdmin && (
                         <>
                           <Tooltip content="Editar" relationship="label">
@@ -566,7 +555,7 @@ const PaginaAverias = () => {
               <div style={{ flex: 1 }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
                   <Text size={300} weight="semibold" style={{ color: tokens.colorNeutralForeground1 }}>Avería reportada</Text>
-                  {averia.resuelta || averia.fechaFinReparacion ? (
+                  {esAveriaResuelta(averia) ? (
                     <Badge appearance="filled" color="success">Resuelta</Badge>
                   ) : (
                     <Badge appearance="filled" color="warning">En taller</Badge>
@@ -599,32 +588,6 @@ const PaginaAverias = () => {
             </div>
 
             <div className={estilos.accionesMovil}>
-              {!averia.resuelta && (
-                <Button 
-                  icon={<Badge color="success" size="extra-small" style={{ minWidth: 0, padding: 0 }} />} 
-                  appearance="subtle" 
-                  onClick={async () => {
-                    const datosActualizados = { 
-                      descripcion: averia.descripcion,
-                      vehiculoMatricula: averia.vehiculoMatricula,
-                      userDni: averia.userDni,
-                      fechaAveria: averia.fechaAveria,
-                      fechaComienzoReparacion: averia.fechaComienzoReparacion,
-                      fechaFinReparacion: new Date().toISOString().split('T')[0],
-                      lugarReparacion: averia.lugarReparacion,
-                      costeReparacion: averia.costeReparacion ? parseFloat(averia.costeReparacion) : null,
-                      resuelta: true
-                    };
-                    await actualizarAveria(averia.id, datosActualizados);
-                    if (averia.vehiculoMatricula) {
-                      await actualizarVehiculo(averia.vehiculoMatricula, { estado: ESTADO_VEHICULO.DISPONIBLE });
-                    }
-                    await cargarAverias();
-                  }}
-                >
-                  Resolver
-                </Button>
-              )}
               {esAdmin && (
                 <>
                   <Button icon={<Edit24Regular />} appearance="subtle" onClick={() => abrirDialogoEditar(averia)}>
@@ -752,13 +715,7 @@ const PaginaAverias = () => {
                         />
                       </Field>
                     </div>
-                     <Field>
-                      <Checkbox
-                        label="¿Está la avería ya resuelta?"
-                        checked={!!averiaActual.resuelta}
-                        onChange={(_, d) => manejarCambio('resuelta', !!d.checked)}
-                      />
-                    </Field>
+
                   </>
                 ) : (
                   <>

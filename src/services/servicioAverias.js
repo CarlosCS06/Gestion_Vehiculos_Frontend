@@ -2,6 +2,56 @@ import { fetchWithLogging } from './apiUtils';
 
 const AUTH_API_URL = 'https://gestion-vehiculos-backend.vercel.app/api/averias';
 
+const normalizarAveria = (a) => {
+  if (!a) return a;
+  
+  // Normalizar resuelta a booleano real
+  const resuelta = a.resuelta === true || a.resuelta === 'true';
+  
+  // Normalizar fechaFinReparacion
+  let fechaFinReparacion = a.fechaFinReparacion;
+  if (
+    fechaFinReparacion === null ||
+    fechaFinReparacion === undefined ||
+    fechaFinReparacion === 'null' ||
+    fechaFinReparacion === 'undefined' ||
+    String(fechaFinReparacion).trim() === ''
+  ) {
+    fechaFinReparacion = '';
+  }
+  
+  // Normalizar fechaComienzoReparacion
+  let fechaComienzoReparacion = a.fechaComienzoReparacion;
+  if (
+    fechaComienzoReparacion === null ||
+    fechaComienzoReparacion === undefined ||
+    fechaComienzoReparacion === 'null' ||
+    fechaComienzoReparacion === 'undefined' ||
+    String(fechaComienzoReparacion).trim() === ''
+  ) {
+    fechaComienzoReparacion = '';
+  }
+  
+  // Normalizar lugarReparacion
+  let lugarReparacion = a.lugarReparacion;
+  if (
+    lugarReparacion === null ||
+    lugarReparacion === undefined ||
+    lugarReparacion === 'null' ||
+    lugarReparacion === 'undefined'
+  ) {
+    lugarReparacion = '';
+  }
+
+  return {
+    ...a,
+    resuelta,
+    fechaFinReparacion,
+    fechaComienzoReparacion,
+    lugarReparacion
+  };
+};
+
 export const obtenerAverias = async () => {
   const token = sessionStorage.getItem('token');
   const response = await fetchWithLogging(AUTH_API_URL, {
@@ -10,7 +60,8 @@ export const obtenerAverias = async () => {
     }
   });
   const data = await response.json();
-  return Array.isArray(data) ? data : (data && typeof data === 'object' ? Object.values(data) : []);
+  const lista = Array.isArray(data) ? data : (data && typeof data === 'object' ? Object.values(data) : []);
+  return lista.map(normalizarAveria);
 };
 
 export const obtenerAveriaPorId = async (id) => {
@@ -20,7 +71,8 @@ export const obtenerAveriaPorId = async (id) => {
       'Authorization': `Bearer ${token}`
     }
   });
-  return response.json();
+  const data = await response.json();
+  return data ? normalizarAveria(data) : null;
 };
 
 export const crearAveria = async (averia) => {
@@ -33,7 +85,8 @@ export const crearAveria = async (averia) => {
     },
     body: JSON.stringify(averia),
   });
-  return response.json();
+  const data = await response.json();
+  return data ? normalizarAveria(data) : null;
 };
 
 export const actualizarAveria = async (id, datosActualizados) => {
@@ -46,7 +99,8 @@ export const actualizarAveria = async (id, datosActualizados) => {
     },
     body: JSON.stringify(datosActualizados),
   });
-  return response.json();
+  const data = await response.json();
+  return data ? normalizarAveria(data) : null;
 };
 
 export const eliminarAveria = async (id) => {

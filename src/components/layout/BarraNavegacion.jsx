@@ -131,6 +131,16 @@ const useEstilos = makeStyles({
     fontSize: '10px',
     fontWeight: tokens.fontWeightMedium,
   },
+  gestionUsuariosBoton: {
+    '@media (max-width: 768px)': {
+      '& span': {
+        display: 'none !important',
+      },
+      paddingLeft: '8px !important',
+      paddingRight: '8px !important',
+      minWidth: 'auto !important',
+    },
+  },
 });
 
 const pestanas = [
@@ -194,6 +204,18 @@ const BarraNavegacion = () => {
               >
                 Admin
               </Badge>
+            </Tooltip>
+          )}
+          {esAdmin && (
+            <Tooltip content="Gestión de usuarios" relationship="label">
+              <Button
+                icon={<PersonAccounts24Regular />}
+                appearance="subtle"
+                className={estilos.gestionUsuariosBoton}
+                onClick={() => navegar('/usuarios')}
+              >
+                Gestión de usuarios
+              </Button>
             </Tooltip>
           )}
           <Avatar

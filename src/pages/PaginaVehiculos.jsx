@@ -65,8 +65,6 @@ import {
   crearVehiculo,
   actualizarVehiculo,
   eliminarVehiculo,
-  obtenerPeriodicidadITV,
-  calcularProximaItvSugerida,
   obtenerVehiculoPorMatricula,
 } from '../services/servicioVehiculos.js';
 import { obtenerAverias } from '../services/servicioAverias.js';
@@ -855,7 +853,15 @@ const PaginaVehiculos = () => {
         obtenerViajes()
       ]);
 
-      const averiasActivas = datosAverias.filter((a) => !a.resuelta && !(a.fechaFinReparacion && a.fechaFinReparacion.trim()));
+      const averiasActivas = datosAverias.filter((a) => {
+        const estaResuelta = a.resuelta === true || (
+          a.fechaFinReparacion && 
+          a.fechaFinReparacion !== 'null' && 
+          a.fechaFinReparacion !== 'undefined' && 
+          String(a.fechaFinReparacion).trim() !== ''
+        );
+        return !estaResuelta;
+      });
 
       // Sincronización de estados basada en Viajes (Lógica de limpieza)
       const matriculasEnTrayecto = new Set(
@@ -919,13 +925,6 @@ const PaginaVehiculos = () => {
     return () => window.removeEventListener('vehiculosActualizados', handleVehiculosActualizados);
   }, [cargarVehiculos]);
 
-  // Efecto para auto-calcular la próxima ITV cuando cambian tipo o antigüedad en el modo creación
-  useEffect(() => {
-    if (!editando && dialogoAbierto) {
-      const sugerencia = calcularProximaItvSugerida(vehiculoActual.tipo, vehiculoActual.anyosAntiguedad);
-      setVehiculoActual(prev => ({ ...prev, proximaItv: sugerencia }));
-    }
-  }, [vehiculoActual.tipo, vehiculoActual.anyosAntiguedad, editando, dialogoAbierto]);
 
   const vehiculosAveriadosActivos = new Set(
     averiasAbiertas.flatMap((a) => obtenerVehiculosAfectados(a))
@@ -1330,12 +1329,7 @@ const PaginaVehiculos = () => {
                     {vehiculo.proximaItv || 'No definida'}
                   </div>
                 </div>
-                <div>
-                  <div className={estilos.datoEtiqueta}>Periodicidad</div>
-                  <div className={estilos.datoValor} style={{ color: obtenerPeriodicidadITV(vehiculo.tipo, vehiculo.anyosAntiguedad).texto === 'Exento' ? tokens.colorPaletteGreenForeground1 : tokens.colorNeutralForeground3 }}>
-                    {obtenerPeriodicidadITV(vehiculo.tipo, vehiculo.anyosAntiguedad).texto}
-                  </div>
-                </div>
+
               </div>
             </div>
           </Card>
@@ -1468,15 +1462,7 @@ const PaginaVehiculos = () => {
                     />
                   </Field>
                 </div>
-                <div className={estilos.filaFormulario}>
-                  <Field label="Próxima ITV (Año o fecha)" hint="Se calcula automáticamente pero puedes editarlo">
-                    <Input
-                      value={vehiculoActual.proximaItv}
-                      onChange={(_, d) => manejarCambio('proximaItv', d.value)}
-                      placeholder="2028 (Pendiente)"
-                    />
-                  </Field>
-                </div>
+
                 <div className={estilos.filaFormulario}>
                   <Field label="Plantillas de Revisión" hint="Asigna una o varias plantillas al vehículo">
                     <Select

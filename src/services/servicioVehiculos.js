@@ -122,7 +122,7 @@ export const actualizarVehiculo = async (matricula, datosActualizados) => {
 
   // Construir objeto solo con los campos que vienen en datosActualizados
   const normalizedDatos = {};
-  
+
   if (datosActualizados.matricula !== undefined) normalizedDatos.matricula = datosActualizados.matricula;
   if (datosActualizados.marca !== undefined) normalizedDatos.marca = datosActualizados.marca;
   if (datosActualizados.modelo !== undefined) normalizedDatos.modelo = datosActualizados.modelo;
@@ -184,50 +184,3 @@ export const obtenerVehiculosAveriados = async () => {
   return response.json();
 };
 
-/**
- * Calcula la periodicidad de la ITV según el tipo y antigüedad
- */
-export const obtenerPeriodicidadITV = (tipo, antiguedad) => {
-  if (tipo === 'Turismo' || tipo === 'Motocicleta') {
-    if (antiguedad < 4) return { texto: 'Exento', años: 4 - antiguedad };
-    if (antiguedad < 10) return { texto: 'Cada 2 años', años: 2 };
-    return { texto: 'Cada año', años: 1 };
-  }
-
-  if (tipo === 'Ciclomotor') {
-    if (antiguedad < 3) return { texto: 'Exento', años: 3 - antiguedad };
-    return { texto: 'Cada 2 años', años: 2 };
-  }
-
-  if (tipo === 'Furgoneta') {
-    if (antiguedad < 2) return { texto: 'Exento', años: 2 - antiguedad };
-    if (antiguedad < 6) return { texto: 'Cada 2 años', años: 2 };
-    if (antiguedad < 10) return { texto: 'Cada año', años: 1 };
-    return { texto: 'Cada 6 meses', años: 0.5 };
-  }
-
-  if (tipo === 'Caravana') {
-    if (antiguedad < 6) return { texto: 'Exento', años: 6 - antiguedad };
-    return { texto: 'Cada 2 años', años: 2 };
-  }
-
-  if (tipo === 'Camión' || tipo === 'Autobús') {
-    if (antiguedad < 10) return { texto: 'Cada año', años: 1 };
-    return { texto: 'Cada 6 meses', años: 0.5 };
-  }
-
-  return { texto: 'No definida', años: 0 };
-};
-
-/**
- * Calcula el año sugerido de la próxima ITV
- */
-export const calcularProximaItvSugerida = (tipo, antiguedad) => {
-  const periodicidad = obtenerPeriodicidadITV(tipo, antiguedad);
-  if (periodicidad.años === 0) return 'Por especificar';
-
-  const anyoActual = new Date().getFullYear();
-  const proximoAnyo = anyoActual + periodicidad.años;
-
-  return `${Math.floor(proximoAnyo)} (Pendiente)`;
-};

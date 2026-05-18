@@ -28,7 +28,7 @@
   - `Averías / Revisiones` (gestión del ciclo de vida del mantenimiento).
 
 ## 3. Enlace de Producción y Despliegue
-- **Enlace al proyecto en vivo**: *(Pendiente de rellenar: añade aquí la URL que te genere Vercel)*
+- **Enlace al proyecto en vivo**: https://gestion-vehiculos-frontend.vercel.app/
 - **Flujo de despliegue continuo (CI/CD)**: La aplicación está conectada directamente al repositorio oficial. Gracias a la integración con **Vercel**, cada vez que se suben nuevos cambios (*push*) a la rama `main` en GitHub, Vercel detecta las modificaciones, compila el código y actualiza la aplicación en producción de forma 100% automática en cuestión de segundos, sin cortes de servicio.
 
 ## 4. Guía de Instalación y Ejecución Local
