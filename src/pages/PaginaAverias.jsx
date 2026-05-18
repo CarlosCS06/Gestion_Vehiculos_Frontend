@@ -159,6 +159,7 @@ const PaginaAverias = () => {
   const [editando, setEditando] = useState(false);
   const [idEliminar, setIdEliminar] = useState('');
   const [error, setError] = useState('');
+  const [erroresValidacion, setErroresValidacion] = useState({});
   const [terminoBusqueda, setTerminoBusqueda] = useState('');
   const [filtroEstado, setFiltroEstado] = useState('Todas');
   const [vehiculosTexto, setVehiculosTexto] = useState('');
