@@ -223,15 +223,20 @@ const PaginaConductores = () => {
     }
   }, [dialogoAbierto]);
 
-  const cargarConductores = useCallback(async () => {
-    setCargando(true);
+  const cargarConductores = useCallback(async (silencioso = false) => {
+    if (!silencioso) {
+      setCargando(true);
+    }
     try {
       const datos = await obtenerConductores();
       setConductores(datos);
     } catch (err) {
       setError(err.message || 'Error al cargar los conductores');
+    } finally {
+      if (!silencioso) {
+        setCargando(false);
+      }
     }
-    setCargando(false);
   }, []);
 
   useEffect(() => {
@@ -320,7 +325,7 @@ const PaginaConductores = () => {
         await preRegistrarUsuario(conductorActual);
       }
       setDialogoAbierto(false);
-      cargarConductores();
+      await cargarConductores(true);
       setError('');
     } catch (err) {
       setError(err.message);
@@ -370,7 +375,7 @@ const PaginaConductores = () => {
     try {
       await eliminarConductor(dniEliminar);
       setConfirmacionAbierta(false);
-      cargarConductores();
+      await cargarConductores(true);
     } catch (err) {
       setError(err.message);
     } finally {

@@ -116,8 +116,10 @@ const PaginaTrayectos = () => {
   const [mensajeCargando, setMensajeCargando] = useState('');
   const [listaConductores, setListaConductores] = useState([]);
 
-  const cargarTrayectos = useCallback(async () => {
-    setCargando(true);
+  const cargarTrayectos = useCallback(async (silencioso = false) => {
+    if (!silencioso) {
+      setCargando(true);
+    }
     try {
       const datos = await obtenerTrayectos();
       console.log('Trayectos cargados:', datos);
@@ -144,8 +146,11 @@ const PaginaTrayectos = () => {
     } catch (err) {
       console.error('Error al cargar los trayectos:', err);
       setError('Error al cargar los trayectos');
+    } finally {
+      if (!silencioso) {
+        setCargando(false);
+      }
     }
-    setCargando(false);
   }, []);
 
   useEffect(() => {
@@ -193,7 +198,7 @@ const PaginaTrayectos = () => {
       }
       
       setDialogoAbierto(false);
-      await cargarTrayectos();
+      await cargarTrayectos(true);
       setError('');
     } catch (err) {
       setError(err.message);
@@ -217,7 +222,7 @@ const PaginaTrayectos = () => {
       await eliminarTrayecto(idEliminar);
       console.log('Eliminación exitosa en backend, recargando...');
       setConfirmacionAbierta(false);
-      await cargarTrayectos();
+      await cargarTrayectos(true);
     } catch (err) {
       console.error('Error al eliminar trayecto:', err);
       setError(err.message);

@@ -387,6 +387,10 @@ const ModalDetallesVehiculo = ({ vehiculo: vehiculoBase, onCerrar, onVehiculoAct
   const [cargandoCarburante, setCargandoCarburante] = useState(false);
   const [subiendoAdicional, setSubiendoAdicional] = useState(false);
 
+  const esElectrico = String(vehiculoCompleto?.alimentacion || '').toLowerCase().includes('eléctr') || String(vehiculoCompleto?.alimentacion || '').toLowerCase().includes('electr');
+  const esHibrido = String(vehiculoCompleto?.alimentacion || '').toLowerCase().includes('híbrid') || String(vehiculoCompleto?.alimentacion || '').toLowerCase().includes('hibrid');
+  const usaCombustibleLiquido = !esElectrico || esHibrido;
+
   const manejarSubidaAdicional = async (archivo) => {
     if (!archivo) return;
     setSubiendoAdicional(true);
@@ -710,17 +714,75 @@ const ModalDetallesVehiculo = ({ vehiculo: vehiculoBase, onCerrar, onVehiculoAct
                         <div><Text size={200} style={{ color: tokens.colorNeutralForeground3 }} block>Precio compra</Text><Text size={300} weight="semibold">{vehiculoCompleto.precio.toLocaleString('es-ES', { style: 'currency', currency: 'EUR' })}</Text></div>
                         <div><Text size={200} style={{ color: tokens.colorNeutralForeground3 }} block>Fecha compra</Text><Text size={300} weight="semibold">{vehiculoCompleto.fechaCompra ? new Date(vehiculoCompleto.fechaCompra).toLocaleDateString('es-ES') : '—'}</Text></div>
                         <div><Text size={200} style={{ color: tokens.colorNeutralForeground3 }} block>Fecha Matriculación</Text><Text size={300} weight="semibold">{vehiculoCompleto.fechaMatriculacion ? new Date(vehiculoCompleto.fechaMatriculacion).toLocaleDateString('es-ES') : '—'}</Text></div>
-                        <div><Text size={200} style={{ color: tokens.colorNeutralForeground3 }} block>Gasto por Km</Text><Text size={300} weight="semibold">{(vehiculoCompleto.gastoCombustiblePorKiloetro || 0).toLocaleString('es-ES', { style: 'currency', currency: 'EUR', minimumFractionDigits: 2 })}</Text></div>
-                        <div>
-                          <Text size={200} style={{ color: tokens.colorNeutralForeground3 }} block>Precio carburante actual</Text>
-                          <Text size={300} weight="semibold" style={{ color: tokens.colorBrandForeground1 }}>
-                            {vehiculoCompleto.precioCarburanteActual ? `${Number(vehiculoCompleto.precioCarburanteActual).toFixed(3)} €/L` : '—'}
-                          </Text>
-                        </div>
+                        {usaCombustibleLiquido && (
+                          <>
+                            <div><Text size={200} style={{ color: tokens.colorNeutralForeground3 }} block>Gasto por Km</Text><Text size={300} weight="semibold">{(vehiculoCompleto.gastoCombustiblePorKiloetro || 0).toLocaleString('es-ES', { style: 'currency', currency: 'EUR', minimumFractionDigits: 2 })}</Text></div>
+                            <div>
+                              <Text size={200} style={{ color: tokens.colorNeutralForeground3 }} block>Precio carburante actual</Text>
+                              <Text size={300} weight="semibold" style={{ color: tokens.colorBrandForeground1 }}>
+                                {vehiculoCompleto.precioCarburanteActual ? `${Number(vehiculoCompleto.precioCarburanteActual).toFixed(3)} €/L` : '—'}
+                              </Text>
+                            </div>
+                          </>
+                        )}
                       </div>
 
+                      {/* --- PANEL DE HERRAMIENTAS ELÉCTRICAS --- */}
+                      {(esElectrico || esHibrido) && (
+                        <div style={{
+                          marginTop: '8px',
+                          padding: '12px 16px',
+                          backgroundColor: tokens.colorBrandBackground2,
+                          borderRadius: tokens.borderRadiusLarge,
+                          border: `1px solid ${tokens.colorBrandStroke1}`,
+                          display: 'flex',
+                          flexDirection: 'column',
+                          gap: '10px'
+                        }}>
+                          <Text weight="bold" style={{ color: tokens.colorBrandForeground1, fontSize: tokens.fontSizeBase300 }}>
+                            ⚡ Herramientas de Carga y Ahorro Eléctrico
+                          </Text>
+                          
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                            <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '4px' }}>
+                              <Text size={200} style={{ color: tokens.colorNeutralForeground2 }}>Para consultar el precio de la luz (enchufe básico):</Text>
+                              <a 
+                                href="https://tarifaluzhora.es/"
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                style={{ 
+                                  color: tokens.colorBrandForegroundLink, 
+                                  fontWeight: tokens.fontWeightSemibold,
+                                  textDecoration: 'underline',
+                                  fontSize: tokens.fontSizeBase200
+                                }}
+                              >
+                                pulsa aqui para ver el precio actual de la luz
+                              </a>
+                            </div>
+
+                            <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '4px' }}>
+                              <Text size={200} style={{ color: tokens.colorNeutralForeground2 }}>Para buscar un punto de carga:</Text>
+                              <a 
+                                href="https://www.mapareve.es/mapa-puntos-recarga"
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                style={{ 
+                                  color: tokens.colorBrandForegroundLink, 
+                                  fontWeight: tokens.fontWeightSemibold,
+                                  textDecoration: 'underline',
+                                  fontSize: tokens.fontSizeBase200
+                                }}
+                              >
+                                clica aqui para ver el punto de carga mas cercano y barato
+                              </a>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+
                       {/* --- PANEL DE INTELIGENCIA DE CARBURANTES --- */}
-                      {vehiculoCompleto.datosCarburante && (
+                      {usaCombustibleLiquido && vehiculoCompleto.datosCarburante && (
                         <div style={{
                           marginTop: '12px',
                           padding: '16px',
@@ -809,86 +871,88 @@ const ModalDetallesVehiculo = ({ vehiculo: vehiculoBase, onCerrar, onVehiculoAct
                         </div>
                       )}
 
-                      <div style={{ borderTop: `1px solid ${tokens.colorNeutralStroke2}`, paddingTop: '16px' }}>
-                        <Text size={400} weight="semibold" style={{ marginBottom: '12px' }}>Configuración de Carburante</Text>
+                      {usaCombustibleLiquido && (
+                        <div style={{ borderTop: `1px solid ${tokens.colorNeutralStroke2}`, paddingTop: '16px' }}>
+                          <Text size={400} weight="semibold" style={{ marginBottom: '12px' }}>Configuración de Carburante</Text>
 
-                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '16px' }}>
-                          <Field label="Comunidad Autónoma">
-                            <Select
-                              value={vehiculoCompleto.comunidadAutonomaId || ''}
-                              onChange={(_, d) => manejarCambioComunidad(d.value)}
-                            >
-                              <option value="">Selecciona comunidad</option>
-                              {comunidades.map((comunidad) => (
-                                <option key={comunidad.IDCCAA} value={comunidad.IDCCAA}>
-                                  {comunidad.CCAA}
-                                </option>
-                              ))}
-                            </Select>
-                          </Field>
+                          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '16px' }}>
+                            <Field label="Comunidad Autónoma">
+                              <Select
+                                value={vehiculoCompleto.comunidadAutonomaId || ''}
+                                onChange={(_, d) => manejarCambioComunidad(d.value)}
+                              >
+                                <option value="">Selecciona comunidad</option>
+                                {comunidades.map((comunidad) => (
+                                  <option key={comunidad.IDCCAA} value={comunidad.IDCCAA}>
+                                    {comunidad.CCAA}
+                                  </option>
+                                ))}
+                              </Select>
+                            </Field>
 
-                          <Field label="Carburante">
-                            <Select
-                              value={vehiculoCompleto.carburanteId || ''}
-                              onChange={(_, d) => manejarCambioCarburante(d.value)}
-                            >
-                              <option value="">Selecciona carburante</option>
-                              {productosPetroliferos.map((producto) => (
-                                <option key={producto.IDProducto} value={producto.IDProducto}>
-                                  {producto.NombreProducto}
-                                </option>
-                              ))}
-                            </Select>
-                          </Field>
+                            <Field label="Carburante">
+                              <Select
+                                value={vehiculoCompleto.carburanteId || ''}
+                                onChange={(_, d) => manejarCambioCarburante(d.value)}
+                              >
+                                <option value="">Selecciona carburante</option>
+                                {productosPetroliferos.map((producto) => (
+                                  <option key={producto.IDProducto} value={producto.IDProducto}>
+                                    {producto.NombreProducto}
+                                  </option>
+                                ))}
+                              </Select>
+                            </Field>
 
-                          <Field label="Provincia">
-                            <Select
-                              value={vehiculoCompleto.provinciaId || ''}
-                              disabled={!vehiculoCompleto.comunidadAutonomaId}
-                              onChange={(_, d) => manejarCambioProvincia(d.value)}
-                            >
-                              <option value="">Todas las provincias</option>
-                              {provincias.map((provincia) => (
-                                <option
-                                  key={provincia.IDPovincia || provincia.IDProvincia}
-                                  value={provincia.IDPovincia || provincia.IDProvincia}
-                                >
-                                  {provincia.Provincia}
-                                </option>
-                              ))}
-                            </Select>
-                          </Field>
+                            <Field label="Provincia">
+                              <Select
+                                value={vehiculoCompleto.provinciaId || ''}
+                                disabled={!vehiculoCompleto.comunidadAutonomaId}
+                                onChange={(_, d) => manejarCambioProvincia(d.value)}
+                              >
+                                <option value="">Todas las provincias</option>
+                                {provincias.map((provincia) => (
+                                  <option
+                                    key={provincia.IDPovincia || provincia.IDProvincia}
+                                    value={provincia.IDPovincia || provincia.IDProvincia}
+                                  >
+                                    {provincia.Provincia}
+                                  </option>
+                                ))}
+                              </Select>
+                            </Field>
 
-                          <Field label="Municipio">
-                            <Select
-                              value={vehiculoCompleto.municipioId || ''}
-                              disabled={!vehiculoCompleto.provinciaId}
-                              onChange={(_, d) => manejarCambioMunicipio(d.value)}
+                            <Field label="Municipio">
+                              <Select
+                                value={vehiculoCompleto.municipioId || ''}
+                                disabled={!vehiculoCompleto.provinciaId}
+                                onChange={(_, d) => manejarCambioMunicipio(d.value)}
+                              >
+                                <option value="">Todos los municipios</option>
+                                {municipios.map((municipio) => (
+                                  <option key={municipio.IDMunicipio} value={municipio.IDMunicipio}>
+                                    {municipio.Municipio}
+                                  </option>
+                                ))}
+                              </Select>
+                            </Field>
+                          </div>
+
+                          <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
+                            <Button
+                              appearance="secondary"
+                              onClick={calcularGastoPorKmCarburante}
+                              disabled={
+                                cargandoCarburante ||
+                                !vehiculoCompleto.comunidadAutonomaId ||
+                                !vehiculoCompleto.carburanteId
+                              }
                             >
-                              <option value="">Todos los municipios</option>
-                              {municipios.map((municipio) => (
-                                <option key={municipio.IDMunicipio} value={municipio.IDMunicipio}>
-                                  {municipio.Municipio}
-                                </option>
-                              ))}
-                            </Select>
-                          </Field>
+                              {cargandoCarburante ? 'Calculando...' : 'Calcular precio'}
+                            </Button>
+                          </div>
                         </div>
-
-                        <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
-                          <Button
-                            appearance="secondary"
-                            onClick={calcularGastoPorKmCarburante}
-                            disabled={
-                              cargandoCarburante ||
-                              !vehiculoCompleto.comunidadAutonomaId ||
-                              !vehiculoCompleto.carburanteId
-                            }
-                          >
-                            {cargandoCarburante ? 'Calculando...' : 'Calcular precio'}
-                          </Button>
-                        </div>
-                      </div>
+                      )}
                     </div>
                   )}
                   {tabActiva === 'historial' && (
@@ -1281,7 +1345,7 @@ const PaginaVehiculos = () => {
 
       setDialogoAbierto(false);
       setArchivoFoto(null);
-      cargarVehiculos();
+      await cargarVehiculos(true);
       obtenerPlantillas().then(setPlantillas).catch(console.error);
       setError('');
     } catch (err) {
@@ -1301,7 +1365,7 @@ const PaginaVehiculos = () => {
     try {
       await eliminarVehiculo(matriculaEliminar);
       setConfirmacionAbierta(false);
-      cargarVehiculos();
+      await cargarVehiculos(true);
       setError('');
     } catch (err) {
       setError(err.message);

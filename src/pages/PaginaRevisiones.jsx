@@ -197,8 +197,10 @@ const PaginaRevisiones = () => {
   const [terminoBusqueda, setTerminoBusqueda] = useState('');
   const [filtroEstado, setFiltroEstado] = useState('Todas');
 
-  const cargarDatos = useCallback(async () => {
-    setCargando(true);
+  const cargarDatos = useCallback(async (silencioso = false) => {
+    if (!silencioso) {
+      setCargando(true);
+    }
     try {
       const [datosRevisiones, datosVehiculos] = await Promise.all([
         obtenerRevisiones(),
@@ -208,8 +210,11 @@ const PaginaRevisiones = () => {
       setVehiculos(datosVehiculos);
     } catch (err) {
       setError(err.message || 'Error al cargar los datos');
+    } finally {
+      if (!silencioso) {
+        setCargando(false);
+      }
     }
-    setCargando(false);
   }, []);
 
   useEffect(() => {
@@ -237,7 +242,7 @@ const PaginaRevisiones = () => {
         await crearRevision({ ...revisionActual, aprobada: false });
       }
       setDialogoAbierto(false);
-      cargarDatos();
+      await cargarDatos(true);
       setError('');
     } catch (err) {
       setError(err.message);
@@ -256,7 +261,7 @@ const PaginaRevisiones = () => {
     try {
       await eliminarRevision(idEliminar);
       setConfirmacionAbierta(false);
-      cargarDatos();
+      await cargarDatos(true);
     } catch (err) {
       setError(err.message);
     } finally {

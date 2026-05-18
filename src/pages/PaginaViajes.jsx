@@ -310,8 +310,10 @@ const PaginaViajes = () => {
     return nuevos;
   };
 
-  const cargarViajes = useCallback(async () => {
-    setCargando(true);
+  const cargarViajes = useCallback(async (silencioso = false) => {
+    if (!silencioso) {
+      setCargando(true);
+    }
     try {
       const [datos, vehiculosActualizados] = await Promise.all([
         obtenerViajes(),
@@ -401,8 +403,11 @@ const PaginaViajes = () => {
       setViajes(filtrados);
     } catch (err) {
       setError(err.message || 'Error al cargar los viajes');
+    } finally {
+      if (!silencioso) {
+        setCargando(false);
+      }
     }
-    setCargando(false);
   }, [esAdmin, usuario?.dni]);
 
   const confirmarEliminarTrayecto = (viajeId, trayectoId) => {
@@ -428,7 +433,7 @@ const PaginaViajes = () => {
 
       setConfirmacionTrayectoAbierta(false);
       setTrayectoEliminarId('');
-      await cargarViajes();
+      await cargarViajes(true);
       setError('');
     } catch (err) {
       console.error('Error eliminando trayecto:', err);
@@ -549,7 +554,7 @@ const PaginaViajes = () => {
       }
 
       setDialogoTrayectoAbierto(false);
-      await cargarViajes();
+      await cargarViajes(true);
       // Forzar recarga de vehículos para ver el cambio de estado
       obtenerVehiculos().then(setListaVehiculos).catch(console.error);
     } catch (err) {
@@ -571,7 +576,7 @@ const PaginaViajes = () => {
     // TEMPORIZADOR DE ACTUALIZACIÓN AUTOMÁTICA: Revisar estados cada minuto
     const intervalo = setInterval(() => {
       console.log('Comprobación automática de estados de viaje...');
-      cargarViajes();
+      cargarViajes(true);
     }, 60000);
 
     return () => clearInterval(intervalo);
@@ -694,7 +699,7 @@ const manejarGuardar = async () => {
       setDialogoAbierto(false);
       setViajeActual(crearViajeVacio());
       setEditando(false);
-      await cargarViajes();
+      await cargarViajes(true);
       // Recargar lista de vehículos para reflejar cambios de estado
       obtenerVehiculos().then(setListaVehiculos).catch(console.error);
       setError('');
@@ -737,7 +742,7 @@ const manejarGuardar = async () => {
       await eliminarViaje(viajeEliminar.id);
       setConfirmacionAbierta(false);
       setIdEliminar('');
-      await cargarViajes();
+      await cargarViajes(true);
       setError('');
     } catch (err) {
       console.error('Error en soft delete:', err);
@@ -768,7 +773,7 @@ const manejarGuardar = async () => {
         await actualizarVehiculo(viajeActualizado.vehiculoMatricula.trim().toUpperCase(), { estado: ESTADO_VEHICULO.DISPONIBLE });
       }
       
-      await cargarViajes();
+      await cargarViajes(true);
       // Recargar lista de vehículos para reflejar cambios de estado
       obtenerVehiculos().then(setListaVehiculos).catch(console.error);
       setError('');

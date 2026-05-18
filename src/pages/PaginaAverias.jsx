@@ -165,8 +165,10 @@ const PaginaAverias = () => {
   const [listaVehiculos, setListaVehiculos] = useState([]);
   const [listaConductores, setListaConductores] = useState([]);
 
-  const cargarAverias = useCallback(async () => {
-    setCargando(true);
+  const cargarAverias = useCallback(async (silencioso = false) => {
+    if (!silencioso) {
+      setCargando(true);
+    }
     try {
       const datos = await obtenerAverias();
       
@@ -181,8 +183,11 @@ const PaginaAverias = () => {
       setAverias(unicas);
     } catch (err) {
       setError(err.message || 'Error al cargar las averías');
+    } finally {
+      if (!silencioso) {
+        setCargando(false);
+      }
     }
-    setCargando(false);
   }, []);
 
   useEffect(() => {
@@ -365,7 +370,7 @@ const PaginaAverias = () => {
       }
 
       setDialogoAbierto(false);
-      await cargarAverias();
+      await cargarAverias(true);
       window.dispatchEvent(new CustomEvent('vehiculosActualizados', {
         detail: { matriculas: matriculas }
       }));
@@ -398,7 +403,7 @@ const PaginaAverias = () => {
       }
 
       setConfirmacionAbierta(false);
-      await cargarAverias();
+      await cargarAverias(true);
       window.dispatchEvent(new CustomEvent('vehiculosActualizados', {
         detail: { matriculas: averiaAEliminar?.vehiculoMatricula ? [averiaAEliminar.vehiculoMatricula] : [] }
       }));
