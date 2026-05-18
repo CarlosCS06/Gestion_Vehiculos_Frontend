@@ -385,6 +385,47 @@ const ModalDetallesVehiculo = ({ vehiculo: vehiculoBase, onCerrar, onVehiculoAct
   const [municipios, setMunicipios] = useState([]);
   const [productosPetroliferos, setProductosPetroliferos] = useState([]);
   const [cargandoCarburante, setCargandoCarburante] = useState(false);
+  const [subiendoAdicional, setSubiendoAdicional] = useState(false);
+
+  const manejarSubidaAdicional = async (archivo) => {
+    if (!archivo) return;
+    setSubiendoAdicional(true);
+    try {
+      const resp = await subirImagen(archivo, vehiculoCompleto.matricula);
+
+      const nuevasImagenes = vehiculoCompleto.imagenes ? [...vehiculoCompleto.imagenes] : [];
+      let nuevaFotoUrl = vehiculoCompleto.foto || '';
+      let nuevoIdImagen = vehiculoCompleto.idImagen || null;
+
+      if (nuevasImagenes.length === 0) {
+        nuevaFotoUrl = resp.url;
+        nuevoIdImagen = resp.id;
+      }
+
+      nuevasImagenes.push(resp);
+
+      await actualizarVehiculo(vehiculoCompleto.matricula, {
+        foto: nuevaFotoUrl,
+        idImagen: nuevoIdImagen,
+        imagenes: nuevasImagenes
+      });
+
+      setVehiculoCompleto(prev => ({
+        ...prev,
+        foto: nuevaFotoUrl,
+        idImagen: nuevoIdImagen,
+        imagenes: nuevasImagenes
+      }));
+
+      if (onVehiculoActualizado) {
+        onVehiculoActualizado();
+      }
+    } catch (err) {
+      alert('Error al subir imagen adicional: ' + err.message);
+    } finally {
+      setSubiendoAdicional(false);
+    }
+  };
 
   useEffect(() => {
     if (vehiculoBase?.matricula) {
@@ -860,7 +901,8 @@ const ModalDetallesVehiculo = ({ vehiculo: vehiculoBase, onCerrar, onVehiculoAct
                   )}
                   {tabActiva === 'imagenes' && (
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(120px, 1fr))', gap: '12px' }}>
-                      {vehiculoCompleto.imagenes && vehiculoCompleto.imagenes.length > 1 ? (
+                      {/* Grid Items: Primero las imágenes de la galería (todas excepto la principal) */}
+                      {vehiculoCompleto.imagenes && vehiculoCompleto.imagenes.length > 1 && (
                         vehiculoCompleto.imagenes.slice(1).map((img, idx) => (
                           <div key={img.id || idx} style={{ position: 'relative', aspectRatio: '1', backgroundColor: tokens.colorNeutralBackground2, borderRadius: tokens.borderRadiusMedium, overflow: 'hidden' }}>
                             <img
@@ -926,7 +968,52 @@ const ModalDetallesVehiculo = ({ vehiculo: vehiculoBase, onCerrar, onVehiculoAct
                             )}
                           </div>
                         ))
-                      ) : (
+                      )}
+
+                      {/* Botón interactivo de añadir foto (solo para Admin) */}
+                      {esAdmin && (
+                        <div 
+                          onClick={() => document.getElementById('gallery-file-input').click()}
+                          style={{ 
+                            aspectRatio: '1', 
+                            border: `2px dashed ${tokens.colorNeutralStroke1}`, 
+                            borderRadius: tokens.borderRadiusMedium, 
+                            display: 'flex', 
+                            flexDirection: 'column',
+                            alignItems: 'center', 
+                            justifyContent: 'center', 
+                            cursor: 'pointer',
+                            backgroundColor: tokens.colorNeutralBackground2,
+                            transition: 'all 0.2s ease',
+                            gap: '8px'
+                          }}
+                          title="Añadir nueva imagen a la galería"
+                        >
+                          {subiendoAdicional ? (
+                            <Spinner size="small" label="Subiendo..." />
+                          ) : (
+                            <>
+                              <Add24Regular style={{ color: tokens.colorNeutralForeground4 }} />
+                              <Text size={100} style={{ color: tokens.colorNeutralForeground4 }} weight="semibold">Añadir foto</Text>
+                            </>
+                          )}
+                          <input
+                            id="gallery-file-input"
+                            type="file"
+                            hidden
+                            accept="image/*"
+                            onChange={async (e) => {
+                              const file = e.target.files[0];
+                              if (file) {
+                                await manejarSubidaAdicional(file);
+                              }
+                            }}
+                          />
+                        </div>
+                      )}
+
+                      {/* Mensaje de galería vacía (solo si no hay imágenes adicionales y no somos admin) */}
+                      {(!vehiculoCompleto.imagenes || vehiculoCompleto.imagenes.length <= 1) && !esAdmin && (
                         <div style={{ gridColumn: '1 / -1', textAlign: 'center', padding: '24px' }}>
                           <Text size={300} style={{ color: tokens.colorNeutralForeground3 }}>No hay imágenes adicionales</Text>
                         </div>
