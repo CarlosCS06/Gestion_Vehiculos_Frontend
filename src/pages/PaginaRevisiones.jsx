@@ -186,6 +186,8 @@ const PaginaRevisiones = () => {
   const [revisiones, setRevisiones] = useState([]);
   const [vehiculos, setVehiculos] = useState([]);
   const [cargando, setCargando] = useState(true);
+  const [guardando, setGuardando] = useState(false);
+  const [eliminando, setEliminando] = useState(false);
   const [dialogoAbierto, setDialogoAbierto] = useState(false);
   const [confirmacionAbierta, setConfirmacionAbierta] = useState(false);
   const [revisionActual, setRevisionActual] = useState(crearRevisionVacia());
@@ -227,6 +229,7 @@ const PaginaRevisiones = () => {
   };
 
   const manejarGuardar = async () => {
+    setGuardando(true);
     try {
       if (editando) {
         await actualizarRevision(revisionActual.id, { ...revisionActual, aprobada: false });
@@ -238,6 +241,8 @@ const PaginaRevisiones = () => {
       setError('');
     } catch (err) {
       setError(err.message);
+    } finally {
+      setGuardando(false);
     }
   };
 
@@ -247,12 +252,15 @@ const PaginaRevisiones = () => {
   };
 
   const manejarEliminar = async () => {
+    setEliminando(true);
     try {
       await eliminarRevision(idEliminar);
       setConfirmacionAbierta(false);
       cargarDatos();
     } catch (err) {
       setError(err.message);
+    } finally {
+      setEliminando(false);
     }
   };
 
@@ -569,6 +577,27 @@ const PaginaRevisiones = () => {
         onConfirmar={manejarEliminar}
         onCancelar={() => setConfirmacionAbierta(false)}
       />
+
+      {(guardando || eliminando) && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: 'rgba(255, 255, 255, 0.7)',
+          backdropFilter: 'blur(4px)',
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'center',
+          zIndex: 9999,
+        }}>
+          <Spinner 
+            size="large" 
+            label={eliminando ? "Eliminando revisión..." : (editando ? "Modificando revisión..." : "Creando revisión...")} 
+          />
+        </div>
+      )}
     </div>
   );
 };

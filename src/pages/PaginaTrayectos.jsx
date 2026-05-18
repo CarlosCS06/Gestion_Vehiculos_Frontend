@@ -113,6 +113,7 @@ const PaginaTrayectos = () => {
   const [idEliminar, setIdEliminar] = useState('');
   const [error, setError] = useState('');
   const [procesando, setProcesando] = useState(false);
+  const [mensajeCargando, setMensajeCargando] = useState('');
   const [listaConductores, setListaConductores] = useState([]);
 
   const cargarTrayectos = useCallback(async () => {
@@ -167,6 +168,7 @@ const PaginaTrayectos = () => {
   const manejarGuardar = async () => {
     if (procesando) return;
     setProcesando(true);
+    setMensajeCargando(editando ? "Modificando trayecto..." : "Creando trayecto...");
     try {
       if (editando) {
         // Al actualizar, quitamos el ID del cuerpo para evitar confusiones en el backend
@@ -197,6 +199,7 @@ const PaginaTrayectos = () => {
       setError(err.message);
     } finally {
       setProcesando(false);
+      setMensajeCargando('');
     }
   };
 
@@ -208,6 +211,7 @@ const PaginaTrayectos = () => {
   const manejarEliminar = async () => {
     if (procesando) return;
     setProcesando(true);
+    setMensajeCargando("Eliminando trayecto...");
     try {
       console.log(`Intentando eliminar trayecto: ${idEliminar}`);
       await eliminarTrayecto(idEliminar);
@@ -219,6 +223,7 @@ const PaginaTrayectos = () => {
       setError(err.message);
     } finally {
       setProcesando(false);
+      setMensajeCargando('');
     }
   };
 
@@ -373,6 +378,27 @@ const PaginaTrayectos = () => {
         onConfirmar={manejarEliminar}
         onCancelar={() => setConfirmacionAbierta(false)}
       />
+
+      {mensajeCargando && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: 'rgba(255, 255, 255, 0.7)',
+          backdropFilter: 'blur(4px)',
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'center',
+          zIndex: 9999,
+        }}>
+          <Spinner 
+            size="large" 
+            label={mensajeCargando} 
+          />
+        </div>
+      )}
     </div>
   );
 };

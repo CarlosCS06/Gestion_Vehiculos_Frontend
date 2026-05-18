@@ -1041,6 +1041,8 @@ const PaginaVehiculos = () => {
   const [vehiculos, setVehiculos] = useState([]);
   const [averiasAbiertas, setAveriasAbiertas] = useState([]);
   const [cargando, setCargando] = useState(true);
+  const [guardando, setGuardando] = useState(false);
+  const [eliminando, setEliminando] = useState(false);
   const [filtroEstado, setFiltroEstado] = useState('Todos');
   const [plantillas, setPlantillas] = useState([]);
   const [confirmacionPlantillaAbierta, setConfirmacionPlantillaAbierta] = useState(false);
@@ -1251,6 +1253,7 @@ const PaginaVehiculos = () => {
     setErroresValidacion({});
     // --- FIN VALIDACIONES ---
 
+    setGuardando(true);
     try {
       // Filtrar los campos que se envían al backend
       const camposPermitidos = [
@@ -1283,6 +1286,8 @@ const PaginaVehiculos = () => {
       setError('');
     } catch (err) {
       setError(err.message);
+    } finally {
+      setGuardando(false);
     }
   };
 
@@ -1292,6 +1297,7 @@ const PaginaVehiculos = () => {
   };
 
   const manejarEliminar = async () => {
+    setEliminando(true);
     try {
       await eliminarVehiculo(matriculaEliminar);
       setConfirmacionAbierta(false);
@@ -1299,6 +1305,8 @@ const PaginaVehiculos = () => {
       setError('');
     } catch (err) {
       setError(err.message);
+    } finally {
+      setEliminando(false);
     }
   };
 
@@ -1698,43 +1706,45 @@ const PaginaVehiculos = () => {
                     </Tooltip>
                   </div>
                 </div>
-                <Field label="Imagen del vehículo (Cloudinary)" hint="Se subirá automáticamente al seleccionar archivo o pegar URL">
-                  <div className={estilos.formulario}>
-                    <div
-                      className={estilos.uploadZone}
-                      onClick={() => document.getElementById('file-input').click()}
-                    >
-                      {subiendoImagen ? (
-                        <Spinner label="Subiendo a Cloudinary..." />
-                      ) : (
-                        <>
-                          <Title2 size={400}>Haz clic o arrastra una imagen</Title2>
-                          <Text size={200} block>Formatos sugeridos: JPG, PNG, WEBP</Text>
-                        </>
-                      )}
-                      <input
-                        id="file-input"
-                        type="file"
-                        hidden
-                        accept="image/*"
-                        onChange={(e) => manejarSubidaArchivo(e.target.files[0])}
-                      />
-                    </div>
-
-                    {vehiculoActual.foto && (
-                      <div style={{ position: 'relative', height: '200px', borderRadius: tokens.borderRadiusLarge, overflow: 'hidden', border: `1px solid ${tokens.colorNeutralStroke1}` }}>
-                        <img
-                          src={vehiculoActual.foto}
-                          alt="Vista previa"
-                          style={{ width: '100%', height: '100%', objectFit: 'contain', backgroundColor: '#ffffff' }}
+                {!editando && (
+                  <Field label="Imagen del vehículo (Cloudinary)" hint="Se subirá automáticamente al seleccionar archivo o pegar URL">
+                    <div className={estilos.formulario}>
+                      <div
+                        className={estilos.uploadZone}
+                        onClick={() => document.getElementById('file-input').click()}
+                      >
+                        {subiendoImagen ? (
+                          <Spinner label="Subiendo a Cloudinary..." />
+                        ) : (
+                          <>
+                            <Title2 size={400}>Haz clic o arrastra una imagen</Title2>
+                            <Text size={200} block>Formatos sugeridos: JPG, PNG, WEBP</Text>
+                          </>
+                        )}
+                        <input
+                          id="file-input"
+                          type="file"
+                          hidden
+                          accept="image/*"
+                          onChange={(e) => manejarSubidaArchivo(e.target.files[0])}
                         />
-                        <div style={{ position: 'absolute', bottom: 8, right: 8 }}>
-                          <Badge appearance="filled" color="success">Cloudinary Ready</Badge>
-                        </div>
                       </div>
-                    )}
-                  </div>
-                </Field>
+
+                      {vehiculoActual.foto && (
+                        <div style={{ position: 'relative', height: '200px', borderRadius: tokens.borderRadiusLarge, overflow: 'hidden', border: `1px solid ${tokens.colorNeutralStroke1}` }}>
+                          <img
+                            src={vehiculoActual.foto}
+                            alt="Vista previa"
+                            style={{ width: '100%', height: '100%', objectFit: 'contain', backgroundColor: '#ffffff' }}
+                          />
+                          <div style={{ position: 'absolute', bottom: 8, right: 8 }}>
+                            <Badge appearance="filled" color="success">Cloudinary Ready</Badge>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </Field>
+                )}
               </div>
             </DialogContent>
             <DialogActions>
@@ -1805,6 +1815,27 @@ const PaginaVehiculos = () => {
           }
         }}
       />
+
+      {(guardando || eliminando) && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: 'rgba(255, 255, 255, 0.7)',
+          backdropFilter: 'blur(4px)',
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'center',
+          zIndex: 9999,
+        }}>
+          <Spinner 
+            size="large" 
+            label={eliminando ? "Eliminando vehículo..." : (editando ? "Modificando vehículo..." : "Creando vehículo...")} 
+          />
+        </div>
+      )}
     </div>
   );
 };

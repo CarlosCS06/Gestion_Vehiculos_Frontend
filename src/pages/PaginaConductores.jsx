@@ -198,6 +198,7 @@ const PaginaConductores = () => {
   const [terminoBusqueda, setTerminoBusqueda] = useState('');
   const [filtroActividad, setFiltroActividad] = useState('Todos');
   const [guardando, setGuardando] = useState(false);
+  const [eliminando, setEliminando] = useState(false);
   const [subiendoImagen, setSubiendoImagen] = useState(false);
   const [previewUrl, setPreviewUrl] = useState(null);
   const [isDragging, setIsDragging] = useState(false);
@@ -209,6 +210,18 @@ const PaginaConductores = () => {
       if (previewUrl) URL.revokeObjectURL(previewUrl);
     };
   }, [previewUrl]);
+
+  useEffect(() => {
+    if (!dialogoAbierto) {
+      // Limpiar estados de carga e imágenes temporales al cerrar el diálogo
+      if (previewUrl) {
+        URL.revokeObjectURL(previewUrl);
+        setPreviewUrl(null);
+      }
+      setErroresValidacion({});
+      setError('');
+    }
+  }, [dialogoAbierto]);
 
   const cargarConductores = useCallback(async () => {
     setCargando(true);
@@ -226,12 +239,24 @@ const PaginaConductores = () => {
   }, [cargarConductores]);
 
   const abrirDialogoCrear = () => {
+    if (previewUrl) {
+      URL.revokeObjectURL(previewUrl);
+      setPreviewUrl(null);
+    }
+    setErroresValidacion({});
+    setError('');
     setConductorActual(crearConductorVacio());
     setEditando(false);
     setDialogoAbierto(true);
   };
 
   const abrirDialogoEditar = (conductor) => {
+    if (previewUrl) {
+      URL.revokeObjectURL(previewUrl);
+      setPreviewUrl(null);
+    }
+    setErroresValidacion({});
+    setError('');
     setConductorActual({ ...conductor });
     setEditando(true);
     setDialogoAbierto(true);
@@ -341,12 +366,15 @@ const PaginaConductores = () => {
   };
 
   const manejarEliminar = async () => {
+    setEliminando(true);
     try {
       await eliminarConductor(dniEliminar);
       setConfirmacionAbierta(false);
       cargarConductores();
     } catch (err) {
       setError(err.message);
+    } finally {
+      setEliminando(false);
     }
   };
 
@@ -544,7 +572,7 @@ const PaginaConductores = () => {
                       onDrop={onDrop}
                     >
                       {guardando || subiendoImagen ? (
-                        <Spinner label={subiendoImagen ? "Procesando imagen..." : "Guardando conductor..."} />
+                        <Spinner label={subiendoImagen ? "Procesando imagen..." : (editando ? "Modificando conductor..." : "Creando conductor...")} />
                       ) : (
                         <>
                           <Title2 size={400}>
@@ -646,6 +674,27 @@ const PaginaConductores = () => {
         onConfirmar={manejarEliminar}
         onCancelar={() => setConfirmacionAbierta(false)}
       />
+
+      {(guardando || eliminando) && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: 'rgba(255, 255, 255, 0.7)',
+          backdropFilter: 'blur(4px)',
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'center',
+          zIndex: 9999,
+        }}>
+          <Spinner 
+            size="large" 
+            label={eliminando ? "Eliminando conductor..." : (editando ? "Modificando conductor..." : "Creando conductor...")} 
+          />
+        </div>
+      )}
     </div>
   );
 };

@@ -276,6 +276,7 @@ const PaginaViajes = () => {
   const [listaVehiculos, setListaVehiculos] = useState([]);
   const [mostrarOcultos, setMostrarOcultos] = useState(false);
   const [procesando, setProcesando] = useState(false);
+  const [mensajeCargando, setMensajeCargando] = useState('');
   const [terminoBusqueda, setTerminoBusqueda] = useState('');
   const [filtroEstado, setFiltroEstado] = useState('Todos');
   const [listaConductores, setListaConductores] = useState([]);
@@ -413,6 +414,7 @@ const PaginaViajes = () => {
   const manejarEliminarTrayecto = async () => {
     if (procesando) return;
     setProcesando(true);
+    setMensajeCargando("Eliminando trayecto...");
     try {
       await eliminarTrayecto(trayectoEliminarId);
       
@@ -433,6 +435,7 @@ const PaginaViajes = () => {
       setError('Error eliminando trayecto: ' + err.message);
     } finally {
       setProcesando(false);
+      setMensajeCargando('');
     }
   };
 
@@ -477,6 +480,7 @@ const PaginaViajes = () => {
   const guardarTrayectoInline = async () => {
     if (procesando) return;
     setProcesando(true);
+    setMensajeCargando(editandoTrayectoInline ? "Modificando trayecto..." : "Creando trayecto...");
     setError('');
 
     // Validar horas del trayecto
@@ -485,6 +489,7 @@ const PaginaViajes = () => {
       if (!resFechas.valido) {
         setError('La hora de llegada del trayecto debe ser posterior a la hora de salida.');
         setProcesando(false);
+        setMensajeCargando('');
         return;
       }
     }
@@ -552,6 +557,7 @@ const PaginaViajes = () => {
       setError('Error al guardar trayecto: ' + err.message);
     } finally {
       setProcesando(false);
+      setMensajeCargando('');
     }
   };
 
@@ -604,6 +610,7 @@ const PaginaViajes = () => {
 const manejarGuardar = async () => {
   if (procesando) return;
   setProcesando(true);
+  setMensajeCargando(editando ? "Modificando viaje..." : "Creando viaje...");
 
   // --- VALIDACIONES ---
   const errores = {};
@@ -619,6 +626,7 @@ const manejarGuardar = async () => {
   if (Object.keys(errores).length > 0) {
     setErroresValidacion(errores);
     setProcesando(false);
+    setMensajeCargando('');
     return;
   }
   setErroresValidacion({});
@@ -632,6 +640,7 @@ const manejarGuardar = async () => {
     ) {
       setError('Los Km de llegada no pueden ser inferiores a los Km de salida.');
       setProcesando(false);
+      setMensajeCargando('');
       return;
     }
 
@@ -693,6 +702,7 @@ const manejarGuardar = async () => {
       setError(err.message);
     } finally {
       setProcesando(false);
+      setMensajeCargando('');
     }
   };
 
@@ -704,6 +714,7 @@ const manejarGuardar = async () => {
   const manejarEliminar = async () => {
     if (procesando) return;
     setProcesando(true);
+    setMensajeCargando("Eliminando viaje...");
     try {
       const viajeOriginal = viajes.find(v => v.id === idEliminar);
       if (!viajeOriginal) throw new Error('Viaje no encontrado');
@@ -733,10 +744,12 @@ const manejarGuardar = async () => {
       setError(err.message);
     } finally {
       setProcesando(false);
+      setMensajeCargando('');
     }
   };
 
   const manejarCompletarViaje = async (viaje) => {
+    setMensajeCargando("Modificando viaje...");
     try {
       const viajeActualizado = { 
         ...viaje, 
@@ -761,6 +774,8 @@ const manejarGuardar = async () => {
       setError('');
     } catch (err) {
       setError(err.message);
+    } finally {
+      setMensajeCargando('');
     }
   };
 
@@ -1430,6 +1445,26 @@ const manejarGuardar = async () => {
         </DialogSurface>
       </Dialog>
 
+      {mensajeCargando && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: 'rgba(255, 255, 255, 0.7)',
+          backdropFilter: 'blur(4px)',
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'center',
+          zIndex: 9999,
+        }}>
+          <Spinner 
+            size="large" 
+            label={mensajeCargando} 
+          />
+        </div>
+      )}
     </div>
   );
 };

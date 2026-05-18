@@ -151,6 +151,8 @@ const PaginaAverias = () => {
 
   const [averias, setAverias] = useState([]);
   const [cargando, setCargando] = useState(true);
+  const [guardando, setGuardando] = useState(false);
+  const [eliminando, setEliminando] = useState(false);
   const [dialogoAbierto, setDialogoAbierto] = useState(false);
   const [confirmacionAbierta, setConfirmacionAbierta] = useState(false);
   const [averiaActual, setAveriaActual] = useState(crearAveriaVacia());
@@ -265,18 +267,21 @@ const PaginaAverias = () => {
   };
 
   const manejarGuardar = async () => {
+    setGuardando(true);
     try {
       const matriculas = vehiculosTexto.split(',').map((v) => v.trim()).filter(Boolean);
       
       // Validar que hay vehículos seleccionados
       if (matriculas.length === 0) {
         setError('Debe seleccionar al menos un vehículo afectado');
+        setGuardando(false);
         return;
       }
 
       // Validar que hay descripción
       if (!averiaActual.descripcion || averiaActual.descripcion.trim() === '') {
         setError('Debe proporcionar una descripción de la avería');
+        setGuardando(false);
         return;
       }
 
@@ -292,12 +297,14 @@ const PaginaAverias = () => {
           usuario_dni: usuario?.dni,
           usuario_completo: usuario
         });
+        setGuardando(false);
         return;
       }
 
       // VALIDACIÓN: Verificar que vehiculoMatricula no está vacío
       if (!vehiculoMatriculaValue || vehiculoMatriculaValue.trim() === '') {
         setError('Error: No se ha seleccionado un vehículo válido.');
+        setGuardando(false);
         return;
       }
       
@@ -365,6 +372,8 @@ const PaginaAverias = () => {
       setError('');
     } catch (err) {
       setError(err.message || 'Error al guardar la avería');
+    } finally {
+      setGuardando(false);
     }
   };
 
@@ -374,6 +383,7 @@ const PaginaAverias = () => {
   };
 
   const manejarEliminar = async () => {
+    setEliminando(true);
     try {
       const averiaAEliminar = averias.find(a => a.id === idEliminar);
       await eliminarAveria(idEliminar);
@@ -395,6 +405,8 @@ const PaginaAverias = () => {
       setError('');
     } catch (err) {
       setError(err.message || 'Error al eliminar la avería');
+    } finally {
+      setEliminando(false);
     }
   };
 
@@ -764,6 +776,27 @@ const PaginaAverias = () => {
         onConfirmar={manejarEliminar}
         onCancelar={() => setConfirmacionAbierta(false)}
       />
+
+      {(guardando || eliminando) && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: 'rgba(255, 255, 255, 0.7)',
+          backdropFilter: 'blur(4px)',
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'center',
+          zIndex: 9999,
+        }}>
+          <Spinner 
+            size="large" 
+            label={eliminando ? "Eliminando avería..." : (editando ? "Modificando avería..." : "Creando avería...")} 
+          />
+        </div>
+      )}
     </div>
   );
 };

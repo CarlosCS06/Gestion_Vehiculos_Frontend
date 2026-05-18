@@ -154,6 +154,8 @@ const PaginaUsuarios = () => {
 
   const [usuarios, setUsuarios] = useState([]);
   const [cargando, setCargando] = useState(true);
+  const [guardando, setGuardando] = useState(false);
+  const [eliminando, setEliminando] = useState(false);
   const [dialogoAbierto, setDialogoAbierto] = useState(false);
   const [confirmacionAbierta, setConfirmacionAbierta] = useState(false);
   const [usuarioActual, setUsuarioActual] = useState(crearUsuarioVacio());
@@ -222,6 +224,7 @@ const PaginaUsuarios = () => {
   };
 
   const manejarEliminar = async () => {
+    setEliminando(true);
     try {
       await eliminarUsuario(idEliminar);
       setUsuarios((prev) => prev.filter((u) => u.dni !== idEliminar));
@@ -229,6 +232,8 @@ const PaginaUsuarios = () => {
     } catch (err) {
       setError(err.message || 'Error al eliminar el usuario.');
       setConfirmacionAbierta(false);
+    } finally {
+      setEliminando(false);
     }
   };
 
@@ -269,6 +274,7 @@ const PaginaUsuarios = () => {
     }
     // --- FIN VALIDACIONES ---
 
+    setGuardando(true);
     try {
       if (editando) {
         const respuesta = await actualizarUsuario(usuarioActual.dni, usuarioActual);
@@ -282,6 +288,8 @@ const PaginaUsuarios = () => {
       setDialogoAbierto(false);
     } catch (err) {
       setError(err.message || 'Error al guardar el usuario en el backend.');
+    } finally {
+      setGuardando(false);
     }
   };
 
@@ -590,11 +598,32 @@ const PaginaUsuarios = () => {
       {/* Ventana de Confirmación de Borrado */}
       <DialogoConfirmacion
         abierto={confirmacionAbierta}
-        alCerrar={() => setConfirmacionAbierta(false)}
-        alConfirmar={manejarEliminar}
+        onCancelar={() => setConfirmacionAbierta(false)}
+        onConfirmar={manejarEliminar}
         titulo="Eliminar usuario del sistema"
         mensaje="¿Está completamente seguro de que desea eliminar a este usuario? Esta acción es irreversible, revocará inmediatamente todos sus permisos de acceso y desvinculará sus registros asociados en la base de datos."
       />
+
+      {(guardando || eliminando) && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: 'rgba(255, 255, 255, 0.7)',
+          backdropFilter: 'blur(4px)',
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'center',
+          zIndex: 9999,
+        }}>
+          <Spinner 
+            size="large" 
+            label={eliminando ? "Eliminando usuario..." : (editando ? "Modificando usuario..." : "Creando usuario...")} 
+          />
+        </div>
+      )}
     </div>
   );
 };
