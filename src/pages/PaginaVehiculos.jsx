@@ -68,7 +68,7 @@ import {
   obtenerVehiculoPorMatricula,
 } from '../services/servicioVehiculos.js';
 import { obtenerAverias } from '../services/servicioAverias.js';
-import { subirImagen } from '../services/servicioImagenes.js';
+import { subirImagen, eliminarImagen } from '../services/servicioImagenes.js';
 import {
   ESTADO_VEHICULO,
   TIPO_VEHICULO,
@@ -551,9 +551,86 @@ const ModalDetallesVehiculo = ({ vehiculo: vehiculoBase, onCerrar, onVehiculoAct
         <DialogBody>
           <DialogTitle>Ficha del Vehículo</DialogTitle>
           <DialogContent style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-            <div style={{ display: 'flex', justifyContent: 'center', padding: '16px', backgroundColor: tokens.colorNeutralBackground2, borderRadius: tokens.borderRadiusLarge }}>
+            <div style={{ display: 'flex', justifyContent: 'center', padding: '16px', backgroundColor: tokens.colorNeutralBackground2, borderRadius: tokens.borderRadiusLarge, position: 'relative', width: '100%', boxSizing: 'border-box' }}>
               {vehiculoCompleto.foto ? (
-                <img src={vehiculoCompleto.foto} alt={vehiculoCompleto.modelo} style={{ maxWidth: '100%', maxHeight: '150px', objectFit: 'contain' }} />
+                <>
+                  <img src={vehiculoCompleto.foto} alt={vehiculoCompleto.modelo} style={{ maxWidth: '100%', maxHeight: '150px', objectFit: 'contain' }} />
+                  {esAdmin && (
+                    <Button
+                      icon={<Delete24Regular style={{ fontSize: '16px' }} />}
+                      size="medium"
+                      shape="circular"
+                      appearance="primary"
+                      style={{
+                        position: 'absolute',
+                        top: '12px',
+                        right: '12px',
+                        backgroundColor: tokens.colorPaletteRedBackground3,
+                        color: tokens.colorPaletteRedForeground3,
+                        border: 'none',
+                        minWidth: '32px',
+                        height: '32px',
+                        padding: 0,
+                        boxShadow: tokens.shadow8,
+                        cursor: 'pointer',
+                        zIndex: 20,
+                      }}
+                      title="Eliminar imagen principal"
+                      onClick={async (e) => {
+                        e.stopPropagation();
+                        if (window.confirm('¿Estás seguro de que deseas eliminar la imagen principal? Se usará la siguiente en la lista si existe.')) {
+                          // Encontrar la imagen principal en el array de imágenes
+                          const imagenPrincipal = vehiculoCompleto.imagenes && vehiculoCompleto.imagenes.length > 0
+                            ? vehiculoCompleto.imagenes[0]
+                            : null;
+
+                          const idAEliminar = imagenPrincipal?.id || vehiculoCompleto.idImagen;
+
+                          try {
+                            // 1. Eliminar físicamente del backend si hay ID
+                            if (idAEliminar) {
+                              await eliminarImagen(idAEliminar).catch(err => {
+                                console.warn('No se pudo borrar físicamente:', err);
+                              });
+                            }
+
+                            // 2. Calcular nueva lista
+                            const nuevasImagenes = vehiculoCompleto.imagenes
+                              ? vehiculoCompleto.imagenes.filter(x => x.id !== idAEliminar)
+                              : [];
+
+                            // 3. Determinar nueva foto principal
+                            const tieneSiguiente = nuevasImagenes.length > 0;
+                            const nuevaFotoUrl = tieneSiguiente ? nuevasImagenes[0].url : '';
+                            const nuevoIdImagen = tieneSiguiente ? nuevasImagenes[0].id : null;
+
+                            // 4. Actualizar el vehículo en el backend
+                            await actualizarVehiculo(vehiculoCompleto.matricula, {
+                              foto: nuevaFotoUrl,
+                              idImagen: nuevoIdImagen,
+                              imagenes: nuevasImagenes
+                            });
+
+                            // 5. Actualizar estado local
+                            setVehiculoCompleto(prev => ({
+                              ...prev,
+                              foto: nuevaFotoUrl,
+                              idImagen: nuevoIdImagen,
+                              imagenes: nuevasImagenes
+                            }));
+
+                            // 6. Notificar al padre
+                            if (onVehiculoActualizado) {
+                              onVehiculoActualizado();
+                            }
+                          } catch (err) {
+                            alert('Error al eliminar imagen principal: ' + err.message);
+                          }
+                        }
+                      }}
+                    />
+                  )}
+                </>
               ) : (
                 <VehicleCar24Regular style={{ fontSize: '60px', color: tokens.colorNeutralForeground4 }} />
               )}
@@ -815,19 +892,28 @@ const ModalDetallesVehiculo = ({ vehiculo: vehiculoBase, onCerrar, onVehiculoAct
                                   e.stopPropagation();
                                   if (window.confirm('¿Estás seguro de que deseas eliminar esta imagen de la galería?')) {
                                     try {
+                                      // 1. Eliminar físicamente del backend
+                                      if (img.id) {
+                                        await eliminarImagen(img.id).catch(err => {
+                                          console.warn('No se pudo borrar físicamente:', err);
+                                        });
+                                      }
+
+                                      // 2. Filtrar de la lista de imágenes del vehículo
                                       const nuevasImagenes = vehiculoCompleto.imagenes.filter(x => x.id !== img.id);
-                                      // Llamada a la API para actualizar el vehículo
+                                      
+                                      // 3. Llamada a la API para actualizar el vehículo
                                       await actualizarVehiculo(vehiculoCompleto.matricula, {
                                         imagenes: nuevasImagenes
                                       });
                                       
-                                      // Actualizar estado local
+                                      // 4. Actualizar estado local
                                       setVehiculoCompleto(prev => ({
                                         ...prev,
                                         imagenes: nuevasImagenes
                                       }));
 
-                                      // Notificar al padre para que refresque la lista de vehículos
+                                      // 5. Notificar al padre para que refresque la lista de vehículos
                                       if (onVehiculoActualizado) {
                                         onVehiculoActualizado();
                                       }

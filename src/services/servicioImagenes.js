@@ -66,3 +66,21 @@ export const subirImagenPorUrl = async (datosImagen) => {
 
   return response.json();
 };
+
+/**
+ * Elimina una imagen físicamente del backend / Cloudinary por su ID
+ * @param {string|number} id - El ID de la imagen a eliminar
+ * @returns {Promise<Object>}
+ */
+export const eliminarImagen = async (id) => {
+  const token = sessionStorage.getItem('token');
+  const response = await fetchWithLogging(`${FILES_API_URL}/${id}`, {
+    method: 'DELETE',
+    headers: {
+      'Authorization': `Bearer ${token}`
+    }
+  });
+
+  return response.json();
+};
+
