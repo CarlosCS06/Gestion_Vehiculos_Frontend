@@ -277,18 +277,24 @@ const PaginaAverias = () => {
       const matriculas = vehiculosTexto.split(',').map((v) => v.trim()).filter(Boolean);
       
       // Validar que hay vehículos seleccionados
+      // --- VALIDACIONES DE FORMULARIO ---
+      const errores = {};
+
       if (matriculas.length === 0) {
-        setError('Debe seleccionar al menos un vehículo afectado');
-        setGuardando(false);
-        return;
+        errores.vehiculoMatricula = 'Debe seleccionar al menos un vehículo afectado.';
       }
 
-      // Validar que hay descripción
       if (!averiaActual.descripcion || averiaActual.descripcion.trim() === '') {
-        setError('Debe proporcionar una descripción de la avería');
+        errores.descripcion = 'Debe proporcionar una descripción de la avería.';
+      }
+
+      if (Object.keys(errores).length > 0) {
+        setErroresValidacion(errores);
         setGuardando(false);
         return;
       }
+      setErroresValidacion({});
+      // --- FIN VALIDACIONES ---
 
       // Datos que se envían al backend - solo campos que espera el backend
       const userDniValue = averiaActual.userDni || usuario?.dni || '';
@@ -344,6 +350,8 @@ const PaginaAverias = () => {
       
       console.log('DEBUG - FINAL datosGuardar.resuelta:', datosGuardar.resuelta, 'typeof:', typeof datosGuardar.resuelta);
 
+      setDialogoAbierto(false);
+      
       if (editando) {
         await actualizarAveria(averiaActual.id, datosGuardar);
       } else {
@@ -369,7 +377,6 @@ const PaginaAverias = () => {
         }
       }
 
-      setDialogoAbierto(false);
       await cargarAverias(true);
       window.dispatchEvent(new CustomEvent('vehiculosActualizados', {
         detail: { matriculas: matriculas }
@@ -389,6 +396,7 @@ const PaginaAverias = () => {
 
   const manejarEliminar = async () => {
     setEliminando(true);
+    setConfirmacionAbierta(false);
     try {
       const averiaAEliminar = averias.find(a => a.id === idEliminar);
       await eliminarAveria(idEliminar);
@@ -402,7 +410,6 @@ const PaginaAverias = () => {
         }
       }
 
-      setConfirmacionAbierta(false);
       await cargarAverias(true);
       window.dispatchEvent(new CustomEvent('vehiculosActualizados', {
         detail: { matriculas: averiaAEliminar?.vehiculoMatricula ? [averiaAEliminar.vehiculoMatricula] : [] }
@@ -633,10 +640,10 @@ const PaginaAverias = () => {
               <div className={estilos.formulario}>
                 {esAdmin ? (
                   <>
-                    <Field label="Descripción" required>
-                      <Input value={averiaActual.descripcion || ''} onChange={(_, d) => manejarCambio('descripcion', d.value)} placeholder="Describe la avería..." />
+                    <Field label="Descripción" required validationState={erroresValidacion?.descripcion ? 'error' : undefined} validationMessage={erroresValidacion?.descripcion}>
+                      <Input value={averiaActual.descripcion || ''} onChange={(_, d) => { manejarCambio('descripcion', d.value); setErroresValidacion(prev => ({...prev, descripcion: undefined})); }} placeholder="Describe la avería..." />
                     </Field>
-                    <Field label="Vehículos afectados" required>
+                    <Field label="Vehículos afectados" required validationState={erroresValidacion?.vehiculoMatricula ? 'error' : undefined} validationMessage={erroresValidacion?.vehiculoMatricula}>
                       <div style={{ display: 'flex', flexDirection: 'column', gap: tokens.spacingVerticalM }}>
                         <Select
                           value=""
@@ -739,7 +746,7 @@ const PaginaAverias = () => {
                     <MessageBar intent="info">
                       <MessageBarBody>Reporta cualquier incidencia detectada en el vehículo. El administrador recibirá tu aviso.</MessageBarBody>
                     </MessageBar>
-                    <Field label="Vehículo" required>
+                    <Field label="Vehículo" required validationState={erroresValidacion?.vehiculoMatricula ? 'error' : undefined} validationMessage={erroresValidacion?.vehiculoMatricula}>
                       <Select
                         value={vehiculosTexto}
                         onChange={(_, d) => setVehiculosTexto(d.value)}
@@ -750,10 +757,10 @@ const PaginaAverias = () => {
                         ))}
                       </Select>
                     </Field>
-                    <Field label="Descripción de la incidencia" required>
+                    <Field label="Descripción de la incidencia" required validationState={erroresValidacion?.descripcion ? 'error' : undefined} validationMessage={erroresValidacion?.descripcion}>
                       <Input
                         value={averiaActual.descripcion || ''}
-                        onChange={(_, d) => manejarCambio('descripcion', d.value)}
+                        onChange={(_, d) => { manejarCambio('descripcion', d.value); setErroresValidacion(prev => ({...prev, descripcion: undefined})); }}
                         placeholder="Ej: El motor hace un ruido extraño al arrancar..."
                         textarea
                       />

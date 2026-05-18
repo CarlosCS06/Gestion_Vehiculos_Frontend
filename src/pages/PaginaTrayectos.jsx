@@ -160,20 +160,38 @@ const PaginaTrayectos = () => {
 
   const abrirDialogoCrear = () => {
     setTrayectoActual(crearTrayectoVacio());
+    setErroresValidacion({});
     setEditando(false);
     setDialogoAbierto(true);
   };
 
   const abrirDialogoEditar = (trayecto) => {
     setTrayectoActual({ ...trayecto });
+    setErroresValidacion({});
     setEditando(true);
     setDialogoAbierto(true);
   };
 
   const manejarGuardar = async () => {
     if (procesando) return;
+
+    // --- VALIDACIONES DE FORMULARIO ---
+    const errores = {};
+    if (!trayectoActual.origen || trayectoActual.origen.trim() === '') errores.origen = 'El origen es obligatorio.';
+    if (!trayectoActual.destino || trayectoActual.destino.trim() === '') errores.destino = 'El destino es obligatorio.';
+    if (!trayectoActual.horaSalida) errores.horaSalida = 'La hora de salida es obligatoria.';
+    if (!trayectoActual.conductor || trayectoActual.conductor === '') errores.conductor = 'El conductor es obligatorio.';
+
+    if (Object.keys(errores).length > 0) {
+      setErroresValidacion(errores);
+      return;
+    }
+    setErroresValidacion({});
+    // --- FIN VALIDACIONES ---
+
     setProcesando(true);
     setMensajeCargando(editando ? "Modificando trayecto..." : "Creando trayecto...");
+    setDialogoAbierto(false);
     try {
       if (editando) {
         // Al actualizar, quitamos el ID del cuerpo para evitar confusiones en el backend
@@ -197,7 +215,6 @@ const PaginaTrayectos = () => {
         await crearTrayecto(nuevoTrayecto);
       }
       
-      setDialogoAbierto(false);
       await cargarTrayectos(true);
       setError('');
     } catch (err) {
@@ -219,9 +236,9 @@ const PaginaTrayectos = () => {
     setMensajeCargando("Eliminando trayecto...");
     try {
       console.log(`Intentando eliminar trayecto: ${idEliminar}`);
+      setConfirmacionAbierta(false);
       await eliminarTrayecto(idEliminar);
       console.log('Eliminación exitosa en backend, recargando...');
-      setConfirmacionAbierta(false);
       await cargarTrayectos(true);
     } catch (err) {
       console.error('Error al eliminar trayecto:', err);
@@ -325,21 +342,21 @@ const PaginaTrayectos = () => {
             <DialogContent>
               <div className={estilos.formulario}>
                 <div className={estilos.filaFormulario}>
-                  <Field label="Origen" required>
+                  <Field label="Origen" required validationState={erroresValidacion?.origen ? 'error' : undefined} validationMessage={erroresValidacion?.origen}>
                     <Input 
                       disabled={editando}
                       value={trayectoActual.origen || ''} 
-                      onChange={(_, d) => manejarCambio('origen', d.value)} 
+                      onChange={(_, d) => { manejarCambio('origen', d.value); setErroresValidacion(prev => ({...prev, origen: undefined})); }} 
                       placeholder="Madrid" 
                     />
                   </Field>
-                  <Field label="Destino" required>
-                    <Input value={trayectoActual.destino || ''} onChange={(_, d) => manejarCambio('destino', d.value)} placeholder="Barcelona" />
+                  <Field label="Destino" required validationState={erroresValidacion?.destino ? 'error' : undefined} validationMessage={erroresValidacion?.destino}>
+                    <Input value={trayectoActual.destino || ''} onChange={(_, d) => { manejarCambio('destino', d.value); setErroresValidacion(prev => ({...prev, destino: undefined})); }} placeholder="Barcelona" />
                   </Field>
                 </div>
                 <div className={estilos.filaFormulario}>
-                  <Field label="Hora salida">
-                    <Input type="datetime-local" value={formatForDateTimeLocal(trayectoActual.horaSalida)} onChange={(_, d) => manejarCambio('horaSalida', d.value)} />
+                  <Field label="Hora salida" required validationState={erroresValidacion?.horaSalida ? 'error' : undefined} validationMessage={erroresValidacion?.horaSalida}>
+                    <Input type="datetime-local" value={formatForDateTimeLocal(trayectoActual.horaSalida)} onChange={(_, d) => { manejarCambio('horaSalida', d.value); setErroresValidacion(prev => ({...prev, horaSalida: undefined})); }} />
                   </Field>
                   <Field label="Hora llegada">
                     <Input type="datetime-local" value={formatForDateTimeLocal(trayectoActual.horaLlegada)} onChange={(_, d) => manejarCambio('horaLlegada', d.value)} />
@@ -353,10 +370,10 @@ const PaginaTrayectos = () => {
                     <Input type="number" step="0.01" value={String(trayectoActual.gastoGasolina || 0)} onChange={(_, d) => manejarCambio('gastoGasolina', Number(d.value))} />
                   </Field>
                 </div>
-                <Field label="Conductor">
+                <Field label="Conductor" required validationState={erroresValidacion?.conductor ? 'error' : undefined} validationMessage={erroresValidacion?.conductor}>
                   <Select
                     value={trayectoActual.conductor || ''}
-                    onChange={(_, d) => manejarCambio('conductor', d.value)}
+                    onChange={(_, d) => { manejarCambio('conductor', d.value); setErroresValidacion(prev => ({...prev, conductor: undefined})); }}
                   >
                     <option value="">Selecciona un conductor...</option>
                     {listaConductores.map(c => (

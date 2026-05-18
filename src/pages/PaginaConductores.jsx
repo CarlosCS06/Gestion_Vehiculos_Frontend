@@ -303,6 +303,7 @@ const PaginaConductores = () => {
     // --- FIN VALIDACIONES ---
 
     setGuardando(true);
+    setDialogoAbierto(false);
     try {
       if (editando) {
         await actualizarConductor(conductorActual.dni, conductorActual);
@@ -324,7 +325,6 @@ const PaginaConductores = () => {
         await crearConductor(conductorActual);
         await preRegistrarUsuario(conductorActual);
       }
-      setDialogoAbierto(false);
       await cargarConductores(true);
       setError('');
     } catch (err) {
@@ -372,9 +372,9 @@ const PaginaConductores = () => {
 
   const manejarEliminar = async () => {
     setEliminando(true);
+    setConfirmacionAbierta(false);
     try {
       await eliminarConductor(dniEliminar);
-      setConfirmacionAbierta(false);
       await cargarConductores(true);
     } catch (err) {
       setError(err.message);

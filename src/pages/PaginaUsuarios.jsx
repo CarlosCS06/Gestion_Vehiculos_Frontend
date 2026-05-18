@@ -225,13 +225,12 @@ const PaginaUsuarios = () => {
 
   const manejarEliminar = async () => {
     setEliminando(true);
+    setConfirmacionAbierta(false);
     try {
       await eliminarUsuario(idEliminar);
       setUsuarios((prev) => prev.filter((u) => u.dni !== idEliminar));
-      setConfirmacionAbierta(false);
     } catch (err) {
       setError(err.message || 'Error al eliminar el usuario.');
-      setConfirmacionAbierta(false);
     } finally {
       setEliminando(false);
     }
@@ -275,6 +274,7 @@ const PaginaUsuarios = () => {
     // --- FIN VALIDACIONES ---
 
     setGuardando(true);
+    setDialogoAbierto(false);
     try {
       if (editando) {
         const respuesta = await actualizarUsuario(usuarioActual.dni, usuarioActual);
@@ -285,7 +285,6 @@ const PaginaUsuarios = () => {
         const respuesta = await crearUsuario(usuarioActual);
         setUsuarios((prev) => [...prev, respuesta]);
       }
-      setDialogoAbierto(false);
     } catch (err) {
       setError(err.message || 'Error al guardar el usuario en el backend.');
     } finally {

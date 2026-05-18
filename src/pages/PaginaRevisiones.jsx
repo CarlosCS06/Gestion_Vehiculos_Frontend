@@ -194,6 +194,7 @@ const PaginaRevisiones = () => {
   const [editando, setEditando] = useState(false);
   const [idEliminar, setIdEliminar] = useState('');
   const [error, setError] = useState('');
+  const [erroresValidacion, setErroresValidacion] = useState({});
   const [terminoBusqueda, setTerminoBusqueda] = useState('');
   const [filtroEstado, setFiltroEstado] = useState('Todas');
 
@@ -234,14 +235,29 @@ const PaginaRevisiones = () => {
   };
 
   const manejarGuardar = async () => {
+    // --- VALIDACIONES DE FORMULARIO ---
+    const errores = {};
+    if (!revisionActual.vehiculoMatricula) errores.vehiculoMatricula = 'Debe seleccionar un vehículo.';
+    if (!revisionActual.descripcion || revisionActual.descripcion.trim() === '') errores.descripcion = 'La descripción es obligatoria.';
+    if (!revisionActual.fecha) errores.fecha = 'La fecha es obligatoria.';
+    if (!revisionActual.lugar || revisionActual.lugar.trim() === '') errores.lugar = 'El lugar es obligatorio.';
+    if (revisionActual.costo === '' || revisionActual.costo === null || isNaN(revisionActual.costo)) errores.costo = 'El coste es obligatorio.';
+
+    if (Object.keys(errores).length > 0) {
+      setErroresValidacion(errores);
+      return;
+    }
+    setErroresValidacion({});
+    // --- FIN VALIDACIONES ---
+
     setGuardando(true);
+    setDialogoAbierto(false);
     try {
       if (editando) {
         await actualizarRevision(revisionActual.id, { ...revisionActual, aprobada: false });
       } else {
         await crearRevision({ ...revisionActual, aprobada: false });
       }
-      setDialogoAbierto(false);
       await cargarDatos(true);
       setError('');
     } catch (err) {
@@ -258,9 +274,9 @@ const PaginaRevisiones = () => {
 
   const manejarEliminar = async () => {
     setEliminando(true);
+    setConfirmacionAbierta(false);
     try {
       await eliminarRevision(idEliminar);
-      setConfirmacionAbierta(false);
       await cargarDatos(true);
     } catch (err) {
       setError(err.message);
@@ -525,10 +541,10 @@ const PaginaRevisiones = () => {
             <DialogTitle>{editando ? 'Editar registro ITV' : 'Nuevo registro ITV'}</DialogTitle>
             <DialogContent>
               <div className={estilos.formulario}>
-                <Field label="Vehículo" required>
+                <Field label="Vehículo" required validationState={erroresValidacion?.vehiculoMatricula ? 'error' : undefined} validationMessage={erroresValidacion?.vehiculoMatricula}>
                   <Select
                     value={revisionActual.vehiculoMatricula}
-                    onChange={(_, d) => manejarCambio('vehiculoMatricula', d.value)}
+                    onChange={(_, d) => { manejarCambio('vehiculoMatricula', d.value); setErroresValidacion(prev => ({...prev, vehiculoMatricula: undefined})); }}
                     disabled={editando}
                   >
                     <option value="">Seleccionar vehículo...</option>
@@ -539,25 +555,25 @@ const PaginaRevisiones = () => {
                     ))}
                   </Select>
                 </Field>
-                <Field label="Descripción" required>
+                <Field label="Descripción" required validationState={erroresValidacion?.descripcion ? 'error' : undefined} validationMessage={erroresValidacion?.descripcion}>
                   <Input 
                     value={revisionActual.descripcion || ''} 
-                    onChange={(_, d) => manejarCambio('descripcion', d.value)} 
+                    onChange={(_, d) => { manejarCambio('descripcion', d.value); setErroresValidacion(prev => ({...prev, descripcion: undefined})); }} 
                     placeholder="Ej: Revisión rutinaria de filtros e ITV" 
                   />
                 </Field>
-                <Field label="Fecha" required>
-                  <Input type="date" value={formatForDate(revisionActual.fecha)} onChange={(_, d) => manejarCambio('fecha', d.value)} />
+                <Field label="Fecha" required validationState={erroresValidacion?.fecha ? 'error' : undefined} validationMessage={erroresValidacion?.fecha}>
+                  <Input type="date" value={formatForDate(revisionActual.fecha)} onChange={(_, d) => { manejarCambio('fecha', d.value); setErroresValidacion(prev => ({...prev, fecha: undefined})); }} />
                 </Field>
-                <Field label="Lugar" required>
-                  <Input value={revisionActual.lugar} onChange={(_, d) => manejarCambio('lugar', d.value)} placeholder="Taller Central Madrid" />
+                <Field label="Lugar" required validationState={erroresValidacion?.lugar ? 'error' : undefined} validationMessage={erroresValidacion?.lugar}>
+                  <Input value={revisionActual.lugar} onChange={(_, d) => { manejarCambio('lugar', d.value); setErroresValidacion(prev => ({...prev, lugar: undefined})); }} placeholder="Taller Central Madrid" />
                 </Field>
                 <div className={estilos.filaFormulario}>
-                  <Field label="Coste (€)" required>
+                  <Field label="Coste (€)" required validationState={erroresValidacion?.costo ? 'error' : undefined} validationMessage={erroresValidacion?.costo}>
                     <Input 
                       type="number" 
-                      value={revisionActual.costo} 
-                      onChange={(_, d) => manejarCambio('costo', parseFloat(d.value) || 0)} 
+                      value={revisionActual.costo ?? ''} 
+                      onChange={(_, d) => { manejarCambio('costo', d.value === '' ? '' : parseFloat(d.value)); setErroresValidacion(prev => ({...prev, costo: undefined})); }} 
                       contentBefore="€"
                     />
                   </Field>

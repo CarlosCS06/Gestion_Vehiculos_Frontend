@@ -375,6 +375,36 @@ const columnas = [
   { nombre: 'Acciones', campo: 'acciones' },
 ];
 
+const obtenerFechaProximaItv = (vehiculo) => {
+  if (vehiculo?.revisiones && vehiculo.revisiones.length > 0) {
+    const revisionesItv = vehiculo.revisiones.filter(r => r.esItv);
+    if (revisionesItv.length > 0) {
+      const hoy = new Date().setHours(0,0,0,0);
+      const revisionesItvFuturas = revisionesItv
+        .filter(r => new Date(r.fecha) >= hoy)
+        .sort((a, b) => new Date(a.fecha) - new Date(b.fecha));
+      
+      if (revisionesItvFuturas.length > 0) {
+         return new Date(revisionesItvFuturas[0].fecha).toLocaleDateString('es-ES');
+      }
+      
+      const revisionesItvPasadas = revisionesItv.sort((a, b) => new Date(b.fecha) - new Date(a.fecha));
+      return new Date(revisionesItvPasadas[0].fecha).toLocaleDateString('es-ES');
+    }
+  }
+
+  if (vehiculo?.proximaItv) {
+    if (String(vehiculo.proximaItv).includes('Pendiente')) return vehiculo.proximaItv;
+    const fecha = new Date(vehiculo.proximaItv);
+    if (!isNaN(fecha.getTime())) {
+      return fecha.toLocaleDateString('es-ES');
+    }
+    return vehiculo.proximaItv;
+  }
+
+  return 'No definida';
+};
+
 const ModalDetallesVehiculo = ({ vehiculo: vehiculoBase, onCerrar, onVehiculoActualizado }) => {
   const { esAdmin } = useAuth();
   const [tabActiva, setTabActiva] = useState('general');
@@ -957,7 +987,7 @@ const ModalDetallesVehiculo = ({ vehiculo: vehiculoBase, onCerrar, onVehiculoAct
                   )}
                   {tabActiva === 'historial' && (
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
-                      <div><Text size={200} style={{ color: tokens.colorNeutralForeground3 }} block>Próxima ITV</Text><Text size={300} weight="semibold" style={{ color: tokens.colorBrandForeground1 }}>{vehiculoCompleto.proximaItv || 'No definida'}</Text></div>
+                      <div><Text size={200} style={{ color: tokens.colorNeutralForeground3 }} block>Próxima ITV</Text><Text size={300} weight="semibold" style={{ color: tokens.colorBrandForeground1 }}>{obtenerFechaProximaItv(vehiculoCompleto)}</Text></div>
                       <div><Text size={200} style={{ color: tokens.colorNeutralForeground3 }} block>Revisiones</Text><Text size={300} weight="semibold">{vehiculoCompleto.revisiones?.length || 0}</Text></div>
                       <div><Text size={200} style={{ color: tokens.colorNeutralForeground3 }} block>Averías</Text><Text size={300} weight="semibold">{vehiculoCompleto.averias?.length || 0}</Text></div>
                       <div><Text size={200} style={{ color: tokens.colorNeutralForeground3 }} block>Viajes</Text><Text size={300} weight="semibold">{vehiculoCompleto.trayectos?.length || 0}</Text></div>
@@ -1318,6 +1348,7 @@ const PaginaVehiculos = () => {
     // --- FIN VALIDACIONES ---
 
     setGuardando(true);
+    setDialogoAbierto(false);
     try {
       // Filtrar los campos que se envían al backend
       const camposPermitidos = [
@@ -1343,7 +1374,6 @@ const PaginaVehiculos = () => {
         await crearVehiculo(vehiculoFiltrado);
       }
 
-      setDialogoAbierto(false);
       setArchivoFoto(null);
       await cargarVehiculos(true);
       obtenerPlantillas().then(setPlantillas).catch(console.error);
@@ -1362,9 +1392,9 @@ const PaginaVehiculos = () => {
 
   const manejarEliminar = async () => {
     setEliminando(true);
+    setConfirmacionAbierta(false);
     try {
       await eliminarVehiculo(matriculaEliminar);
-      setConfirmacionAbierta(false);
       await cargarVehiculos(true);
       setError('');
     } catch (err) {
@@ -1584,7 +1614,7 @@ const PaginaVehiculos = () => {
                 <div>
                   <div className={estilos.datoEtiqueta}>Próxima ITV</div>
                   <div className={estilos.datoValor} style={{ color: tokens.colorBrandForeground1, fontWeight: 'bold' }}>
-                    {vehiculo.proximaItv || 'No definida'}
+                    {obtenerFechaProximaItv(vehiculo)}
                   </div>
                 </div>
 

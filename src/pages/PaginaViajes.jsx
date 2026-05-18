@@ -620,6 +620,19 @@ const manejarGuardar = async () => {
   // --- VALIDACIONES ---
   const errores = {};
 
+  if (!viajeActual.descripcion || !viajeActual.descripcion.trim()) {
+    errores.descripcion = 'La descripción es obligatoria.';
+  }
+  if (!viajeActual.conductorDni) {
+    errores.conductorDni = 'Debe seleccionar un conductor.';
+  }
+  if (!viajeActual.vehiculoMatricula) {
+    errores.vehiculoMatricula = 'Debe seleccionar un vehículo.';
+  }
+  if (!viajeActual.fechaSalida) {
+    errores.fechaSalida = 'La fecha de salida es obligatoria.';
+  }
+
   // Validar fechas: llegada debe ser posterior a salida
   if (viajeActual.fechaSalida && viajeActual.fechaLlegada) {
     const resFechas = validarFechasViaje(viajeActual.fechaSalida, viajeActual.fechaLlegada);
@@ -638,6 +651,7 @@ const manejarGuardar = async () => {
   // --- FIN VALIDACIONES ---
 
   try {
+    setDialogoAbierto(false);
     if (
       viajeActual.kmSalida !== '' &&
       viajeActual.kmLlegada !== '' &&
@@ -696,7 +710,6 @@ const manejarGuardar = async () => {
         }
       }
 
-      setDialogoAbierto(false);
       setViajeActual(crearViajeVacio());
       setEditando(false);
       await cargarViajes(true);
@@ -1186,19 +1199,19 @@ const manejarGuardar = async () => {
               <div className={estilos.formulario}>
                 {/* Datos del viaje en una sola fila */}
                 <div className={estilos.filaFormulario}>
-                  <Field label="Descripción del viaje" required>
+                  <Field label="Descripción del viaje" required validationState={erroresValidacion.descripcion ? 'error' : undefined} validationMessage={erroresValidacion.descripcion}>
                     <Input
                       value={viajeActual.descripcion || ''}
-                      onChange={(_, d) => manejarCambioViaje('descripcion', d.value)}
+                      onChange={(_, d) => { manejarCambioViaje('descripcion', d.value); setErroresValidacion(prev => ({...prev, descripcion: undefined})); }}
                       placeholder="Ruta sur peninsular"
                     />
                   </Field>
                 </div>
                 <div className={estilos.filaFormulario}>
-                  <Field label="Conductor" required>
+                  <Field label="Conductor" required validationState={erroresValidacion.conductorDni ? 'error' : undefined} validationMessage={erroresValidacion.conductorDni}>
                     <Select
                       value={viajeActual.conductorDni || ''}
-                      onChange={(_, d) => manejarCambioViaje('conductorDni', d.value)}
+                      onChange={(_, d) => { manejarCambioViaje('conductorDni', d.value); setErroresValidacion(prev => ({...prev, conductorDni: undefined})); }}
                     >
                       <option value="">Selecciona un conductor...</option>
                       {listaConductores.map(c => (
@@ -1210,10 +1223,10 @@ const manejarGuardar = async () => {
                   </Field>
                 </div>
                 <div className={estilos.filaFormulario}>
-                  <Field label="Vehículo (Matrícula)" required>
+                  <Field label="Vehículo (Matrícula)" required validationState={erroresValidacion.vehiculoMatricula ? 'error' : undefined} validationMessage={erroresValidacion.vehiculoMatricula}>
                     <Select
                       value={viajeActual.vehiculoMatricula}
-                      onChange={(_, d) => manejarCambioViaje('vehiculoMatricula', d.value)}
+                      onChange={(_, d) => { manejarCambioViaje('vehiculoMatricula', d.value); setErroresValidacion(prev => ({...prev, vehiculoMatricula: undefined})); }}
                     >
                       <option value="">Selecciona un vehículo...</option>
                       {vehiculosSeleccionables.map(v => (
@@ -1243,11 +1256,11 @@ const manejarGuardar = async () => {
                       placeholder="Ej: 12680"
                     />
                   </Field>
-                  <Field label="Fecha Salida">
+                  <Field label="Fecha Salida" required validationState={erroresValidacion.fechaSalida ? 'error' : undefined} validationMessage={erroresValidacion.fechaSalida}>
                     <Input
                       type="date"
                       value={formatForDate(viajeActual.fechaSalida)}
-                      onChange={(_, d) => { manejarCambioViaje('fechaSalida', d.value); setErroresValidacion(prev => ({ ...prev, fechaLlegada: undefined })); }}
+                      onChange={(_, d) => { manejarCambioViaje('fechaSalida', d.value); setErroresValidacion(prev => ({ ...prev, fechaSalida: undefined, fechaLlegada: undefined })); }}
                     />
                   </Field>
                   <Field label="Fecha Llegada" validationState={erroresValidacion.fechaLlegada ? 'error' : undefined} validationMessage={erroresValidacion.fechaLlegada}>
