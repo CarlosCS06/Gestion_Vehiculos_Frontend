@@ -34,7 +34,7 @@ export const obtenerEstacionesPorFiltros = async (filtros) => {
   const { idComunidad, idProvincia, idMunicipio, idProducto, matriculaVehiculo } = filtros;
 
   // URL de vuestro backend
-  const API_BACKEND = (import.meta.env.VITE_API_URL || 'https://gestion-vehiculos-backend.onrender.com/vehiculos 404 (Not Found)/api') + '/estaciones';
+  const API_BACKEND = (import.meta.env.VITE_API_URL || 'https://gestion-vehiculos-backend.onrender.com/vehiculos/api') + '/estaciones';
 
   const payload = {
     matriculaVehiculo: matriculaVehiculo || null,
