@@ -1414,6 +1414,16 @@ const PaginaVehiculos = () => {
       return nuevoEstado;
     });
   };
+  const esVehiculoElectrico =
+  vehiculoActual.alimentacion === TIPO_ALIMENTACION.ELECTRICO;
+
+  const unidadEnergia = esVehiculoElectrico ? 'kWh' : 'L';
+
+  const etiquetaCapacidadEnergia = esVehiculoElectrico
+    ? 'Capacidad de batería'
+    : 'Capacidad del tanque';
+
+  const textoEquivalenciaEnergia = esVehiculoElectrico ? 'kWh' : 'litros';
 
   if (cargando) {
     return (
@@ -1724,7 +1734,7 @@ const PaginaVehiculos = () => {
                       <Switch 
                         checked={vehiculoActual.tipoGastoVehiculo === 'PORCENTAJE'}
                         onChange={(_, d) => manejarCambio('tipoGastoVehiculo', d.checked ? 'PORCENTAJE' : 'LITROS')}
-                        label={vehiculoActual.tipoGastoVehiculo === 'PORCENTAJE' ? '% del Tanque' : 'Litros'}
+                        label={vehiculoActual.tipoGastoVehiculo === 'PORCENTAJE'? esVehiculoElectrico ? '% de la batería': '% del tanque': unidadEnergia}
                       />
                     </div>
                     <Field label={vehiculoActual.tipoGastoVehiculo === 'PORCENTAJE' ? 'Gasto de vehículo (%)' : 'Gasto de vehículo (L)'}>
@@ -1733,20 +1743,23 @@ const PaginaVehiculos = () => {
                         step="0.01"
                         value={String(vehiculoActual.gastoCombustiblePorKiloetro || 0)}
                         onChange={(_, d) => manejarCambio('gastoCombustiblePorKiloetro', Number(d.value))}
-                        contentAfter={vehiculoActual.tipoGastoVehiculo === 'PORCENTAJE' ? '%' : 'L'}
+                        contentAfter={vehiculoActual.tipoGastoVehiculo === 'PORCENTAJE' ? '%' : unidadEnergia}
                       />
                     </Field>
                     {vehiculoActual.tipoGastoVehiculo === 'PORCENTAJE' && vehiculoActual.capacidadTanqueCombustible > 0 && (
                       <Text size={100} style={{ color: tokens.colorNeutralForeground3 }}>
-                        Equivale a {((vehiculoActual.gastoCombustiblePorKiloetro / 100) * vehiculoActual.capacidadTanqueCombustible).toFixed(2)} Litros
+                       Equivale a {((vehiculoActual.gastoCombustiblePorKiloetro / 100) * vehiculoActual.capacidadTanqueCombustible).toFixed(2)} {textoEquivalenciaEnergia}
                       </Text>
                     )}
                   </div>
-                  <Field label="Capacidad Tanque (L)">
+                  <Field label={etiquetaCapacidadEnergia}>
                     <Input
                       type="number"
-                      value={String(vehiculoActual.capacidadTanqueCombustible || 0)}
-                      onChange={(_, d) => manejarCambio('capacidadTanqueCombustible', Number(d.value))}
+                      value={vehiculoActual.capacidadTanqueCombustible}
+                      onChange={(_, d) =>
+                        manejarCambio('capacidadTanqueCombustible', Number(d.value))
+                      }
+                      contentAfter={unidadEnergia}
                     />
                   </Field>
                 </div>
