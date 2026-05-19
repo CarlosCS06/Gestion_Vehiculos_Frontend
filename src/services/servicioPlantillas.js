@@ -1,6 +1,6 @@
 import { fetchWithLogging } from './apiUtils';
 
-const API_URL = 'https://gestion-vehiculos-backend.vercel.app/api/plantillas';
+const API_URL = (import.meta.env.VITE_API_URL || 'https://gestion-vehiculos-backend.vercel.app/api') + '/plantillas';
 
 // Enums para plantillas
 export const PLANTILLA_TRIGGER = {

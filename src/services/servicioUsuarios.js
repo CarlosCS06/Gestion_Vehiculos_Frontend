@@ -1,7 +1,7 @@
 import { fetchWithLogging } from './apiUtils.js';
 
-const USERS_API_URL = 'https://gestion-vehiculos-backend.vercel.app/api/users';
-const REGISTER_API_URL = 'https://gestion-vehiculos-backend.vercel.app/api/auth/register';
+const USERS_API_URL = (import.meta.env.VITE_API_URL || 'https://gestion-vehiculos-backend.vercel.app/api') + '/users';
+const REGISTER_API_URL = (import.meta.env.VITE_API_URL || 'https://gestion-vehiculos-backend.vercel.app/api') + '/auth/register';
 
 /**
  * Obtiene la lista completa de usuarios del sistema

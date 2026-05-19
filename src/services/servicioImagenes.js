@@ -1,6 +1,6 @@
 import { fetchWithLogging } from './apiUtils';
 
-const FILES_API_URL = 'https://gestion-vehiculos-backend.vercel.app/api/files';
+const FILES_API_URL = (import.meta.env.VITE_API_URL || 'https://gestion-vehiculos-backend.vercel.app/api') + '/files';
 
 /**
  * Sube una imagen local al backend para que sea procesada y subida a Cloudinary

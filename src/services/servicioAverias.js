@@ -1,6 +1,6 @@
 import { fetchWithLogging } from './apiUtils';
 
-const AUTH_API_URL = 'https://gestion-vehiculos-backend.vercel.app/api/averias';
+const AUTH_API_URL = (import.meta.env.VITE_API_URL || 'https://gestion-vehiculos-backend.vercel.app/api') + '/averias';
 
 const normalizarAveria = (a) => {
   if (!a) return a;

@@ -32,9 +32,9 @@ export const obtenerProductosPetroliferos = async () => {
  */
 export const obtenerEstacionesPorFiltros = async (filtros) => {
   const { idComunidad, idProvincia, idMunicipio, idProducto, matriculaVehiculo } = filtros;
-  
+
   // URL de vuestro backend
-  const API_BACKEND = 'https://gestion-vehiculos-backend.vercel.app/api/estaciones';
+  const API_BACKEND = (import.meta.env.VITE_API_URL || 'https://gestion-vehiculos-backend.vercel.app/api') + '/estaciones';
 
   const payload = {
     matriculaVehiculo: matriculaVehiculo || null,
@@ -69,12 +69,12 @@ export const obtenerEstacionesPorFiltros = async (filtros) => {
  */
 export const obtenerPrecioMedio = (datosProcesados) => {
   if (!datosProcesados) return null;
-  
+
   // Prioridad: Municipio > Provincia > CCAA
-  return datosProcesados.precioMedioMunicipio || 
-         datosProcesados.precioMedioProvincia || 
-         datosProcesados.precioMedioCCAA || 
-         null;
+  return datosProcesados.precioMedioMunicipio ||
+    datosProcesados.precioMedioProvincia ||
+    datosProcesados.precioMedioCCAA ||
+    null;
 };
 
 /**
@@ -91,12 +91,12 @@ export const generarUrlGoogleMaps = (latitud, longitud, nombre = '') => {
     }
     return null;
   }
-  
+
   const lat = parseFloat(String(latitud).replace(',', '.'));
   const lng = parseFloat(String(longitud).replace(',', '.'));
-  
+
   if (isNaN(lat) || isNaN(lng)) return null;
-  
+
   const query = nombre ? `${nombre} ${lat},${lng}` : `${lat},${lng}`;
   return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(query)}`;
 };

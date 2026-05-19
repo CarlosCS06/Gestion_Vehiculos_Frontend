@@ -1,6 +1,6 @@
 import { fetchWithLogging } from './apiUtils';
 
-const AUTH_API_URL = 'https://gestion-vehiculos-backend.vercel.app/api/trayectos';
+const AUTH_API_URL = (import.meta.env.VITE_API_URL || 'https://gestion-vehiculos-backend.vercel.app/api') + '/trayectos';
 
 export const obtenerTrayectos = async () => {
   const response = await fetchWithLogging(AUTH_API_URL);

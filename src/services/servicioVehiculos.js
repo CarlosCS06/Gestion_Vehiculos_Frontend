@@ -1,7 +1,7 @@
 import { fetchWithLogging } from './apiUtils';
 import { ESTADO_VEHICULO } from '../models/Vehiculo.js';
 
-const AUTH_API_URL = 'https://gestion-vehiculos-backend.vercel.app/api/vehiculos';
+const AUTH_API_URL = (import.meta.env.VITE_API_URL || 'https://gestion-vehiculos-backend.vercel.app/api') + '/vehiculos';
 
 const mapearVehiculo = (v) => {
   // Mapeo de imágenes: primera para principal, segunda para hover (si existe)

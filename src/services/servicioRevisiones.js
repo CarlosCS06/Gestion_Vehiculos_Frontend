@@ -1,6 +1,6 @@
 import { fetchWithLogging } from './apiUtils';
 
-const AUTH_API_URL = 'https://gestion-vehiculos-backend.vercel.app/api/revisiones';
+const AUTH_API_URL = (import.meta.env.VITE_API_URL || 'https://gestion-vehiculos-backend.vercel.app/api') + '/revisiones';
 
 export const obtenerRevisiones = async () => {
   const token = sessionStorage.getItem('token');

@@ -2,8 +2,8 @@ import { ROL_USUARIO } from '../models/Usuario.js';
 import { obtenerConductorPorDni } from './servicioConductores.js';
 import { fetchWithLogging } from './apiUtils';
 
-const AUTH_API_URL = 'https://gestion-vehiculos-backend.vercel.app/api/auth';
-const USERS_API_URL = 'https://gestion-vehiculos-backend.vercel.app/api/users';
+const AUTH_API_URL = (import.meta.env.VITE_API_URL || 'https://gestion-vehiculos-backend.vercel.app/api') + '/auth';
+const USERS_API_URL = (import.meta.env.VITE_API_URL || 'https://gestion-vehiculos-backend.vercel.app/api') + '/users';
 
 // Helper para mapear el usuario del backend al formato del frontend
 const mapearUsuario = (data) => {
