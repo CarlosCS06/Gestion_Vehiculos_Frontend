@@ -202,6 +202,14 @@ const PaginaRevisiones = () => {
   const [filtroEstado, setFiltroEstado] = useState('Todas');
   const [mostrarOcultos, setMostrarOcultos] = useState(false);
 
+  // Función robusta para obtener la matrícula del vehículo asociado a la revisión
+  const obtenerMatricula = (rev) => {
+    if (!rev) return '';
+    if (typeof rev.matricula === 'object' && rev.matricula !== null) {
+      return rev.matricula.matricula || '';
+    }
+    return rev.vehiculoMatricula || rev.matricula || '';
+  };
   const cargarDatos = useCallback(async (silencioso = false) => {
     if (!silencioso) {
       setCargando(true);
@@ -269,6 +277,7 @@ const PaginaRevisiones = () => {
   const abrirDialogoEditar = (revision) => {
     setRevisionActual({ 
       ...revision,
+      vehiculoMatricula: obtenerMatricula(revision),
       visible: obtenerVisibleRevision(revision)
     });
     setEditando(true);
@@ -383,7 +392,7 @@ const PaginaRevisiones = () => {
     const term = terminoBusqueda.toLowerCase();
     return (
       (r.id || '').toLowerCase().includes(term) ||
-      (r.vehiculoMatricula || '').toLowerCase().includes(term) ||
+      obtenerMatricula(r).toLowerCase().includes(term) ||
       (r.descripcion || '').toLowerCase().includes(term) ||
       (r.lugar || '').toLowerCase().includes(term) ||
       (r.activo ? 'activa' : 'inactiva').includes(term) ||
@@ -443,7 +452,8 @@ const PaginaRevisiones = () => {
       return (esFutura || esVencida) && obtenerVisibleRevision(r);
     })
     .map(r => {
-      const vAsociado = vehiculos.find(v => v.matricula?.trim().toUpperCase() === r.vehiculoMatricula?.trim().toUpperCase());
+      const mat = obtenerMatricula(r);
+      const vAsociado = vehiculos.find(v => v.matricula?.trim().toUpperCase() === mat.trim().toUpperCase());
       return {
         ...r,
         info: obtenerInfoRevisionProxima(r),
@@ -504,12 +514,12 @@ const PaginaRevisiones = () => {
           {revisionesUrgentes.length > 0 ? (
             revisionesUrgentes.map(r => (
               <Card 
-                key={r.id || r.fecha + r.vehiculoMatricula} 
+                key={r.id || r.fecha + obtenerMatricula(r)} 
                 className={`${estilos.tarjetaItv} ${estilos[r.info.estado]}`}
               >
                 <div className={estilos.infoItv}>
                   <div>
-                    <Text weight="bold" size={400}>{r.vehiculoMatricula}</Text>
+                    <Text weight="bold" size={400}>{obtenerMatricula(r)}</Text>
                     <Text size={200} block>{r.modeloVehiculo}</Text>
                   </div>
                   <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '4px' }}>
@@ -557,10 +567,11 @@ const PaginaRevisiones = () => {
                 <TableCell>
                   <div style={{ display: 'flex', flexDirection: 'column' }}>
                     <Text weight="semibold" style={{ color: tokens.colorBrandForeground1 }}>
-                      {revision.vehiculoMatricula}
+                      {obtenerMatricula(revision)}
                     </Text>
                     {(() => {
-                      const v = vehiculos.find(veh => veh.matricula?.trim().toUpperCase() === revision.vehiculoMatricula?.trim().toUpperCase());
+                      const mat = obtenerMatricula(revision);
+                      const v = vehiculos.find(veh => veh.matricula?.trim().toUpperCase() === mat.trim().toUpperCase());
                       return v ? <Text size={100} style={{ color: tokens.colorNeutralForeground3 }}>{v.marca} {v.modelo}</Text> : null;
                     })()}
                   </div>
@@ -641,9 +652,10 @@ const PaginaRevisiones = () => {
             <div className={estilos.tarjetaMovilCabecera}>
               <div style={{ display: 'flex', flexDirection: 'column' }}>
                 <Text size={200} style={{ color: tokens.colorNeutralForeground3 }}>Vehículo</Text>
-                <Text size={400} weight="bold" style={{ color: tokens.colorBrandForeground1 }}>{revision.vehiculoMatricula}</Text>
+                <Text size={400} weight="bold" style={{ color: tokens.colorBrandForeground1 }}>{obtenerMatricula(revision)}</Text>
                 {(() => {
-                  const v = vehiculos.find(veh => veh.matricula?.trim().toUpperCase() === revision.vehiculoMatricula?.trim().toUpperCase());
+                  const mat = obtenerMatricula(revision);
+                  const v = vehiculos.find(veh => veh.matricula?.trim().toUpperCase() === mat.trim().toUpperCase());
                   return v ? <Text size={200} style={{ color: tokens.colorNeutralForeground3 }}>{v.marca} {v.modelo}</Text> : null;
                 })()}
               </div>

@@ -134,7 +134,7 @@ En esta sección se listan y programan las citas técnicas del vehículo.
 
 ### 📝 Datos de la Revisión
 Al programar o registrar una revisión se capturan los siguientes campos:
-*   **Vehículo**: Matrícula del vehículo inspeccionado.
+*   **Vehículo**: Matrícula del vehículo inspeccionado. El sistema muestra visualmente la matrícula combinada con la marca y modelo para evitar confusiones. En modo de edición, este campo se bloquea en modo lectura para garantizar la integridad del registro.
 *   **Fecha de Revisión**: Fecha programada o realizada.
 *   **Plantilla Asociada**: Vincula la revisión con una regla de mantenimiento para evaluar su cumplimiento.
 *   **Coste**: Coste económico de la revisión para el cálculo de ROI y gastos de flota.
