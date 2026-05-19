@@ -566,11 +566,17 @@ const PaginaAverias = () => {
                     )}
                   </TableCell>
                 <TableCell>
-                  {obtenerVehiculoMatriculaMostrar(averia) !== '—' ? (
-                    <Badge appearance="outline">
-                      {obtenerVehiculoMatriculaMostrar(averia)}
-                    </Badge>
-                  ) : '—'}
+                  {(() => {
+                    const matr = obtenerVehiculoMatriculaMostrar(averia);
+                    if (matr === '—') return '—';
+                    const v = listaVehiculos.find(veh => veh.matricula?.trim().toUpperCase() === matr.trim().toUpperCase());
+                    return (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                        <Badge appearance="outline">{matr}</Badge>
+                        {v && <Text size={100} style={{ color: tokens.colorNeutralForeground3 }}>{v.marca} {v.modelo}</Text>}
+                      </div>
+                    );
+                  })()}
                 </TableCell>
                 <TableCell>{obtenerUserDniMostrar(averia)}</TableCell>
                 <TableCell>
@@ -654,11 +660,17 @@ const PaginaAverias = () => {
                 </div>
                 <Text size={300} weight="semibold" block style={{ marginBottom: '8px' }}>{averia.descripcion}</Text>
                 <div>
-                  {obtenerVehiculoMatriculaMostrar(averia) !== '—' ? (
-                    <Badge appearance="outline">
-                      {obtenerVehiculoMatriculaMostrar(averia)}
-                    </Badge>
-                  ) : null}
+                  {(() => {
+                    const matr = obtenerVehiculoMatriculaMostrar(averia);
+                    if (matr === '—') return null;
+                    const v = listaVehiculos.find(veh => veh.matricula?.trim().toUpperCase() === matr.trim().toUpperCase());
+                    return (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                        <Badge appearance="outline">{matr}</Badge>
+                        {v && <Text size={200} style={{ color: tokens.colorNeutralForeground3 }}>{v.marca} {v.modelo}</Text>}
+                      </div>
+                    );
+                  })()}
                 </div>
               </div>
             </div>
@@ -740,7 +752,7 @@ const PaginaAverias = () => {
                           {vehiculosTexto.split(',').map((matricula) => {
                             const mat = matricula.trim();
                             if (!mat) return null;
-                            const vehiculo = listaVehiculos.find(v => v.matricula === mat);
+                            const vehiculo = listaVehiculos.find(v => v.matricula?.trim().toUpperCase() === mat.toUpperCase());
                             return (
                               <Badge
                                 key={mat}
@@ -758,7 +770,7 @@ const PaginaAverias = () => {
                                   }
                                 }}
                               >
-                                {vehiculo ? `${mat} - ${vehiculo.marca}` : mat}
+                                {vehiculo ? `${mat} - ${vehiculo.marca} ${vehiculo.modelo}` : mat}
                               </Badge>
                             );
                           }).filter(Boolean)}

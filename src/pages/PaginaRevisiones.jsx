@@ -442,13 +442,14 @@ const PaginaRevisiones = () => {
       const esVencida = fechaRev < hoyFecha && !r.aprobada;
       return (esFutura || esVencida) && obtenerVisibleRevision(r);
     })
-    .map(r => ({
-      ...r,
-      info: obtenerInfoRevisionProxima(r),
-      modeloVehiculo: vehiculos.find(v => v.matricula === r.vehiculoMatricula) 
-        ? `${vehiculos.find(v => v.matricula === r.vehiculoMatricula).marca} ${vehiculos.find(v => v.matricula === r.vehiculoMatricula).modelo}`
-        : 'Vehículo'
-    }))
+    .map(r => {
+      const vAsociado = vehiculos.find(v => v.matricula?.trim().toUpperCase() === r.vehiculoMatricula?.trim().toUpperCase());
+      return {
+        ...r,
+        info: obtenerInfoRevisionProxima(r),
+        modeloVehiculo: vAsociado ? `${vAsociado.marca} ${vAsociado.modelo}` : 'Vehículo'
+      };
+    })
     .sort((a, b) => new Date(a.fecha) - new Date(b.fecha));
 
   return (
@@ -554,9 +555,15 @@ const PaginaRevisiones = () => {
                   style={esOculta ? { opacity: 0.6, backgroundColor: tokens.colorNeutralBackground3 } : undefined}
                 >
                 <TableCell>
-                  <Text weight="semibold" style={{ color: tokens.colorBrandForeground1 }}>
-                    {revision.vehiculoMatricula}
-                  </Text>
+                  <div style={{ display: 'flex', flexDirection: 'column' }}>
+                    <Text weight="semibold" style={{ color: tokens.colorBrandForeground1 }}>
+                      {revision.vehiculoMatricula}
+                    </Text>
+                    {(() => {
+                      const v = vehiculos.find(veh => veh.matricula?.trim().toUpperCase() === revision.vehiculoMatricula?.trim().toUpperCase());
+                      return v ? <Text size={100} style={{ color: tokens.colorNeutralForeground3 }}>{v.marca} {v.modelo}</Text> : null;
+                    })()}
+                  </div>
                 </TableCell>
                 <TableCell>{revision.descripcion || '—'}</TableCell>
                 <TableCell>{new Date(revision.fecha).toLocaleDateString('es-ES')}</TableCell>
@@ -635,6 +642,10 @@ const PaginaRevisiones = () => {
               <div style={{ display: 'flex', flexDirection: 'column' }}>
                 <Text size={200} style={{ color: tokens.colorNeutralForeground3 }}>Vehículo</Text>
                 <Text size={400} weight="bold" style={{ color: tokens.colorBrandForeground1 }}>{revision.vehiculoMatricula}</Text>
+                {(() => {
+                  const v = vehiculos.find(veh => veh.matricula?.trim().toUpperCase() === revision.vehiculoMatricula?.trim().toUpperCase());
+                  return v ? <Text size={200} style={{ color: tokens.colorNeutralForeground3 }}>{v.marca} {v.modelo}</Text> : null;
+                })()}
               </div>
               <div style={{ display: 'flex', gap: '4px', flexDirection: 'column', alignItems: 'flex-end' }}>
                 <Badge appearance="filled" color={revision.aprobada ? 'success' : 'danger'}>
@@ -710,18 +721,27 @@ const PaginaRevisiones = () => {
             <DialogContent>
               <div className={estilos.formulario}>
                 <Field label="Vehículo" required validationState={erroresValidacion?.vehiculoMatricula ? 'error' : undefined} validationMessage={erroresValidacion?.vehiculoMatricula}>
-                  <Select
-                    value={revisionActual.vehiculoMatricula}
-                    onChange={(_, d) => { manejarCambio('vehiculoMatricula', d.value); setErroresValidacion(prev => ({...prev, vehiculoMatricula: undefined})); }}
-                    disabled={editando}
-                  >
-                    <option value="">Seleccionar vehículo...</option>
-                    {vehiculos.map((v) => (
-                      <option key={v.matricula} value={v.matricula}>
-                        {v.matricula} - {v.marca} {v.modelo}
-                      </option>
-                    ))}
-                  </Select>
+                  {editando ? (
+                    (() => {
+                      const vAsociado = vehiculos.find(v => v.matricula?.trim().toUpperCase() === revisionActual.vehiculoMatricula?.trim().toUpperCase());
+                      const displayVal = vAsociado 
+                        ? `${revisionActual.vehiculoMatricula} - ${vAsociado.marca} ${vAsociado.modelo}`
+                        : revisionActual.vehiculoMatricula;
+                      return <Input value={displayVal || ''} disabled />;
+                    })()
+                  ) : (
+                    <Select
+                      value={revisionActual.vehiculoMatricula || ''}
+                      onChange={(_, d) => { manejarCambio('vehiculoMatricula', d.value); setErroresValidacion(prev => ({...prev, vehiculoMatricula: undefined})); }}
+                    >
+                      <option value="">Seleccionar vehículo...</option>
+                      {vehiculos.map((v) => (
+                        <option key={v.matricula} value={v.matricula}>
+                          {v.matricula} - {v.marca} {v.modelo}
+                        </option>
+                      ))}
+                    </Select>
+                  )}
                 </Field>
                 <Field label="Descripción" required validationState={erroresValidacion?.descripcion ? 'error' : undefined} validationMessage={erroresValidacion?.descripcion}>
                   <Input 

@@ -910,7 +910,18 @@ const manejarGuardar = async () => {
                       }
                     </TableCell>
                     <TableCell>{viaje.descripcion}</TableCell>
-                    <TableCell><strong>{(typeof viaje.matricula === 'object' && viaje.matricula !== null) ? viaje.matricula.matricula : (viaje.vehiculoMatricula || viaje.matricula || '—')}</strong></TableCell>
+                    <TableCell>
+                      {(() => {
+                        const mat = (typeof viaje.matricula === 'object' && viaje.matricula !== null) ? viaje.matricula.matricula : (viaje.vehiculoMatricula || viaje.matricula || '—');
+                        const v = listaVehiculos.find(veh => veh.matricula?.trim().toUpperCase() === mat.trim().toUpperCase());
+                        return (
+                          <div style={{ display: 'flex', flexDirection: 'column' }}>
+                            <strong>{mat}</strong>
+                            {v && <Text size={100} style={{ color: tokens.colorNeutralForeground3 }}>{v.marca} {v.modelo}</Text>}
+                          </div>
+                        );
+                      })()}
+                    </TableCell>
                     <TableCell>{(typeof viaje.conductor === 'object' && viaje.conductor !== null) ? `${viaje.conductor.nombre} ${viaje.conductor.apellidos} (${viaje.conductor.dni})` : (viaje.conductorDni || viaje.conductor || 'Sin asignar')}</TableCell>
                     <TableCell>{viaje.fechaSalida ? new Date(viaje.fechaSalida).toLocaleDateString('es-ES') : '—'}</TableCell>
                     <TableCell>{viaje.fechaLlegada ? new Date(viaje.fechaLlegada).toLocaleDateString('es-ES') : '—'}</TableCell>
@@ -1073,7 +1084,13 @@ const manejarGuardar = async () => {
                 <div className={estilos.tarjetaMovilCuerpo}>
                   <div>
                     <div className={estilos.datoEtiqueta}>Vehículo</div>
-                    <div className={estilos.datoValor}>{(typeof viaje.matricula === 'object' && viaje.matricula !== null) ? viaje.matricula.matricula : (viaje.vehiculoMatricula || viaje.matricula || '—')}</div>
+                    <div className={estilos.datoValor}>
+                      {(() => {
+                        const mat = (typeof viaje.matricula === 'object' && viaje.matricula !== null) ? viaje.matricula.matricula : (viaje.vehiculoMatricula || viaje.matricula || '—');
+                        const v = listaVehiculos.find(veh => veh.matricula?.trim().toUpperCase() === mat.trim().toUpperCase());
+                        return v ? `${mat} - ${v.marca} ${v.modelo}` : mat;
+                      })()}
+                    </div>
                   </div>
                   <div>
                     <div className={estilos.datoEtiqueta}>Salida</div>
@@ -1250,17 +1267,27 @@ const manejarGuardar = async () => {
                 </div>
                 <div className={estilos.filaFormulario}>
                   <Field label="Vehículo (Matrícula)" required validationState={erroresValidacion.vehiculoMatricula ? 'error' : undefined} validationMessage={erroresValidacion.vehiculoMatricula}>
-                    <Select
-                      value={viajeActual.vehiculoMatricula}
-                      onChange={(_, d) => { manejarCambioViaje('vehiculoMatricula', d.value); setErroresValidacion(prev => ({...prev, vehiculoMatricula: undefined})); }}
-                    >
-                      <option value="">Selecciona un vehículo...</option>
-                      {vehiculosSeleccionables.map(v => (
-                        <option key={v.matricula} value={v.matricula}>
-                          {v.matricula} - {v.marca} {v.modelo}
-                        </option>
-                      ))}
-                    </Select>
+                    {editando ? (
+                      (() => {
+                        const vAsociado = listaVehiculos.find(v => v.matricula?.trim().toUpperCase() === viajeActual.vehiculoMatricula?.trim().toUpperCase());
+                        const displayVal = vAsociado 
+                          ? `${viajeActual.vehiculoMatricula} - ${vAsociado.marca} ${vAsociado.modelo}`
+                          : viajeActual.vehiculoMatricula;
+                        return <Input value={displayVal || ''} disabled />;
+                      })()
+                    ) : (
+                      <Select
+                        value={viajeActual.vehiculoMatricula || ''}
+                        onChange={(_, d) => { manejarCambioViaje('vehiculoMatricula', d.value); setErroresValidacion(prev => ({...prev, vehiculoMatricula: undefined})); }}
+                      >
+                        <option value="">Selecciona un vehículo...</option>
+                        {vehiculosSeleccionables.map(v => (
+                          <option key={v.matricula} value={v.matricula}>
+                            {v.matricula} - {v.marca} {v.modelo}
+                          </option>
+                        ))}
+                      </Select>
+                    )}
                   </Field>
                 </div>
                 <div className={estilos.filaFormulario}>
