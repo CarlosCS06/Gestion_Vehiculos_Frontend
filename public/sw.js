@@ -1,4 +1,4 @@
-const CACHE_NAME = 'gestion-vehiculos-cache-v3';
+const CACHE_NAME = 'gestion-vehiculos-cache-v4';
 
 // Archivos que queremos guardar en caché al instalar
 const urlsToCache = [
@@ -47,7 +47,7 @@ self.addEventListener('fetch', (event) => {
     if (event.request.url.includes('/@vite/') || event.request.url.includes('/@react-refresh')) return;
 
     const isApiRequest = event.request.url.includes('gestion-vehiculos-backend.vercel.app') || event.request.url.includes('/api/');
-    
+
     // Los bundles JS/CSS con hash cambian en cada build → usar Network First
     const isHashedAsset = event.request.url.includes('/assets/');
 
