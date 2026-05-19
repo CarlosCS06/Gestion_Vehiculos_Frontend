@@ -10,6 +10,8 @@ export const crearRevisionVacia = () => ({
   lugar: '',
   activo: false,
   aprobada: false,
-  costo: 0,
+  costo: '',
   viajeId: null,
+  visible: true,
+  esItv: false,
 });

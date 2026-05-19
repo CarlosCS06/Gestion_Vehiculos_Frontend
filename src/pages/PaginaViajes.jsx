@@ -303,7 +303,6 @@ const PaginaViajes = () => {
     for (let i = 0; i < nuevos.length - 1; i++) {
       // El origen del siguiente trayecto DEBE ser el destino del actual
       if (nuevos[i].destino !== nuevos[i + 1].origen) {
-        console.log(`Sincronizando cadena: Trayecto ${i+2} origen ajustado a ${nuevos[i].destino}`);
         nuevos[i + 1].origen = nuevos[i].destino;
       }
     }
@@ -357,8 +356,6 @@ const PaginaViajes = () => {
 
         if (estadoCalculado !== estadoActual) {
           const cuerpoActualizacion = { estado: estadoCalculado };
-          console.log(`[Viaje ${viaje.id}] Cambio de estado: ${estadoActual} -> ${estadoCalculado}`);
-          console.log(`[Viaje ${viaje.id}] Cuerpo enviado a la petición:`, cuerpoActualizacion);
           viajeLimpio.estado = estadoCalculado;
           
           // Enviar SOLO el estado para evitar conflictos con relaciones en el backend
@@ -389,12 +386,10 @@ const PaginaViajes = () => {
         if (vEstado === ESTADO_VEHICULO.AVERIADO) continue;
 
         if (debeEstarEnTrayecto && vEstado !== ESTADO_VEHICULO.EN_TRAYECTO) {
-          console.log(`[SYNC] Vehículo ${matricula} -> EN TRAYECTO (Tiene viajes activos)`);
           actualizarVehiculo(matricula, { estado: ESTADO_VEHICULO.EN_TRAYECTO })
             .catch(err => console.error(`[SYNC] Error activando ${matricula}:`, err));
         } 
         else if (!debeEstarEnTrayecto && vEstado === ESTADO_VEHICULO.EN_TRAYECTO) {
-          console.log(`[SYNC] Vehículo ${matricula} -> DISPONIBLE (No tiene viajes activos)`);
           actualizarVehiculo(matricula, { estado: ESTADO_VEHICULO.DISPONIBLE })
             .catch(err => console.error(`[SYNC] Error liberando ${matricula}:`, err));
         }
@@ -463,7 +458,6 @@ const PaginaViajes = () => {
         if (ultimoTrayecto && ultimoTrayecto.destino) {
           nuevoTrayecto.origen = ultimoTrayecto.destino;
           setOrigenFijado(true);
-          console.log(`Encadenando nuevo trayecto: Origen pre-poblado con '${ultimoTrayecto.destino}'`);
         }
       }
     }
@@ -504,15 +498,13 @@ const PaginaViajes = () => {
         ...trayectoActualInline,
         viajeId: viajePadreId,
         distanciaEnKm: Number(trayectoActualInline.distanciaEnKm || trayectoActualInline.kmRecorridos || 0),
-        gastoGasolina: Number(trayectoActualInline.gastoGasolina || 0),
+        gastoGasolina: 0,
       };
 
       // Limpieza de campos para el backend (evitar enviar IDs temporales o datos nulos)
       if (!editandoTrayectoInline) {
         delete datosGuardar.id;
       }
-
-      console.log('Guardando trayecto inline:', datosGuardar);
 
       if (editandoTrayectoInline) {
         // Al actualizar, quitamos el ID del cuerpo para evitar confusiones en el backend (el ID ya va en la URL)
@@ -575,7 +567,6 @@ const PaginaViajes = () => {
 
     // TEMPORIZADOR DE ACTUALIZACIÓN AUTOMÁTICA: Revisar estados cada minuto
     const intervalo = setInterval(() => {
-      console.log('Comprobación automática de estados de viaje...');
       cargarViajes(true);
     }, 60000);
 
@@ -751,7 +742,6 @@ const manejarGuardar = async () => {
       delete datosNormalizados.conductor;
       delete datosNormalizados.matricula;
 
-      console.log('Soft delete - Enviando datos normalizados:', datosNormalizados);
       await eliminarViaje(viajeEliminar.id);
       setConfirmacionAbierta(false);
       setIdEliminar('');
@@ -834,7 +824,7 @@ const manejarGuardar = async () => {
     return (
       (v.id || '').toLowerCase().includes(term) ||
       (v.descripcion || '').toLowerCase().includes(term) ||
-      (typeof v.matricula === 'object' && v.matricula !== null ? v.matricula.matricula : String(v.matricula || '')).toLowerCase().includes(term) ||
+      (typeof v.matricula === 'object' && v.matricula !== null ? v.matricula.matricula : String(v.vehiculoMatricula || v.matricula || '')).toLowerCase().includes(term) ||
       condText.toLowerCase().includes(term) ||
       (v.trayectos && v.trayectos.some(t => 
         (t.origen || '').toLowerCase().includes(term) || 
@@ -1127,14 +1117,27 @@ const manejarGuardar = async () => {
 
                 {expandido && (
                   <div style={{ marginTop: tokens.spacingVerticalS, backgroundColor: tokens.colorNeutralBackground2, padding: tokens.spacingHorizontalM, borderRadius: tokens.borderRadiusMedium }}>
-                    <div className={estilos.rutaVisual} style={{ flexWrap: 'wrap' }}>
-                      <Location24Regular style={{ color: tokens.colorBrandForeground1 }} />
-                      {puntosRuta.map((punto, i) => (
-                        <span key={i} style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                          <span className={estilos.puntoRuta}>{punto}</span>
-                          {i < puntosRuta.length - 1 && <ArrowRight16Regular style={{ color: tokens.colorNeutralForeground3 }} />}
-                        </span>
-                      ))}
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: tokens.spacingVerticalS, flexWrap: 'wrap', gap: '8px' }}>
+                      <div className={estilos.rutaVisual} style={{ flexWrap: 'wrap', padding: 0 }}>
+                        <Location24Regular style={{ color: tokens.colorBrandForeground1 }} />
+                        {puntosRuta.map((punto, i) => (
+                          <span key={i} style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                            <span className={estilos.puntoRuta}>{punto}</span>
+                            {i < puntosRuta.length - 1 && <ArrowRight16Regular style={{ color: tokens.colorNeutralForeground3 }} />}
+                          </span>
+                        ))}
+                      </div>
+                      {esAdmin && (
+                        <Button
+                          type="button"
+                          appearance="outline"
+                          icon={<Add24Regular />}
+                          onClick={(e) => { e.stopPropagation(); abrirDialogoCrearTrayectoInline(viaje.id); }}
+                          size="small"
+                        >
+                          Añadir trayecto
+                        </Button>
+                      )}
                     </div>
                     <div style={{ marginTop: tokens.spacingVerticalS, display: 'grid', gap: tokens.spacingVerticalS }}>
                       {viaje.trayectos.map((t, idx) => (
@@ -1169,6 +1172,29 @@ const manejarGuardar = async () => {
                               </div>
                             </div>
                           </div>
+                          {esAdmin && (
+                            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: tokens.spacingHorizontalS, marginTop: tokens.spacingVerticalS }}>
+                              <Button
+                                type="button"
+                                icon={<Edit24Regular />}
+                                appearance="subtle"
+                                size="small"
+                                onClick={(e) => { e.stopPropagation(); abrirDialogoEditarTrayectoInline(viaje.id, t); }}
+                              >
+                                Editar
+                              </Button>
+                              <Button
+                                type="button"
+                                icon={<Delete24Regular />}
+                                appearance="subtle"
+                                size="small"
+                                style={{ color: tokens.colorPaletteRedForeground1 }}
+                                onClick={(e) => { e.stopPropagation(); confirmarEliminarTrayecto(viaje.id, t.id); }}
+                              >
+                                Eliminar
+                              </Button>
+                            </div>
+                          )}
                         </div>
                       ))}
                     </div>
@@ -1429,14 +1455,6 @@ const manejarGuardar = async () => {
                       type="number" 
                       value={String(trayectoActualInline.distanciaEnKm || trayectoActualInline.kmRecorridos || 0)} 
                       onChange={(_, d) => setTrayectoActualInline(prev => ({ ...prev, distanciaEnKm: Number(d.value) }))} 
-                    />
-                  </Field>
-                  <Field label="Gasto gasolina (€)">
-                    <Input 
-                      type="number" 
-                      step="0.01" 
-                      value={String(trayectoActualInline.gastoGasolina || 0)} 
-                      onChange={(_, d) => setTrayectoActualInline(prev => ({ ...prev, gastoGasolina: Number(d.value) }))} 
                     />
                   </Field>
                 </div>

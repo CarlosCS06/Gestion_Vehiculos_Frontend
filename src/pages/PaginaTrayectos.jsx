@@ -69,6 +69,52 @@ const useEstilos = makeStyles({
   tarjetaTabla: {
     padding: tokens.spacingHorizontalL,
     overflow: 'auto',
+    '@media (max-width: 768px)': {
+      display: 'none',
+    }
+  },
+  listaMovil: {
+    display: 'none',
+    '@media (max-width: 768px)': {
+      display: 'flex',
+      flexDirection: 'column',
+      gap: tokens.spacingVerticalM,
+    }
+  },
+  tarjetaMovil: {
+    padding: tokens.spacingHorizontalM,
+    display: 'flex',
+    flexDirection: 'column',
+    gap: tokens.spacingVerticalS,
+  },
+  tarjetaMovilCabecera: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    borderBottomColor: tokens.colorNeutralStroke2,
+    borderBottomStyle: 'solid',
+    borderBottomWidth: '1px',
+    paddingBottom: tokens.spacingVerticalS,
+  },
+  tarjetaMovilCuerpo: {
+    display: 'grid',
+    gridTemplateColumns: '1fr 1fr',
+    gap: tokens.spacingHorizontalM,
+  },
+  datoEtiqueta: {
+    fontSize: tokens.fontSizeBase200,
+    color: tokens.colorNeutralForeground3,
+    marginBottom: '2px',
+  },
+  datoValor: {
+    fontSize: tokens.fontSizeBase300,
+    fontWeight: tokens.fontWeightSemibold,
+  },
+  accionesMovil: {
+    display: 'flex',
+    justifyContent: 'flex-end',
+    gap: tokens.spacingHorizontalS,
+    marginTop: tokens.spacingVerticalS,
   },
   formulario: {
     display: 'flex',
@@ -95,7 +141,6 @@ const columnas = [
   { nombre: 'Destino', campo: 'destino' },
   { nombre: 'Conductor', campo: 'conductor' },
   { nombre: 'Km', campo: 'kmRecorridos' },
-  { nombre: 'Gasto (€)', campo: 'gastoGasolina' },
   { nombre: 'Estado', campo: 'estado' },
   { nombre: 'Acciones', campo: 'acciones' },
 ];
@@ -122,7 +167,6 @@ const PaginaTrayectos = () => {
     }
     try {
       const datos = await obtenerTrayectos();
-      console.log('Trayectos cargados:', datos);
       
       // Filtrar duplicados por ID (por si el servidor los devuelve)
       const unicos = [];
@@ -235,10 +279,8 @@ const PaginaTrayectos = () => {
     setProcesando(true);
     setMensajeCargando("Eliminando trayecto...");
     try {
-      console.log(`Intentando eliminar trayecto: ${idEliminar}`);
       setConfirmacionAbierta(false);
       await eliminarTrayecto(idEliminar);
-      console.log('Eliminación exitosa en backend, recargando...');
       await cargarTrayectos(true);
     } catch (err) {
       console.error('Error al eliminar trayecto:', err);
@@ -308,7 +350,6 @@ const PaginaTrayectos = () => {
                 <TableCell>{trayecto.destino}</TableCell>
                 <TableCell>{trayecto.conductor}</TableCell>
                 <TableCell>{trayecto.kmRecorridos.toLocaleString('es-ES')} km</TableCell>
-                <TableCell>{trayecto.gastoGasolina.toFixed(2)} €</TableCell>
                 <TableCell>{obtenerBadgeEstadoTrayecto(trayecto)}</TableCell>
                 <TableCell>
                   {esAdmin && (
@@ -334,6 +375,49 @@ const PaginaTrayectos = () => {
           </TableBody>
         </Table>
       </Card>
+
+      {/* Vista de Lista Móvil */}
+      <div className={estilos.listaMovil}>
+        {trayectos.map((trayecto) => (
+          <Card key={trayecto.id} className={estilos.tarjetaMovil}>
+            <div className={estilos.tarjetaMovilCabecera}>
+              <div>
+                <Text size={400} weight="bold">Trayecto {trayecto.id}</Text>
+              </div>
+              {obtenerBadgeEstadoTrayecto(trayecto)}
+            </div>
+            <div className={estilos.tarjetaMovilCuerpo}>
+              <div>
+                <div className={estilos.datoEtiqueta}>Origen</div>
+                <div className={estilos.datoValor}>{trayecto.origen}</div>
+              </div>
+              <div>
+                <div className={estilos.datoEtiqueta}>Destino</div>
+                <div className={estilos.datoValor}>{trayecto.destino}</div>
+              </div>
+              <div>
+                <div className={estilos.datoEtiqueta}>Km</div>
+                <div className={estilos.datoValor}>{trayecto.kmRecorridos.toLocaleString('es-ES')} km</div>
+              </div>
+              <div>
+                <div className={estilos.datoEtiqueta}>Conductor</div>
+                <div className={estilos.datoValor}>{trayecto.conductor}</div>
+              </div>
+            </div>
+            {esAdmin && (
+              <div className={estilos.accionesMovil}>
+                <Button icon={<Edit24Regular />} appearance="subtle" onClick={() => abrirDialogoEditar(trayecto)}>Editar</Button>
+                <Button icon={<Delete24Regular />} appearance="subtle" style={{ color: tokens.colorPaletteRedForeground1 }} onClick={() => confirmarEliminar(trayecto.id)}>Borrar</Button>
+              </div>
+            )}
+          </Card>
+        ))}
+        {trayectos.length === 0 && (
+          <Card style={{ padding: '40px', textAlign: 'center' }}>
+            <Text size={300} style={{ color: tokens.colorNeutralForeground3 }}>No hay trayectos registrados</Text>
+          </Card>
+        )}
+      </div>
 
       <Dialog open={dialogoAbierto} onOpenChange={(_, d) => { if (!d.open) setDialogoAbierto(false); }}>
         <DialogSurface style={{ maxWidth: '600px' }}>
@@ -365,9 +449,6 @@ const PaginaTrayectos = () => {
                 <div className={estilos.filaFormulario}>
                   <Field label="Km recorridos">
                     <Input type="number" value={String(trayectoActual.kmRecorridos || 0)} onChange={(_, d) => manejarCambio('kmRecorridos', Number(d.value))} />
-                  </Field>
-                  <Field label="Gasto gasolina (€)">
-                    <Input type="number" step="0.01" value={String(trayectoActual.gastoGasolina || 0)} onChange={(_, d) => manejarCambio('gastoGasolina', Number(d.value))} />
                   </Field>
                 </div>
                 <Field label="Conductor" required validationState={erroresValidacion?.conductor ? 'error' : undefined} validationMessage={erroresValidacion?.conductor}>

@@ -37,6 +37,8 @@ import {
   Delete24Regular,
   Wrench24Regular,
   Search24Regular,
+  Eye24Regular,
+  EyeOff24Regular,
 } from '@fluentui/react-icons';
 import { useAuth } from '../context/ContextoAuth.jsx';
 import DialogoConfirmacion from '../components/shared/DialogoConfirmacion.jsx';
@@ -188,6 +190,7 @@ const PaginaRevisiones = () => {
   const [cargando, setCargando] = useState(true);
   const [guardando, setGuardando] = useState(false);
   const [eliminando, setEliminando] = useState(false);
+  const [mensajeCargando, setMensajeCargando] = useState('');
   const [dialogoAbierto, setDialogoAbierto] = useState(false);
   const [confirmacionAbierta, setConfirmacionAbierta] = useState(false);
   const [revisionActual, setRevisionActual] = useState(crearRevisionVacia());
@@ -197,6 +200,7 @@ const PaginaRevisiones = () => {
   const [erroresValidacion, setErroresValidacion] = useState({});
   const [terminoBusqueda, setTerminoBusqueda] = useState('');
   const [filtroEstado, setFiltroEstado] = useState('Todas');
+  const [mostrarOcultos, setMostrarOcultos] = useState(false);
 
   const cargarDatos = useCallback(async (silencioso = false) => {
     if (!silencioso) {
@@ -207,8 +211,42 @@ const PaginaRevisiones = () => {
         obtenerRevisiones(),
         obtenerVehiculos(),
       ]);
-      setRevisiones(datosRevisiones);
-      setVehiculos(datosVehiculos);
+
+      // Recuperar revisiones que el backend filtró por tener visible:false
+      // Buscar en localStorage los IDs marcados como ocultos
+      const idsOcultosLocal = [];
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (key && key.startsWith('revision_oculta_')) {
+          idsOcultosLocal.push(key.replace('revision_oculta_', ''));
+        }
+      }
+
+      // IDs que están en localStorage pero NO vinieron del backend → el backend los filtró
+      const idsPresentes = new Set(datosRevisiones.map(r => r.id));
+      const idsFaltantes = idsOcultosLocal.filter(id => !idsPresentes.has(id));
+
+      if (idsFaltantes.length > 0) {
+        // Restaurar cada revisión faltante en el backend con visible:true
+        await Promise.all(
+          idsFaltantes.map(id =>
+            actualizarRevision(id, { visible: true }).catch(() => {
+              // Si falla (revisión eliminada, etc.), limpiar su marca local
+              localStorage.removeItem(`revision_oculta_${id}`);
+            })
+          )
+        );
+        // Recargar para obtener las revisiones restauradas
+        const [datosRecuperados, datosVeh2] = await Promise.all([
+          obtenerRevisiones(),
+          obtenerVehiculos(),
+        ]);
+        setRevisiones(datosRecuperados);
+        setVehiculos(datosVeh2);
+      } else {
+        setRevisiones(datosRevisiones);
+        setVehiculos(datosVehiculos);
+      }
     } catch (err) {
       setError(err.message || 'Error al cargar los datos');
     } finally {
@@ -229,7 +267,10 @@ const PaginaRevisiones = () => {
   };
 
   const abrirDialogoEditar = (revision) => {
-    setRevisionActual({ ...revision });
+    setRevisionActual({ 
+      ...revision,
+      visible: obtenerVisibleRevision(revision)
+    });
     setEditando(true);
     setDialogoAbierto(true);
   };
@@ -240,8 +281,6 @@ const PaginaRevisiones = () => {
     if (!revisionActual.vehiculoMatricula) errores.vehiculoMatricula = 'Debe seleccionar un vehículo.';
     if (!revisionActual.descripcion || revisionActual.descripcion.trim() === '') errores.descripcion = 'La descripción es obligatoria.';
     if (!revisionActual.fecha) errores.fecha = 'La fecha es obligatoria.';
-    if (!revisionActual.lugar || revisionActual.lugar.trim() === '') errores.lugar = 'El lugar es obligatorio.';
-    if (revisionActual.costo === '' || revisionActual.costo === null || isNaN(revisionActual.costo)) errores.costo = 'El coste es obligatorio.';
 
     if (Object.keys(errores).length > 0) {
       setErroresValidacion(errores);
@@ -250,13 +289,36 @@ const PaginaRevisiones = () => {
     setErroresValidacion({});
     // --- FIN VALIDACIONES ---
 
+    // Formatear los datos según la plantilla del backend
+    const datosGuardar = {
+      descripcion: revisionActual.descripcion ? revisionActual.descripcion.trim() : null,
+      lugar: revisionActual.lugar && revisionActual.lugar.trim() !== '' ? revisionActual.lugar.trim() : null,
+      aprobada: revisionActual.aprobada ?? false,
+      fecha: revisionActual.fecha || null,
+      costo: (revisionActual.costo !== '' && revisionActual.costo !== null && !isNaN(revisionActual.costo)) ? parseFloat(revisionActual.costo) : null,
+      visible: true, // Siempre true en backend para que no filtre; visibilidad gestionada en localStorage
+      vehiculoMatricula: revisionActual.vehiculoMatricula || null,
+      viajeId: revisionActual.viajeId || null,
+      plantillaId: revisionActual.plantillaId || null,
+      kilometrosActuales: revisionActual.kilometrosActuales ? parseInt(revisionActual.kilometrosActuales, 10) : null,
+      esItv: revisionActual.esItv ?? false,
+      activo: revisionActual.activo ?? false,
+    };
+
+    setMensajeCargando(editando ? 'Guardando cambios...' : 'Creando revisión...');
     setGuardando(true);
     setDialogoAbierto(false);
     try {
       if (editando) {
-        await actualizarRevision(revisionActual.id, { ...revisionActual, aprobada: false });
+        await actualizarRevision(revisionActual.id, datosGuardar);
+        // Sincronizar visibilidad local
+        if (revisionActual.visible === false) {
+          localStorage.setItem(`revision_oculta_${revisionActual.id}`, 'true');
+        } else {
+          localStorage.removeItem(`revision_oculta_${revisionActual.id}`);
+        }
       } else {
-        await crearRevision({ ...revisionActual, aprobada: false });
+        await crearRevision(datosGuardar);
       }
       await cargarDatos(true);
       setError('');
@@ -273,6 +335,7 @@ const PaginaRevisiones = () => {
   };
 
   const manejarEliminar = async () => {
+    setMensajeCargando('Eliminando revisión...');
     setEliminando(true);
     setConfirmacionAbierta(false);
     try {
@@ -285,11 +348,34 @@ const PaginaRevisiones = () => {
     }
   };
 
+  const obtenerVisibleRevision = (r) => {
+    if (localStorage.getItem(`revision_oculta_${r.id}`) === 'true') {
+      return false;
+    }
+    return r.visible !== false && r.visible !== 'false' && r.visible !== 0 && r.visible !== '0';
+  };
+
+  const manejarToggleVisibilidad = (revision) => {
+    // Gestión de visibilidad 100% local (localStorage), sin llamar al backend
+    // para evitar que el backend filtre y no devuelva las revisiones ocultas
+    const esVisibleActual = obtenerVisibleRevision(revision);
+    if (esVisibleActual) {
+      localStorage.setItem(`revision_oculta_${revision.id}`, 'true');
+    } else {
+      localStorage.removeItem(`revision_oculta_${revision.id}`);
+    }
+    // Forzar re-render actualizando el array de revisiones con una copia
+    setRevisiones(prev => [...prev]);
+  };
+
   const manejarCambio = (campo, valor) => {
     setRevisionActual((prev) => ({ ...prev, [campo]: valor }));
   };
 
   const revisionesFiltradas = revisiones.filter(r => {
+    const esVisible = obtenerVisibleRevision(r);
+    if (!mostrarOcultos && !esVisible) return false;
+
     if (filtroEstado === 'Aprobadas' && !r.aprobada) return false;
     if (filtroEstado === 'Pendientes' && r.aprobada) return false;
 
@@ -308,56 +394,74 @@ const PaginaRevisiones = () => {
   if (cargando) {
     return (
       <div style={{ display: 'flex', justifyContent: 'center', padding: '60px' }}>
-        <Spinner size="large" label="Cargando inspecciones..." />
+        <Spinner size="large" label="Cargando revisiones..." />
       </div>
     );
   }
 
-  // Identificar vehículos con ITV próxima o vencida
-  const obtenerEstadoItv = (proximaItv) => {
-    if (!proximaItv) return { estado: 'desconocido', color: 'subtle', texto: 'No definida' };
-    
-    // Si incluye (Pendiente), es una sugerencia basada en el año
-    if (proximaItv.includes('(Pendiente)')) {
-      const anio = parseInt(proximaItv);
-      const anioActual = new Date().getFullYear();
-      if (anio < anioActual) return { estado: 'vencida', color: 'danger', texto: 'Atrasada' };
-      if (anio === anioActual) return { estado: 'proxima', color: 'warning', texto: 'Este año' };
-      return { estado: 'alDia', color: 'success', texto: 'Al día' };
-    }
-
-    // Si es una fecha ISO
+  // Identificar revisiones programadas o vencidas
+  const obtenerInfoRevisionProxima = (r) => {
     const hoy = new Date();
-    const fecha = new Date(proximaItv);
-    if (isNaN(fecha.getTime())) return { estado: 'desconocido', color: 'subtle', texto: proximaItv };
-
+    hoy.setHours(0, 0, 0, 0);
+    const fecha = new Date(r.fecha);
     const diferenciaDias = Math.ceil((fecha - hoy) / (1000 * 60 * 60 * 24));
-    if (diferenciaDias < 0) return { estado: 'vencida', color: 'danger', texto: 'VENCIDA' };
-    if (diferenciaDias < 30) return { estado: 'proxima', color: 'warning', texto: `En ${diferenciaDias} días` };
-    return { estado: 'alDia', color: 'success', texto: 'Al día' };
+    const tipoText = r.esItv ? 'ITV' : 'Revisión';
+    
+    if (diferenciaDias < 0) {
+      return {
+        estado: 'vencida',
+        color: 'danger',
+        texto: `Atrasada (${Math.abs(diferenciaDias)} días)`,
+        tipoText
+      };
+    }
+    if (diferenciaDias < 30) {
+      return {
+        estado: 'proxima',
+        color: 'warning',
+        texto: diferenciaDias === 0 ? 'Hoy' : `En ${diferenciaDias} días`,
+        tipoText
+      };
+    }
+    return {
+      estado: 'alDia',
+      color: 'success',
+      texto: `En ${diferenciaDias} días`,
+      tipoText
+    };
   };
 
-  const vehiculosConItv = vehiculos
-    .map(v => ({ ...v, infoItv: obtenerEstadoItv(v.proximaItv) }))
-    .sort((a, b) => {
-      // Priorizar vencidas y próximas
-      const prioridad = { 'vencida': 0, 'proxima': 1, 'alDia': 2, 'desconocido': 3 };
-      return prioridad[a.infoItv.estado] - prioridad[b.infoItv.estado];
-    });
+  const hoyFecha = new Date();
+  hoyFecha.setHours(0, 0, 0, 0);
 
-  const itvsUrgentes = vehiculosConItv.filter(v => v.infoItv.estado !== 'alDia' && v.infoItv.estado !== 'desconocido');
+  const revisionesUrgentes = revisiones
+    .filter(r => {
+      if (!r.fecha) return false;
+      const fechaRev = new Date(r.fecha);
+      const esFutura = fechaRev >= hoyFecha;
+      const esVencida = fechaRev < hoyFecha && !r.aprobada;
+      return (esFutura || esVencida) && obtenerVisibleRevision(r);
+    })
+    .map(r => ({
+      ...r,
+      info: obtenerInfoRevisionProxima(r),
+      modeloVehiculo: vehiculos.find(v => v.matricula === r.vehiculoMatricula) 
+        ? `${vehiculos.find(v => v.matricula === r.vehiculoMatricula).marca} ${vehiculos.find(v => v.matricula === r.vehiculoMatricula).modelo}`
+        : 'Vehículo'
+    }))
+    .sort((a, b) => new Date(a.fecha) - new Date(b.fecha));
 
   return (
     <div className={estilos.pagina}>
       <div className={estilos.cabecera}>
         <div className={estilos.tituloConIcono}>
           <Wrench24Regular style={{ fontSize: '28px', color: tokens.colorBrandForeground1 }} />
-          <Title2>Gestión de Inspecciones ITV</Title2>
+          <Title2>Gestión de Revisiones e ITV</Title2>
         </div>
         <Toolbar style={{ flexWrap: 'wrap', gap: '8px' }}>
           <Input 
             contentBefore={<Search24Regular />} 
-            placeholder="Buscar inspección..." 
+            placeholder="Buscar revisión..." 
             value={terminoBusqueda}
             onChange={(e) => setTerminoBusqueda(e.target.value)}
             style={{ minWidth: '200px' }}
@@ -368,9 +472,17 @@ const PaginaRevisiones = () => {
             <option value="Pendientes">Pendientes</option>
           </Select>
           {esAdmin && (
-            <ToolbarButton appearance="primary" icon={<Add24Regular />} onClick={abrirDialogoCrear}>
-              Registrar ITV pasada
-            </ToolbarButton>
+            <>
+              <ToolbarButton
+                icon={mostrarOcultos ? <Eye24Regular /> : <EyeOff24Regular />}
+                onClick={() => setMostrarOcultos(!mostrarOcultos)}
+              >
+                {mostrarOcultos ? 'Ocultar invisibles' : 'Mostrar ocultas'}
+              </ToolbarButton>
+              <ToolbarButton appearance="primary" icon={<Add24Regular />} onClick={abrirDialogoCrear}>
+                Agregar revisión
+              </ToolbarButton>
+            </>
           )}
         </Toolbar>
       </div>
@@ -384,39 +496,45 @@ const PaginaRevisiones = () => {
         </MessageBar>
       )}
 
-      {/* Panel de Seguimiento ITV */}
+      {/* Panel de Seguimiento Revisiones */}
       <div className={estilos.panelItv}>
-        <Title2 size={400}>Seguimiento de Próximas Inspecciones</Title2>
+        <Title2 size={400}>Seguimiento de Próximas Revisiones</Title2>
         <div className={estilos.contenedorTarjetasItv}>
-          {itvsUrgentes.length > 0 ? (
-            itvsUrgentes.map(v => (
+          {revisionesUrgentes.length > 0 ? (
+            revisionesUrgentes.map(r => (
               <Card 
-                key={v.matricula} 
-                className={`${estilos.tarjetaItv} ${estilos[v.infoItv.estado]}`}
+                key={r.id || r.fecha + r.vehiculoMatricula} 
+                className={`${estilos.tarjetaItv} ${estilos[r.info.estado]}`}
               >
                 <div className={estilos.infoItv}>
                   <div>
-                    <Text weight="bold" size={400}>{v.matricula}</Text>
-                    <Text size={200} block>{v.marca} {v.modelo}</Text>
+                    <Text weight="bold" size={400}>{r.vehiculoMatricula}</Text>
+                    <Text size={200} block>{r.modeloVehiculo}</Text>
                   </div>
-                  <Badge color={v.infoItv.color} appearance="filled">
-                    {v.infoItv.texto}
-                  </Badge>
+                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '4px' }}>
+                    <Badge color={r.info.color} appearance="filled">
+                      {r.info.texto}
+                    </Badge>
+                    <Badge appearance="outline">
+                      {r.info.tipoText}
+                    </Badge>
+                  </div>
                 </div>
                 <div style={{ marginTop: '8px' }}>
-                  <Text size={300} italic color="neutralTertiary">Próxima: {v.proximaItv}</Text>
+                  <Text size={300} weight="semibold" block>{r.descripcion}</Text>
+                  <Text size={200} italic color="neutralTertiary">Programada: {new Date(r.fecha).toLocaleDateString('es-ES')}</Text>
                 </div>
               </Card>
             ))
           ) : (
             <MessageBar intent="success">
-              <MessageBarBody>Todas las inspecciones ITV están al día.</MessageBarBody>
+              <MessageBarBody>No hay revisiones programadas o pendientes.</MessageBarBody>
             </MessageBar>
           )}
         </div>
       </div>
 
-      <Title2 size={500}>Historial de Inspecciones Pasadas</Title2>
+      <Title2 size={500}>Revisiones</Title2>
 
       <Card className={estilos.tarjetaTabla}>
         <Table style={{ minWidth: '600px' }}>
@@ -428,8 +546,13 @@ const PaginaRevisiones = () => {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {revisionesFiltradas.map((revision) => (
-              <TableRow key={revision.id}>
+            {revisionesFiltradas.map((revision) => {
+              const esOculta = !obtenerVisibleRevision(revision);
+              return (
+                <TableRow 
+                  key={revision.id} 
+                  style={esOculta ? { opacity: 0.6, backgroundColor: tokens.colorNeutralBackground3 } : undefined}
+                >
                 <TableCell>
                   <Text weight="semibold" style={{ color: tokens.colorBrandForeground1 }}>
                     {revision.vehiculoMatricula}
@@ -437,16 +560,23 @@ const PaginaRevisiones = () => {
                 </TableCell>
                 <TableCell>{revision.descripcion || '—'}</TableCell>
                 <TableCell>{new Date(revision.fecha).toLocaleDateString('es-ES')}</TableCell>
-                <TableCell>{revision.lugar}</TableCell>
+                <TableCell>{revision.lugar || '—'}</TableCell>
                 <TableCell>
                   <Text weight="semibold">
-                    {new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR' }).format(revision.costo || 0)}
+                    {revision.costo !== null && revision.costo !== undefined 
+                      ? new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR' }).format(revision.costo) 
+                      : '—'}
                   </Text>
                 </TableCell>
                 <TableCell>
-                  <Badge appearance="filled" color={revision.activo ? 'warning' : 'subtle'}>
-                    {revision.activo ? 'Sí' : 'No'}
-                  </Badge>
+                  <div style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
+                    <Badge appearance="filled" color={revision.activo ? 'warning' : 'subtle'}>
+                      {revision.activo ? 'Sí' : 'No'}
+                    </Badge>
+                    {!obtenerVisibleRevision(revision) && (
+                      <Badge appearance="filled" color="severe">Oculta</Badge>
+                    )}
+                  </div>
                 </TableCell>
                 <TableCell>
                   <Badge appearance="filled" color={revision.aprobada ? 'success' : 'danger'}>
@@ -456,6 +586,19 @@ const PaginaRevisiones = () => {
                 <TableCell>
                   {esAdmin && (
                     <>
+                      {(() => {
+                        const esOculta = !obtenerVisibleRevision(revision);
+                        return (
+                          <Tooltip content={esOculta ? "Mostrar en lista" : "Ocultar en lista"} relationship="label">
+                            <Button 
+                              icon={esOculta ? <Eye24Regular /> : <EyeOff24Regular />} 
+                              appearance="subtle" 
+                              size="small" 
+                              onClick={() => manejarToggleVisibilidad(revision)} 
+                            />
+                          </Tooltip>
+                        );
+                      })()}
                       <Tooltip content="Editar" relationship="label">
                         <Button icon={<Edit24Regular />} appearance="subtle" size="small" onClick={() => abrirDialogoEditar(revision)} />
                       </Tooltip>
@@ -466,7 +609,7 @@ const PaginaRevisiones = () => {
                   )}
                 </TableCell>
               </TableRow>
-            ))}
+            ); })}
             {revisiones.length === 0 && (
               <TableRow>
                 <TableCell colSpan={columnas.length} style={{ textAlign: 'center', padding: '40px' }}>
@@ -480,8 +623,14 @@ const PaginaRevisiones = () => {
 
       {/* Vista de Lista Móvil */}
       <div className={estilos.listaMovil}>
-        {revisionesFiltradas.map((revision) => (
-          <Card key={revision.id} className={estilos.tarjetaMovil}>
+        {revisionesFiltradas.map((revision) => {
+          const esOculta = !obtenerVisibleRevision(revision);
+          return (
+            <Card 
+              key={revision.id} 
+              className={estilos.tarjetaMovil}
+              style={esOculta ? { opacity: 0.6, backgroundColor: tokens.colorNeutralBackground3 } : undefined}
+            >
             <div className={estilos.tarjetaMovilCabecera}>
               <div style={{ display: 'flex', flexDirection: 'column' }}>
                 <Text size={200} style={{ color: tokens.colorNeutralForeground3 }}>Vehículo</Text>
@@ -494,6 +643,9 @@ const PaginaRevisiones = () => {
                 <Badge appearance="outline" color={revision.activo ? 'warning' : 'subtle'}>
                   {revision.activo ? 'Activa' : 'Inactiva'}
                 </Badge>
+                {!obtenerVisibleRevision(revision) && (
+                  <Badge appearance="filled" color="severe">Oculta</Badge>
+                )}
               </div>
             </div>
             
@@ -508,16 +660,32 @@ const PaginaRevisiones = () => {
               </div>
               <div>
                 <div className={estilos.datoEtiqueta}>Coste</div>
-                <div className={estilos.datoValor}>{new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR' }).format(revision.costo || 0)}</div>
+                <div className={estilos.datoValor}>
+                  {revision.costo !== null && revision.costo !== undefined 
+                    ? new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR' }).format(revision.costo) 
+                    : '—'}
+                </div>
               </div>
               <div style={{ gridColumn: 'span 2' }}>
                 <div className={estilos.datoEtiqueta}>Lugar</div>
-                <div className={estilos.datoValor}>{revision.lugar}</div>
+                <div className={estilos.datoValor}>{revision.lugar || '—'}</div>
               </div>
             </div>
 
             {esAdmin && (
               <div className={estilos.accionesMovil}>
+                {(() => {
+                  const esOculta = !obtenerVisibleRevision(revision);
+                  return (
+                    <Button 
+                      icon={esOculta ? <Eye24Regular /> : <EyeOff24Regular />} 
+                      appearance="subtle" 
+                      onClick={() => manejarToggleVisibilidad(revision)}
+                    >
+                      {esOculta ? 'Mostrar' : 'Ocultar'}
+                    </Button>
+                  );
+                })()}
                 <Button icon={<Edit24Regular />} appearance="subtle" onClick={() => abrirDialogoEditar(revision)}>
                   Editar
                 </Button>
@@ -527,7 +695,7 @@ const PaginaRevisiones = () => {
               </div>
             )}
           </Card>
-        ))}
+        ); })}
         {revisiones.length === 0 && (
           <Card style={{ padding: '40px', textAlign: 'center' }}>
             <Text size={300} style={{ color: tokens.colorNeutralForeground3 }}>No hay revisiones registradas</Text>
@@ -538,7 +706,7 @@ const PaginaRevisiones = () => {
       <Dialog open={dialogoAbierto} onOpenChange={(_, d) => { if (!d.open) setDialogoAbierto(false); }}>
         <DialogSurface style={{ maxWidth: '500px' }}>
           <DialogBody>
-            <DialogTitle>{editando ? 'Editar registro ITV' : 'Nuevo registro ITV'}</DialogTitle>
+            <DialogTitle>{editando ? 'Editar revisión' : 'Nueva revisión'}</DialogTitle>
             <DialogContent>
               <div className={estilos.formulario}>
                 <Field label="Vehículo" required validationState={erroresValidacion?.vehiculoMatricula ? 'error' : undefined} validationMessage={erroresValidacion?.vehiculoMatricula}>
@@ -565,20 +733,33 @@ const PaginaRevisiones = () => {
                 <Field label="Fecha" required validationState={erroresValidacion?.fecha ? 'error' : undefined} validationMessage={erroresValidacion?.fecha}>
                   <Input type="date" value={formatForDate(revisionActual.fecha)} onChange={(_, d) => { manejarCambio('fecha', d.value); setErroresValidacion(prev => ({...prev, fecha: undefined})); }} />
                 </Field>
-                <Field label="Lugar" required validationState={erroresValidacion?.lugar ? 'error' : undefined} validationMessage={erroresValidacion?.lugar}>
-                  <Input value={revisionActual.lugar} onChange={(_, d) => { manejarCambio('lugar', d.value); setErroresValidacion(prev => ({...prev, lugar: undefined})); }} placeholder="Taller Central Madrid" />
-                </Field>
                 <div className={estilos.filaFormulario}>
-                  <Field label="Coste (€)" required validationState={erroresValidacion?.costo ? 'error' : undefined} validationMessage={erroresValidacion?.costo}>
+                  <Field label="Lugar">
+                    <Input value={revisionActual.lugar || ''} onChange={(_, d) => manejarCambio('lugar', d.value)} placeholder="Taller Central Madrid" />
+                  </Field>
+                  <Field label="Coste (€)">
                     <Input 
                       type="number" 
                       value={revisionActual.costo ?? ''} 
-                      onChange={(_, d) => { manejarCambio('costo', d.value === '' ? '' : parseFloat(d.value)); setErroresValidacion(prev => ({...prev, costo: undefined})); }} 
+                      onChange={(_, d) => manejarCambio('costo', d.value === '' ? '' : parseFloat(d.value))} 
                       contentBefore="€"
                     />
                   </Field>
+                </div>
+                <div className={estilos.filaFormulario}>
                   <Field label="Activa">
                     <Switch checked={revisionActual.activo} onChange={(_, d) => manejarCambio('activo', d.checked)} />
+                  </Field>
+                  <Field label="Visible">
+                    <Switch checked={revisionActual.visible !== false} onChange={(_, d) => manejarCambio('visible', d.checked)} />
+                  </Field>
+                </div>
+                <div className={estilos.filaFormulario}>
+                  <Field label="Aprobada">
+                    <Switch checked={revisionActual.aprobada} onChange={(_, d) => manejarCambio('aprobada', d.checked)} />
+                  </Field>
+                  <Field label="Es ITV">
+                    <Switch checked={revisionActual.esItv} onChange={(_, d) => manejarCambio('esItv', d.checked)} />
                   </Field>
                 </div>
               </div>
@@ -615,7 +796,7 @@ const PaginaRevisiones = () => {
         }}>
           <Spinner 
             size="large" 
-            label={eliminando ? "Eliminando revisión..." : (editando ? "Modificando revisión..." : "Creando revisión...")} 
+            label={mensajeCargando || "Cargando..."} 
           />
         </div>
       )}

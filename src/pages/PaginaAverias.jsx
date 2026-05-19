@@ -30,6 +30,7 @@ import {
   Badge,
   Checkbox,
   Select,
+  Switch,
 } from '@fluentui/react-components';
 import {
   Add24Regular,
@@ -37,6 +38,8 @@ import {
   Delete24Regular,
   Warning24Regular,
   Search24Regular,
+  Eye24Regular,
+  EyeOff24Regular,
 } from '@fluentui/react-icons';
 import { useAuth } from '../context/ContextoAuth.jsx';
 import DialogoConfirmacion from '../components/shared/DialogoConfirmacion.jsx';
@@ -163,6 +166,7 @@ const PaginaAverias = () => {
   const [terminoBusqueda, setTerminoBusqueda] = useState('');
   const [filtroEstado, setFiltroEstado] = useState('Todas');
   const [vehiculosTexto, setVehiculosTexto] = useState('');
+  const [mostrarOcultos, setMostrarOcultos] = useState(false);
   const [listaVehiculos, setListaVehiculos] = useState([]);
   const [listaConductores, setListaConductores] = useState([]);
 
@@ -263,6 +267,7 @@ const PaginaAverias = () => {
       lugarReparacion: averia.lugarReparacion || '',
       costeReparacion: averia.costeReparacion || '',
       resuelta: !!averia.resuelta,
+      visible: obtenerVisibleAveria(averia),
     };
     setAveriaActual(averiaEditada);
     // Proteger contra vehiculoMatricula indefinido o nulo
@@ -330,12 +335,16 @@ const PaginaAverias = () => {
         'typeof resuelta': typeof averiaActual.resuelta
       });
       
-      const esResuelta = esAdmin && !!(
-        averiaActual.fechaFinReparacion && 
-        averiaActual.fechaFinReparacion !== 'null' && 
-        averiaActual.fechaFinReparacion !== 'undefined' && 
-        String(averiaActual.fechaFinReparacion).trim() !== ''
-      );
+      const hoy = new Date();
+      hoy.setHours(0, 0, 0, 0);
+      
+      let esResuelta = !!averiaActual.resuelta;
+      if (averiaActual.fechaFinReparacion) {
+        const fechaFin = new Date(averiaActual.fechaFinReparacion);
+        if (fechaFin <= hoy) {
+          esResuelta = true;
+        }
+      }
 
       const datosGuardar = {
         descripcion: averiaActual.descripcion || '',
@@ -347,16 +356,31 @@ const PaginaAverias = () => {
         lugarReparacion: esAdmin ? (averiaActual.lugarReparacion || null) : null,
         costeReparacion: esAdmin && averiaActual.costeReparacion ? parseFloat(averiaActual.costeReparacion) : null,
         resuelta: esResuelta,
+        visible: averiaActual.visible !== false,
       };
       
       console.log('DEBUG - FINAL datosGuardar.resuelta:', datosGuardar.resuelta, 'typeof:', typeof datosGuardar.resuelta);
+
+      const nuevoVisible = averiaActual.visible !== false;
 
       setDialogoAbierto(false);
       
       if (editando) {
         await actualizarAveria(averiaActual.id, datosGuardar);
+        if (nuevoVisible) {
+          localStorage.removeItem(`averia_oculta_${averiaActual.id}`);
+        } else {
+          localStorage.setItem(`averia_oculta_${averiaActual.id}`, 'true');
+        }
       } else {
-        await crearAveria(datosGuardar);
+        const nueva = await crearAveria(datosGuardar);
+        if (nueva && nueva.id) {
+          if (nuevoVisible) {
+            localStorage.removeItem(`averia_oculta_${nueva.id}`);
+          } else {
+            localStorage.setItem(`averia_oculta_${nueva.id}`, 'true');
+          }
+        }
       }
 
       // Lógica de automatización de estado del vehículo
@@ -444,18 +468,34 @@ const PaginaAverias = () => {
     );
   };
 
+  const obtenerVisibleAveria = (a) => {
+    if (localStorage.getItem(`averia_oculta_${a.id}`) === 'true') {
+      return false;
+    }
+    return a.visible !== false && a.visible !== 'false' && a.visible !== 0 && a.visible !== '0';
+  };
+
   const averiasFiltradas = averias.filter(a => {
+    const esVisible = obtenerVisibleAveria(a);
+    if (!mostrarOcultos && !esVisible) return false;
+
     const estaResuelta = esAveriaResuelta(a);
     if (filtroEstado === 'Resueltas' && !estaResuelta) return false;
     if (filtroEstado === 'En taller' && estaResuelta) return false;
 
     if (!terminoBusqueda) return true;
     const term = terminoBusqueda.toLowerCase();
+    
+    const termClean = term.replace(/[^a-zA-Z0-9]/g, '');
+    const plate = obtenerVehiculoMatriculaMostrar(a);
+    const plateClean = plate.replace(/[^a-zA-Z0-9]/g, '').toLowerCase();
+    const matchesPlate = plateClean.includes(termClean) || plate.toLowerCase().includes(term);
+
     return (
       (a.id || '').toLowerCase().includes(term) ||
       (a.descripcion || '').toLowerCase().includes(term) ||
       (a.userDni || '').toLowerCase().includes(term) ||
-      (a.vehiculoMatricula || '').toLowerCase().includes(term) ||
+      matchesPlate ||
       (a.lugarReparacion || '').toLowerCase().includes(term)
     );
   });
@@ -480,6 +520,14 @@ const PaginaAverias = () => {
             <option value="En taller">En taller</option>
             <option value="Resueltas">Resueltas</option>
           </Select>
+          {esAdmin && (
+            <ToolbarButton
+              icon={mostrarOcultos ? <Eye24Regular /> : <EyeOff24Regular />}
+              onClick={() => setMostrarOcultos(!mostrarOcultos)}
+            >
+              {mostrarOcultos ? 'Ocultar invisibles' : 'Mostrar ocultas'}
+            </ToolbarButton>
+          )}
           <ToolbarButton appearance="primary" icon={<Add24Regular />} onClick={abrirDialogoCrear}>
             {esAdmin ? 'Registrar avería' : 'Reportar incidencia'}
           </ToolbarButton>
@@ -505,9 +553,18 @@ const PaginaAverias = () => {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {averiasFiltradas.map((averia) => (
-              <TableRow key={averia.id}>
-                <TableCell>{averia.descripcion}</TableCell>
+            {averiasFiltradas.map((averia) => {
+              const esOculta = !obtenerVisibleAveria(averia);
+              return (
+                <TableRow key={averia.id} style={esOculta ? { opacity: 0.6 } : undefined}>
+                  <TableCell>
+                    {averia.descripcion}
+                    {esOculta && (
+                      <Badge color="severe" appearance="filled" style={{ marginLeft: '8px' }}>
+                        Oculta
+                      </Badge>
+                    )}
+                  </TableCell>
                 <TableCell>
                   {obtenerVehiculoMatriculaMostrar(averia) !== '—' ? (
                     <Badge appearance="outline">
@@ -560,7 +617,7 @@ const PaginaAverias = () => {
                     </>
                 </TableCell>
               </TableRow>
-            ))}
+            ); })}
             {averias.length === 0 && (
               <TableRow>
                 <TableCell colSpan={columnas.length} style={{ textAlign: 'center', padding: '40px' }}>
@@ -574,12 +631,21 @@ const PaginaAverias = () => {
 
       {/* Vista de Lista Móvil */}
       <div className={estilos.listaMovil}>
-        {averiasFiltradas.map((averia) => (
-          <Card key={averia.id} className={estilos.tarjetaMovil}>
-            <div className={estilos.tarjetaMovilCabecera}>
-              <div style={{ flex: 1 }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                  <Text size={300} weight="semibold" style={{ color: tokens.colorNeutralForeground1 }}>Avería reportada</Text>
+        {averiasFiltradas.map((averia) => {
+          const esOculta = !obtenerVisibleAveria(averia);
+          return (
+            <Card key={averia.id} className={estilos.tarjetaMovil} style={esOculta ? { opacity: 0.6 } : undefined}>
+              <div className={estilos.tarjetaMovilCabecera}>
+                <div style={{ flex: 1 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <Text size={300} weight="semibold" style={{ color: tokens.colorNeutralForeground1 }}>Avería reportada</Text>
+                      {esOculta && (
+                        <Badge color="severe" appearance="filled">
+                          Oculta
+                        </Badge>
+                      )}
+                    </div>
                   {esAveriaResuelta(averia) ? (
                     <Badge appearance="filled" color="success">Resuelta</Badge>
                   ) : (
@@ -625,7 +691,7 @@ const PaginaAverias = () => {
               )}
             </div>
           </Card>
-        ))}
+        ); })}
         {averias.length === 0 && (
           <Card style={{ padding: '40px', textAlign: 'center' }}>
             <Text size={300} style={{ color: tokens.colorNeutralForeground3 }}>No hay averías registradas</Text>
@@ -738,6 +804,12 @@ const PaginaAverias = () => {
                           min="0" 
                           step="0.01" 
                         />
+                      </Field>
+                      <Field label="Marcar como resuelta">
+                        <Switch checked={!!averiaActual.resuelta} onChange={(_, d) => manejarCambio('resuelta', d.checked)} />
+                      </Field>
+                      <Field label="Visible">
+                        <Switch checked={averiaActual.visible !== false} onChange={(_, d) => manejarCambio('visible', d.checked)} />
                       </Field>
                     </div>
 

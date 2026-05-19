@@ -15,4 +15,5 @@ export const crearAveriaVacia = () => ({
   userDniHard: '',
   vehiculoMatriculaHard: '',
   resuelta: false,
+  visible: true,
 });
