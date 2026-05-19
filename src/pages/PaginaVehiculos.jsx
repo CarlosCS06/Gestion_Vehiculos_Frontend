@@ -1626,7 +1626,7 @@ const PaginaVehiculos = () => {
         {vehiculosFiltrados.length === 0 && (
           <Card style={{ padding: '40px', textAlign: 'center' }}>
             <Text size={400} style={{ color: tokens.colorNeutralForeground3 }}>
-              {soloAveriados ? 'No hay vehículos averiados' : 'No hay vehículos registrados'}
+              {filtroEstado !== 'Todos' ? `No hay vehículos en estado: ${filtroEstado.toLowerCase()}` : 'No hay vehículos registrados'}
             </Text>
           </Card>
         )}

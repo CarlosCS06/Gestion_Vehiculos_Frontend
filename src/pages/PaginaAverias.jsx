@@ -384,9 +384,8 @@ const PaginaAverias = () => {
       }
 
       // Lógica de automatización de estado del vehículo
-      // Determinar si la avería está resuelta basándose en la fecha de fin o el campo resuelta
-      const averiaResuelta = datosGuardar.resuelta === true || 
-                            (datosGuardar.fechaFinReparacion && datosGuardar.fechaFinReparacion.trim() !== '');
+      // Determinar si la avería está resuelta basándose únicamente en el campo resuelta (checkbox)
+      const averiaResuelta = datosGuardar.resuelta === true;
       
       const estadoFinal = averiaResuelta ? ESTADO_VEHICULO.DISPONIBLE : ESTADO_VEHICULO.AVERIADO;
 
@@ -460,12 +459,7 @@ const PaginaAverias = () => {
   }
 
   const esAveriaResuelta = (a) => {
-    return a.resuelta === true || (
-      a.fechaFinReparacion && 
-      a.fechaFinReparacion !== 'null' && 
-      a.fechaFinReparacion !== 'undefined' && 
-      String(a.fechaFinReparacion).trim() !== ''
-    );
+    return a.resuelta === true;
   };
 
   const obtenerVisibleAveria = (a) => {
