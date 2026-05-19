@@ -1,4 +1,4 @@
-const CACHE_NAME = 'gestion-vehiculos-cache-v2';
+const CACHE_NAME = 'gestion-vehiculos-cache-v3';
 
 // Archivos que queremos guardar en caché al instalar
 const urlsToCache = [
@@ -47,15 +47,16 @@ self.addEventListener('fetch', (event) => {
     if (event.request.url.includes('/@vite/') || event.request.url.includes('/@react-refresh')) return;
 
     const isApiRequest = event.request.url.includes('gestion-vehiculos-backend.vercel.app') || event.request.url.includes('/api/');
+    
+    // Los bundles JS/CSS con hash cambian en cada build → usar Network First
+    const isHashedAsset = event.request.url.includes('/assets/');
 
-    if (isApiRequest) {
-        // Para la API: Estrategia "Network First" (Primero Red)
-        // Intentamos ir a internet para tener los datos más recientes.
-        // Si falla (ej. estamos offline), devolvemos la versión que tengamos en caché.
+    if (isApiRequest || isHashedAsset) {
+        // Estrategia "Network First" para API y bundles hasheados
+        // Siempre intentar la red primero para obtener la versión más reciente
         event.respondWith(
             fetch(event.request)
                 .then((response) => {
-                    // Si la respuesta es buena, la guardamos/actualizamos en la caché
                     if (response && response.status === 200) {
                         const responseToCache = response.clone();
                         caches.open(CACHE_NAME).then((cache) => {
@@ -65,34 +66,25 @@ self.addEventListener('fetch', (event) => {
                     return response;
                 })
                 .catch(() => {
-                    // Si la petición falla (offline), buscamos en la caché
                     return caches.match(event.request);
                 })
         );
     } else {
-        // Para archivos estáticos (HTML, CSS, JS, Imágenes): Estrategia "Cache First"
+        // Para otros archivos estáticos (imágenes, fuentes, etc.): Estrategia "Network First" también
+        // para evitar servir HTML cacheado con referencias a bundles antiguos
         event.respondWith(
-            caches.match(event.request)
+            fetch(event.request)
                 .then((response) => {
-                    if (response) {
-                        return response;
+                    if (response && response.status === 200) {
+                        const responseToCache = response.clone();
+                        caches.open(CACHE_NAME).then((cache) => {
+                            cache.put(event.request, responseToCache);
+                        });
                     }
-
-                    return fetch(event.request).then(
-                        (response) => {
-                            if (!response || response.status !== 200 || response.type !== 'basic') {
-                                return response;
-                            }
-
-                            const responseToCache = response.clone();
-                            caches.open(CACHE_NAME)
-                                .then((cache) => {
-                                    cache.put(event.request, responseToCache);
-                                });
-
-                            return response;
-                        }
-                    );
+                    return response;
+                })
+                .catch(() => {
+                    return caches.match(event.request);
                 })
         );
     }
