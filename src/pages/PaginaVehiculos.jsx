@@ -76,7 +76,8 @@ import {
   crearVehiculoVacio,
 } from '../models/Vehiculo.js';
 import { crearImagenVacia } from '../models/Imagenes.js';
-import { obtenerPlantillas,
+import {
+  obtenerPlantillas,
   crearPlantilla,
   actualizarPlantilla
 } from '../services/servicioPlantillas.js';
@@ -378,15 +379,15 @@ const obtenerFechaProximaItv = (vehiculo) => {
   if (vehiculo?.revisiones && vehiculo.revisiones.length > 0) {
     const revisionesItv = vehiculo.revisiones.filter(r => r.esItv);
     if (revisionesItv.length > 0) {
-      const hoy = new Date().setHours(0,0,0,0);
+      const hoy = new Date().setHours(0, 0, 0, 0);
       const revisionesItvFuturas = revisionesItv
         .filter(r => new Date(r.fecha) >= hoy)
         .sort((a, b) => new Date(a.fecha) - new Date(b.fecha));
-      
+
       if (revisionesItvFuturas.length > 0) {
-         return new Date(revisionesItvFuturas[0].fecha).toLocaleDateString('es-ES');
+        return new Date(revisionesItvFuturas[0].fecha).toLocaleDateString('es-ES');
       }
-      
+
       const revisionesItvPasadas = revisionesItv.sort((a, b) => new Date(b.fecha) - new Date(a.fecha));
       return new Date(revisionesItvPasadas[0].fecha).toLocaleDateString('es-ES');
     }
@@ -788,16 +789,16 @@ const ModalDetallesVehiculo = ({ vehiculo: vehiculoBase, plantillas = [], onCerr
                           <Text weight="bold" style={{ color: tokens.colorBrandForeground1, fontSize: tokens.fontSizeBase300 }}>
                             ⚡ Herramientas de Carga y Ahorro Eléctrico
                           </Text>
-                          
+
                           <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                             <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '4px' }}>
                               <Text size={200} style={{ color: tokens.colorNeutralForeground2 }}>Para consultar el precio de la luz (enchufe básico):</Text>
-                              <a 
+                              <a
                                 href="https://tarifaluzhora.es/"
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                style={{ 
-                                  color: tokens.colorBrandForegroundLink, 
+                                style={{
+                                  color: tokens.colorBrandForegroundLink,
                                   fontWeight: tokens.fontWeightSemibold,
                                   textDecoration: 'underline',
                                   fontSize: tokens.fontSizeBase200
@@ -809,12 +810,12 @@ const ModalDetallesVehiculo = ({ vehiculo: vehiculoBase, plantillas = [], onCerr
 
                             <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '4px' }}>
                               <Text size={200} style={{ color: tokens.colorNeutralForeground2 }}>Para buscar un punto de carga:</Text>
-                              <a 
+                              <a
                                 href="https://www.mapareve.es/mapa-puntos-recarga"
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                style={{ 
-                                  color: tokens.colorBrandForegroundLink, 
+                                style={{
+                                  color: tokens.colorBrandForegroundLink,
                                   fontWeight: tokens.fontWeightSemibold,
                                   textDecoration: 'underline',
                                   fontSize: tokens.fontSizeBase200
@@ -871,7 +872,7 @@ const ModalDetallesVehiculo = ({ vehiculo: vehiculoBase, plantillas = [], onCerr
                                   {vehiculoCompleto.datosCarburante.precioEstacionMasBarataMunicipio || vehiculoCompleto.datosCarburante.precioEstacionMasBarataProvincia || vehiculoCompleto.datosCarburante.precioEstacionMasBarataCCAA} €/L
                                 </Badge>
                               </div>
-                              <a 
+                              <a
                                 href={generarUrlGoogleMaps(
                                   vehiculoCompleto.datosCarburante.latitudEstacionMasBarataMunicipio || vehiculoCompleto.datosCarburante.latitudEstacionMasBarataProvincia || vehiculoCompleto.datosCarburante.latitudEstacionMasBarataCCAA || vehiculoCompleto.datosCarburante.latitudEstacionMasBarata,
                                   vehiculoCompleto.datosCarburante.longitudEstacionMasBarataMunicipio || vehiculoCompleto.datosCarburante.longitudEstacionMasBarataProvincia || vehiculoCompleto.datosCarburante.longitudEstacionMasBarataCCAA || vehiculoCompleto.datosCarburante.longitudEstacionMasBarata,
@@ -898,7 +899,7 @@ const ModalDetallesVehiculo = ({ vehiculo: vehiculoBase, plantillas = [], onCerr
                                 <div style={{ maxHeight: '100px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '4px' }}>
                                   {vehiculoCompleto.datosCarburante.estacionesMunicipio.slice(0, 5).map((est, idx) => (
                                     <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', padding: '4px', borderBottom: `1px solid ${tokens.colorNeutralStroke2}` }}>
-                                      <a 
+                                      <a
                                         href={generarUrlGoogleMaps(est.latitud || est.Latitud || est.lat, est.longitud || est.Longitud || est.lng || est.lon, est.direccion)}
                                         target="_blank"
                                         rel="noopener noreferrer"
@@ -1053,12 +1054,12 @@ const ModalDetallesVehiculo = ({ vehiculo: vehiculoBase, plantillas = [], onCerr
 
                                       // 2. Filtrar de la lista de imágenes del vehículo
                                       const nuevasImagenes = vehiculoCompleto.imagenes.filter(x => x.id !== img.id);
-                                      
+
                                       // 3. Llamada a la API para actualizar el vehículo
                                       await actualizarVehiculo(vehiculoCompleto.matricula, {
                                         imagenes: nuevasImagenes
                                       });
-                                      
+
                                       // 4. Actualizar estado local
                                       setVehiculoCompleto(prev => ({
                                         ...prev,
@@ -1082,16 +1083,16 @@ const ModalDetallesVehiculo = ({ vehiculo: vehiculoBase, plantillas = [], onCerr
 
                       {/* Botón interactivo de añadir foto (solo para Admin) */}
                       {esAdmin && (
-                        <div 
+                        <div
                           onClick={() => document.getElementById('gallery-file-input').click()}
-                          style={{ 
-                            aspectRatio: '1', 
-                            border: `2px dashed ${tokens.colorNeutralStroke1}`, 
-                            borderRadius: tokens.borderRadiusMedium, 
-                            display: 'flex', 
+                          style={{
+                            aspectRatio: '1',
+                            border: `2px dashed ${tokens.colorNeutralStroke1}`,
+                            borderRadius: tokens.borderRadiusMedium,
+                            display: 'flex',
                             flexDirection: 'column',
-                            alignItems: 'center', 
-                            justifyContent: 'center', 
+                            alignItems: 'center',
+                            justifyContent: 'center',
                             cursor: 'pointer',
                             backgroundColor: tokens.colorNeutralBackground2,
                             transition: 'all 0.2s ease',
@@ -1188,9 +1189,9 @@ const PaginaVehiculos = () => {
 
       const averiasActivas = datosAverias.filter((a) => {
         const estaResuelta = a.resuelta === true || (
-          a.fechaFinReparacion && 
-          a.fechaFinReparacion !== 'null' && 
-          a.fechaFinReparacion !== 'undefined' && 
+          a.fechaFinReparacion &&
+          a.fechaFinReparacion !== 'null' &&
+          a.fechaFinReparacion !== 'undefined' &&
           String(a.fechaFinReparacion).trim() !== ''
         );
         return !estaResuelta;
@@ -1386,7 +1387,7 @@ const PaginaVehiculos = () => {
         'proximaItv', 'foto', 'fotoHover', 'nuevo', 'idImagen', 'nombreImagen',
         'comunidadAutonomaId', 'comunidadAutonomaNombre', 'provinciaId', 'provinciaNombre',
         'municipioId', 'municipioNombre', 'carburanteId', 'carburanteNombre', 'precioCarburanteActual',
-        'imagenes','plantillas','plantillasEliminar'
+        'imagenes', 'plantillas', 'plantillasEliminar'
       ];
 
       const vehiculoFiltrado = {};
@@ -1445,17 +1446,17 @@ const PaginaVehiculos = () => {
   };
 
   const quitarPlantillaDelVehiculo = () => {
-  setVehiculoActual((prev) => ({
-    ...prev,
-    plantillas: [],
-  }));
+    setVehiculoActual((prev) => ({
+      ...prev,
+      plantillas: [],
+    }));
 
-  setPlantillaEditar(null);
-  setConfirmacionPlantillaAbierta(false);
-};
+    setPlantillaEditar(null);
+    setConfirmacionPlantillaAbierta(false);
+  };
 
   const esVehiculoElectrico =
-  vehiculoActual.alimentacion === TIPO_ALIMENTACION.ELECTRICO;
+    vehiculoActual.alimentacion === TIPO_ALIMENTACION.ELECTRICO;
 
   const unidadEnergia = esVehiculoElectrico ? 'kWh' : 'L';
 
@@ -1788,10 +1789,10 @@ const PaginaVehiculos = () => {
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                       <Text size={200} weight="semibold">Formato de Gasto</Text>
-                      <Switch 
+                      <Switch
                         checked={vehiculoActual.tipoGastoVehiculo === 'PORCENTAJE'}
                         onChange={(_, d) => manejarCambio('tipoGastoVehiculo', d.checked ? 'PORCENTAJE' : 'LITROS')}
-                        label={vehiculoActual.tipoGastoVehiculo === 'PORCENTAJE'? esVehiculoElectrico ? '% de la batería': '% del tanque': unidadEnergia}
+                        label={vehiculoActual.tipoGastoVehiculo === 'PORCENTAJE' ? esVehiculoElectrico ? '% de la batería' : '% del tanque' : unidadEnergia}
                       />
                     </div>
                     <Field label={vehiculoActual.tipoGastoVehiculo === 'PORCENTAJE' ? 'Gasto de vehículo (%)' : (esVehiculoElectrico ? 'Gasto de vehículo (kWh)' : 'Gasto de vehículo (L)')}>
@@ -1805,7 +1806,7 @@ const PaginaVehiculos = () => {
                     </Field>
                     {vehiculoActual.tipoGastoVehiculo === 'PORCENTAJE' && vehiculoActual.capacidadTanqueCombustible > 0 && (
                       <Text size={100} style={{ color: tokens.colorNeutralForeground3 }}>
-                       Equivale a {((vehiculoActual.gastoCombustiblePorKiloetro / 100) * vehiculoActual.capacidadTanqueCombustible).toFixed(2)} {textoEquivalenciaEnergia}
+                        Equivale a {((vehiculoActual.gastoCombustiblePorKiloetro / 100) * vehiculoActual.capacidadTanqueCombustible).toFixed(2)} {textoEquivalenciaEnergia}
                       </Text>
                     )}
                   </div>
@@ -1881,9 +1882,15 @@ const PaginaVehiculos = () => {
                                   onClick={(e) => {
                                     e.preventDefault();
                                     e.stopPropagation();
-                                    console.log('Quitar plantilla clicked:', pId);
-                                    const filtradas = (vehiculoActual.plantillas || []).filter(id => String(id) !== String(pId));
-                                    manejarCambio('plantillas', filtradas);
+                                    setVehiculoActual((prev) => {
+                                      const filtradas = (prev.plantillas || []).filter(id => String(id) !== String(pId));
+                                      const eliminadas = prev.plantillasEliminar || [];
+                                      return {
+                                        ...prev,
+                                        plantillas: filtradas,
+                                        plantillasEliminar: [...new Set([...eliminadas, pId])]
+                                      };
+                                    });
                                   }}
                                 >
                                   ✕
@@ -2043,9 +2050,9 @@ const PaginaVehiculos = () => {
           alignItems: 'center',
           zIndex: 9999,
         }}>
-          <Spinner 
-            size="large" 
-            label={eliminando ? "Eliminando vehículo..." : (editando ? "Modificando vehículo..." : "Creando vehículo...")} 
+          <Spinner
+            size="large"
+            label={eliminando ? "Eliminando vehículo..." : (editando ? "Modificando vehículo..." : "Creando vehículo...")}
           />
         </div>
       )}

@@ -101,6 +101,9 @@ export const crearVehiculo = async (vehiculo) => {
     plantillas: Array.isArray(vehiculo.plantillas)
       ? vehiculo.plantillas.map((p) => (typeof p === 'object' ? p.id : p)).filter((id) => id !== undefined && id !== null)
       : [],
+    plantillasEliminar: Array.isArray(vehiculo.plantillasEliminar)
+      ? vehiculo.plantillasEliminar.map((p) => (typeof p === 'object' ? p.id : p)).filter((id) => id !== undefined && id !== null)
+      : [],
     foto: vehiculo.foto,
     idImagen: vehiculo.idImagen,
     fotoHover: vehiculo.fotoHover,
@@ -145,6 +148,11 @@ export const actualizarVehiculo = async (matricula, datosActualizados) => {
   if (datosActualizados.plantillas !== undefined) {
     normalizedDatos.plantillas = Array.isArray(datosActualizados.plantillas)
       ? datosActualizados.plantillas.map((p) => (typeof p === 'object' ? p.id : p)).filter((id) => id !== undefined && id !== null)
+      : [];
+  }
+  if (datosActualizados.plantillasEliminar !== undefined) {
+    normalizedDatos.plantillasEliminar = Array.isArray(datosActualizados.plantillasEliminar)
+      ? datosActualizados.plantillasEliminar.map((p) => (typeof p === 'object' ? p.id : p)).filter((id) => id !== undefined && id !== null)
       : [];
   }
   if (datosActualizados.imagenes !== undefined) {
