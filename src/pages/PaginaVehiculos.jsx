@@ -78,6 +78,7 @@ import {
 import { crearImagenVacia } from '../models/Imagenes.js';
 import {
   obtenerPlantillas,
+  eliminarPlantilla,
   crearPlantilla,
   actualizarPlantilla
 } from '../services/servicioPlantillas.js';
