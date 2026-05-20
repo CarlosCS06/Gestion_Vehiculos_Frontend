@@ -188,7 +188,7 @@ export const preRegistrarUsuario = async (conductor) => {
       email: `${conductor.dni}@temporal.com`, // Placeholder para cumplir validación backend
       password: `pass_${conductor.dni}`, // Placeholder inicial
       fullName: `${conductor.nombre} ${conductor.apellidos}`.trim(),
-      telefono: conductor.telefono ? Number(String(conductor.telefono).replace(/\s+/g, '')) : 0,
+      telefono: conductor.telefono ? String(conductor.telefono).replace(/\s+/g, '') : '',
       roles: ['conductor'],
       isActive: true
     };

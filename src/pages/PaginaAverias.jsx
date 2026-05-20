@@ -765,28 +765,34 @@ const PaginaAverias = () => {
                                  }}
                                >
                                  {vehiculo ? `${mat} - ${vehiculo.marca} ${vehiculo.modelo}` : mat}
-                                 <span
-                                   style={{
-                                     cursor: 'pointer',
-                                     fontWeight: 'bold',
-                                     marginLeft: '6px',
-                                     fontSize: '12px',
-                                     display: 'inline-flex',
-                                     alignItems: 'center',
-                                     color: tokens.colorNeutralForegroundOnBrand
-                                   }}
-                                   onClick={(e) => {
-                                     e.preventDefault();
-                                     e.stopPropagation();
-                                     const actualizado = vehiculosTexto.split(',')
-                                       .map(v => v.trim())
-                                       .filter(v => v !== mat)
-                                       .join(', ');
-                                     setVehiculosTexto(actualizado);
-                                   }}
-                                 >
-                                   ✕
-                                 </span>
+                                  <button
+                                    type="button"
+                                    style={{
+                                      border: 'none',
+                                      background: 'none',
+                                      padding: '0 0 0 6px',
+                                      color: tokens.colorNeutralForegroundOnBrand,
+                                      cursor: 'pointer',
+                                      fontWeight: 'bold',
+                                      fontSize: '12px',
+                                      display: 'inline-flex',
+                                      alignItems: 'center',
+                                      justifyContent: 'center',
+                                      outline: 'none',
+                                      pointerEvents: 'auto'
+                                    }}
+                                    onClick={(e) => {
+                                      e.preventDefault();
+                                      e.stopPropagation();
+                                      const actualizado = vehiculosTexto.split(',')
+                                        .map(v => v.trim())
+                                        .filter(v => v !== mat)
+                                        .join(', ');
+                                      setVehiculosTexto(actualizado);
+                                    }}
+                                  >
+                                    ✕
+                                  </button>
                                </div>
                             );
                           }).filter(Boolean)}

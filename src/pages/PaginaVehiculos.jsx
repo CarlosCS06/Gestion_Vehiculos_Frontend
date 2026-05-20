@@ -77,7 +77,6 @@ import {
 } from '../models/Vehiculo.js';
 import { crearImagenVacia } from '../models/Imagenes.js';
 import { obtenerPlantillas,
-  eliminarPlantilla,
   crearPlantilla,
   actualizarPlantilla
 } from '../services/servicioPlantillas.js';
@@ -1431,6 +1430,17 @@ const PaginaVehiculos = () => {
       return nuevoEstado;
     });
   };
+
+  const quitarPlantillaDelVehiculo = () => {
+  setVehiculoActual((prev) => ({
+    ...prev,
+    plantillas: [],
+  }));
+
+  setPlantillaEditar(null);
+  setConfirmacionPlantillaAbierta(false);
+};
+
   const esVehiculoElectrico =
   vehiculoActual.alimentacion === TIPO_ALIMENTACION.ELECTRICO;
 
@@ -1839,24 +1849,32 @@ const PaginaVehiculos = () => {
                                 }}
                               >
                                 {p ? `${p.nombre}${p.esItv ? ' (ITV)' : ''}` : `Plantilla ${pId}`}
-                                <span
+                                <button
+                                  type="button"
                                   style={{
+                                    border: 'none',
+                                    background: 'none',
+                                    padding: '0 0 0 6px',
+                                    color: tokens.colorNeutralForegroundOnBrand,
                                     cursor: 'pointer',
                                     fontWeight: 'bold',
-                                    marginLeft: '6px',
                                     fontSize: '12px',
                                     display: 'inline-flex',
                                     alignItems: 'center',
-                                    color: tokens.colorNeutralForegroundOnBrand
+                                    justifyContent: 'center',
+                                    outline: 'none',
+                                    pointerEvents: 'auto'
                                   }}
                                   onClick={(e) => {
                                     e.preventDefault();
                                     e.stopPropagation();
-                                    manejarCambio('plantillas', (vehiculoActual.plantillas || []).filter(id => String(id) !== String(pId)));
+                                    console.log('Quitar plantilla clicked:', pId);
+                                    const filtradas = (vehiculoActual.plantillas || []).filter(id => String(id) !== String(pId));
+                                    manejarCambio('plantillas', filtradas);
                                   }}
                                 >
                                   ✕
-                                </span>
+                                </button>
                               </div>
                             );
                           })}
