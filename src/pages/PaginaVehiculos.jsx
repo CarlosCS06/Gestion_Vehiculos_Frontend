@@ -405,7 +405,7 @@ const obtenerFechaProximaItv = (vehiculo) => {
   return 'No definida';
 };
 
-const ModalDetallesVehiculo = ({ vehiculo: vehiculoBase, onCerrar, onVehiculoActualizado }) => {
+const ModalDetallesVehiculo = ({ vehiculo: vehiculoBase, plantillas = [], onCerrar, onVehiculoActualizado }) => {
   const { esAdmin } = useAuth();
   const [tabActiva, setTabActiva] = useState('general');
   const [vehiculoCompleto, setVehiculoCompleto] = useState(vehiculoBase);
@@ -1826,15 +1826,18 @@ const PaginaVehiculos = () => {
                                 key={pId}
                                 appearance="filled"
                                 color="brand"
-                                style={{ paddingRight: tokens.spacingHorizontalS }}
-                                action={{
-                                  icon: <span style={{ cursor: 'pointer', marginLeft: tokens.spacingHorizontalXS }}>✕</span>,
-                                  onClick: () => {
-                                    manejarCambio('plantillas', (vehiculoActual.plantillas || []).filter(id => String(id) !== String(pId)));
-                                  }
-                                }}
+                                style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', paddingRight: '8px', paddingLeft: '8px', height: '24px' }}
                               >
                                 {p ? `${p.nombre}${p.esItv ? ' (ITV)' : ''}` : `Plantilla ${pId}`}
+                                <span
+                                  style={{ cursor: 'pointer', fontWeight: 'bold', marginLeft: '6px', fontSize: '12px', display: 'inline-flex', alignItems: 'center' }}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    manejarCambio('plantillas', (vehiculoActual.plantillas || []).filter(id => String(id) !== String(pId)));
+                                  }}
+                                >
+                                  ✕
+                                </span>
                               </Badge>
                             );
                           })}
@@ -1921,6 +1924,7 @@ const PaginaVehiculos = () => {
       {vehiculoEnDetalle && (
         <ModalDetallesVehiculo
           vehiculo={vehiculoEnDetalle}
+          plantillas={plantillas}
           onCerrar={() => setVehiculoEnDetalle(null)}
           onVehiculoActualizado={() => cargarVehiculos(true)}
         />

@@ -752,19 +752,22 @@ const PaginaAverias = () => {
                                 key={mat}
                                 appearance="filled"
                                 color="brand"
-                                style={{ paddingRight: tokens.spacingHorizontalS }}
-                                action={{
-                                  icon: <span style={{ cursor: 'pointer', marginLeft: tokens.spacingHorizontalXS }}>✕</span>,
-                                  onClick: () => {
+                                style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', paddingRight: '8px', paddingLeft: '8px', height: '24px' }}
+                              >
+                                {vehiculo ? `${mat} - ${vehiculo.marca} ${vehiculo.modelo}` : mat}
+                                <span
+                                  style={{ cursor: 'pointer', fontWeight: 'bold', marginLeft: '6px', fontSize: '12px', display: 'inline-flex', alignItems: 'center' }}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
                                     const actualizado = vehiculosTexto.split(',')
                                       .map(v => v.trim())
                                       .filter(v => v !== mat)
                                       .join(', ');
                                     setVehiculosTexto(actualizado);
-                                  }
-                                }}
-                              >
-                                {vehiculo ? `${mat} - ${vehiculo.marca} ${vehiculo.modelo}` : mat}
+                                  }}
+                                >
+                                  ✕
+                                </span>
                               </Badge>
                             );
                           }).filter(Boolean)}
