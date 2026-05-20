@@ -1159,6 +1159,8 @@ const PaginaVehiculos = () => {
   const [confirmacionPlantillaAbierta, setConfirmacionPlantillaAbierta] = useState(false);
   const [dialogoPlantillaAbierto, setDialogoPlantillaAbierto] = useState(false);
   const [plantillaEditar, setPlantillaEditar] = useState(null);
+  const [dialogoBorrarPlantillaAbierto, setDialogoBorrarPlantillaAbierto] = useState(false);
+  const [plantillaGlobalEliminar, setPlantillaGlobalEliminar] = useState('');
   const [dialogoAbierto, setDialogoAbierto] = useState(false);
   const [confirmacionAbierta, setConfirmacionAbierta] = useState(false);
   const [vehiculoActual, setVehiculoActual] = useState(crearVehiculoVacio());
@@ -1431,6 +1433,29 @@ const PaginaVehiculos = () => {
       setError(err.message);
     } finally {
       setEliminando(false);
+    }
+  };
+
+  const manejarEliminarPlantillaGlobal = async () => {
+    if (!plantillaGlobalEliminar) {
+      setError('Selecciona una plantilla para eliminar.');
+      return;
+    }
+
+    try {
+      await eliminarPlantilla(plantillaGlobalEliminar);
+
+      setDialogoBorrarPlantillaAbierto(false);
+      setPlantillaGlobalEliminar('');
+
+      const nuevas = await obtenerPlantillas();
+      setPlantillas(Array.isArray(nuevas) ? nuevas : []);
+
+      await cargarVehiculos();
+
+      setError('');
+    } catch (err) {
+      setError('Error al eliminar plantilla: ' + err.message);
     }
   };
 
@@ -1913,6 +1938,14 @@ const PaginaVehiculos = () => {
                         }}
                       />
                     </Tooltip>
+                    <Tooltip content="Eliminar plantilla de revisión" relationship="label">
+                      <Button
+                        icon={<Delete24Regular />}
+                        appearance="subtle"
+                        style={{ color: tokens.colorPaletteRedForeground1 }}
+                        onClick={() => setDialogoBorrarPlantillaAbierto(true)}
+                      />
+                    </Tooltip>
                   </div>
                 </div>
                 {!editando && (
@@ -2015,6 +2048,70 @@ const PaginaVehiculos = () => {
         }}
         onCancelar={() => setConfirmacionPlantillaAbierta(false)}
       />
+
+      <Dialog
+        open={dialogoBorrarPlantillaAbierto}
+        onOpenChange={(_, datos) => {
+          if (!datos.open) {
+            setDialogoBorrarPlantillaAbierto(false);
+            setPlantillaGlobalEliminar('');
+          }
+        }}
+      >
+        <DialogSurface>
+          <DialogBody>
+            <DialogTitle>Eliminar plantilla de revisión</DialogTitle>
+
+            <DialogContent>
+              <div className={estilos.formulario}>
+                <Text>
+                  Selecciona la plantilla que quieres eliminar definitivamente de la aplicación.
+                </Text>
+
+                <Field label="Plantilla">
+                  <Select
+                    value={plantillaGlobalEliminar}
+                    onChange={(_, d) => setPlantillaGlobalEliminar(d.value)}
+                  >
+                    <option value="">Selecciona una plantilla...</option>
+                    {plantillas.map((p) => (
+                      <option key={p.id} value={p.id}>
+                        {p.nombre} {p.esItv ? '(ITV)' : ''}
+                      </option>
+                    ))}
+                  </Select>
+                </Field>
+
+                <MessageBar intent="warning">
+                  <MessageBarBody>
+                    Esta acción eliminará la plantilla de revisión de la aplicación. Los vehículos asociados perderán esa configuración automática.
+                  </MessageBarBody>
+                </MessageBar>
+              </div>
+            </DialogContent>
+
+            <DialogActions>
+              <Button
+                appearance="secondary"
+                onClick={() => {
+                  setDialogoBorrarPlantillaAbierto(false);
+                  setPlantillaGlobalEliminar('');
+                }}
+              >
+                Cancelar
+              </Button>
+
+              <Button
+                appearance="primary"
+                disabled={!plantillaGlobalEliminar}
+                onClick={manejarEliminarPlantillaGlobal}
+              >
+                Eliminar plantilla
+              </Button>
+            </DialogActions>
+          </DialogBody>
+        </DialogSurface>
+      </Dialog>
 
       <ModalGestionPlantilla
         abierto={dialogoPlantillaAbierto}
