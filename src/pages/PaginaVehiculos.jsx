@@ -736,6 +736,23 @@ const ModalDetallesVehiculo = ({ vehiculo: vehiculoBase, onCerrar, onVehiculoAct
                       <div><Text size={200} style={{ color: tokens.colorNeutralForeground3 }} block>Alimentación</Text><Text size={300} weight="semibold">{vehiculoCompleto.alimentacion}</Text></div>
                       <div><Text size={200} style={{ color: tokens.colorNeutralForeground3 }} block>Kilometraje</Text><Text size={300} weight="semibold">{vehiculoCompleto.kilometrosTotales.toLocaleString('es-ES')} km</Text></div>
                       <div><Text size={200} style={{ color: tokens.colorNeutralForeground3 }} block>Matriculación</Text><Text size={300} weight="semibold">{vehiculoCompleto.fechaMatriculacion ? new Date(vehiculoCompleto.fechaMatriculacion).toLocaleDateString('es-ES') : '—'}</Text></div>
+                      <div style={{ gridColumn: 'span 2' }}>
+                        <Text size={200} style={{ color: tokens.colorNeutralForeground3 }} block>Plantillas de revisión</Text>
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', marginTop: '4px' }}>
+                          {vehiculoCompleto.plantillas && vehiculoCompleto.plantillas.length > 0 ? (
+                            vehiculoCompleto.plantillas.map(pId => {
+                              const p = plantillas.find(x => String(x.id) === String(pId));
+                              return (
+                                <Badge key={pId} appearance="filled" color="brand">
+                                  {p ? `${p.nombre}${p.esItv ? ' (ITV)' : ''}` : `Plantilla ${pId}`}
+                                </Badge>
+                              );
+                            })
+                          ) : (
+                            <Text size={300} style={{ color: tokens.colorNeutralForeground4 }}>Sin plantillas asignadas (Manual)</Text>
+                          )}
+                        </div>
+                      </div>
                     </div>
                   )}
                   {tabActiva === 'finanzas' && (
@@ -1627,6 +1644,23 @@ const PaginaVehiculos = () => {
                     {obtenerFechaProximaItv(vehiculo)}
                   </div>
                 </div>
+                <div style={{ gridColumn: 'span 2' }}>
+                  <div className={estilos.datoEtiqueta}>Plantillas de revisión</div>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', marginTop: '4px' }}>
+                    {vehiculo.plantillas && vehiculo.plantillas.length > 0 ? (
+                      vehiculo.plantillas.map(pId => {
+                        const p = plantillas.find(x => String(x.id) === String(pId));
+                        return (
+                          <Badge key={pId} appearance="filled" color="brand">
+                            {p ? `${p.nombre}${p.esItv ? ' (ITV)' : ''}` : `Plantilla ${pId}`}
+                          </Badge>
+                        );
+                      })
+                    ) : (
+                      <span style={{ color: tokens.colorNeutralForeground4 }}>Sin plantillas</span>
+                    )}
+                  </div>
+                </div>
 
               </div>
             </div>
@@ -1766,15 +1800,47 @@ const PaginaVehiculos = () => {
 
                 <div className={estilos.filaFormulario}>
                   <Field label="Plantillas de Revisión" hint="Asigna una o varias plantillas al vehículo">
-                    <Select
-                      value={(vehiculoActual.plantillas && vehiculoActual.plantillas.length > 0) ? String(vehiculoActual.plantillas[0]) : ''}
-                      onChange={(_, d) => manejarCambio('plantillas', d.value ? [d.value] : [])}
-                    >
-                      <option value="">Sin plantilla (Manual)</option>
-                      {plantillas.map((p) => (
-                        <option key={p.id} value={p.id}>{p.nombre} {p.esItv ? '(ITV)' : ''}</option>
-                      ))}
-                    </Select>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: tokens.spacingVerticalS }}>
+                      <Select
+                        value=""
+                        onChange={(_, d) => {
+                          if (d.value) {
+                            const actuales = vehiculoActual.plantillas || [];
+                            if (!actuales.map(String).includes(String(d.value))) {
+                              manejarCambio('plantillas', [...actuales, d.value]);
+                            }
+                          }
+                        }}
+                      >
+                        <option value="">Seleccionar plantilla...</option>
+                        {plantillas.map((p) => (
+                          <option key={p.id} value={p.id}>{p.nombre} {p.esItv ? '(ITV)' : ''}</option>
+                        ))}
+                      </Select>
+                      {(vehiculoActual.plantillas && vehiculoActual.plantillas.length > 0) && (
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: tokens.spacingHorizontalS }}>
+                          {vehiculoActual.plantillas.map((pId) => {
+                            const p = plantillas.find(x => String(x.id) === String(pId));
+                            return (
+                              <Badge
+                                key={pId}
+                                appearance="filled"
+                                color="brand"
+                                style={{ paddingRight: tokens.spacingHorizontalS }}
+                                action={{
+                                  icon: <span style={{ cursor: 'pointer', marginLeft: tokens.spacingHorizontalXS }}>✕</span>,
+                                  onClick: () => {
+                                    manejarCambio('plantillas', (vehiculoActual.plantillas || []).filter(id => String(id) !== String(pId)));
+                                  }
+                                }}
+                              >
+                                {p ? `${p.nombre}${p.esItv ? ' (ITV)' : ''}` : `Plantilla ${pId}`}
+                              </Badge>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
                   </Field>
                   <div style={{ display: 'flex', alignItems: 'flex-end', gap: '8px', paddingBottom: '4px' }}>
                     <Tooltip content="Añadir nueva plantilla" relationship="label">
@@ -1785,30 +1851,6 @@ const PaginaVehiculos = () => {
                           setPlantillaEditar(null);
                           setDialogoPlantillaAbierto(true);
                         }}
-                      />
-                    </Tooltip>
-                    <Tooltip content="Editar plantilla seleccionada" relationship="label">
-                      <Button
-                        icon={<Edit24Regular />}
-                        appearance="subtle"
-                        disabled={!vehiculoActual.plantillas?.length}
-                        onClick={() => {
-                          const plantillaId = vehiculoActual.plantillas?.[0];
-                          const p = plantillas.find(x => String(x.id) === String(plantillaId));
-                          if (p) {
-                            setPlantillaEditar(p);
-                            setDialogoPlantillaAbierto(true);
-                          }
-                        }}
-                      />
-                    </Tooltip>
-                    <Tooltip content="Eliminar plantilla seleccionada" relationship="label">
-                      <Button
-                        icon={<Delete24Regular />}
-                        appearance="subtle"
-                        disabled={!vehiculoActual.plantillas?.length}
-                        style={{ color: vehiculoActual.plantillas?.length ? tokens.colorPaletteRedForeground1 : 'inherit' }}
-                        onClick={() => setConfirmacionPlantillaAbierta(true)}
                       />
                     </Tooltip>
                   </div>

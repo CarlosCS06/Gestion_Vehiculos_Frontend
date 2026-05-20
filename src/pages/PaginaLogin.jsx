@@ -90,9 +90,7 @@ const PaginaLogin = () => {
       navegar('/vehiculos');
     } catch (err) {
       if (err.message === 'NUEVO_USUARIO_SIN_PASSWORD') {
-        setError('¡Bienvenido! Es la primera vez que entras. Por favor, completa tu registro para establecer tu contraseña.');
-        // Opcionalmente podemos redirigir automáticamente después de unos segundos
-        setTimeout(() => navegar('/registro'), 3000);
+        setError('Tu cuenta no tiene contraseña. Por favor, contacta con un administrador para establecerla.');
       } else {
         setError(err.message);
       }
@@ -153,15 +151,6 @@ const PaginaLogin = () => {
             {cargando ? <Spinner size="tiny" /> : 'Entrar'}
           </Button>
         </form>
-
-        <div className={estilos.enlaceRegistro}>
-          <Text size={200}>
-            ¿Eres conductor y no tienes cuenta?{' '}
-            <Link to="/registro" className={estilos.enlace}>
-              Regístrate aquí
-            </Link>
-          </Text>
-        </div>
       </Card>
     </div>
   );

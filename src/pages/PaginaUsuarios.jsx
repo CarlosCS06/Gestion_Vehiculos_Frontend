@@ -52,6 +52,7 @@ import {
   validarTelefono,
   validarEmail,
 } from '../utils/validaciones.js';
+import { crearConductor } from '../services/servicioConductores.js';
 
 const useEstilos = makeStyles({
   pagina: {
@@ -283,6 +284,29 @@ const PaginaUsuarios = () => {
         );
       } else {
         const respuesta = await crearUsuario(usuarioActual);
+        
+        // Si el usuario creado es conductor ('user'), automáticamente creamos su perfil de conductor
+        if (usuarioActual.roles && usuarioActual.roles.includes('user')) {
+          const partesNombre = (usuarioActual.fullName || '').trim().split(' ');
+          const nombre = partesNombre[0] || 'Desconocido';
+          const apellidos = partesNombre.slice(1).join(' ') || ' ';
+          
+          try {
+            await crearConductor({
+              dni: usuarioActual.dni,
+              nombre: nombre,
+              apellidos: apellidos,
+              telefono: usuarioActual.telefono || '',
+              direccion: '',
+              fechaNacimiento: '',
+              vehiculo: [],
+            });
+          } catch (errorConductor) {
+            console.error("Error al crear perfil de conductor:", errorConductor);
+            // No bloqueamos la creación del usuario si falla el perfil de conductor, pero se podría manejar distinto
+          }
+        }
+
         setUsuarios((prev) => [...prev, respuesta]);
       }
     } catch (err) {

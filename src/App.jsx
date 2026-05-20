@@ -2,7 +2,6 @@ import { Routes, Route, Navigate } from 'react-router-dom';
 import LayoutPrincipal from './components/layout/LayoutPrincipal.jsx';
 import RutaProtegida from './components/layout/RutaProtegida.jsx';
 import PaginaLogin from './pages/PaginaLogin.jsx';
-import PaginaRegistro from './pages/PaginaRegistro.jsx';
 import PaginaVehiculos from './pages/PaginaVehiculos.jsx';
 import PaginaRevisiones from './pages/PaginaRevisiones.jsx';
 import PaginaConductores from './pages/PaginaConductores.jsx';
@@ -34,7 +33,6 @@ function App() {
       
       {/* Compatibilidad y registro */}
       <Route path="/login" element={<Navigate to="/" replace />} />
-      <Route path="/registro" element={<PaginaRegistro />} />
 
       {/* Rutas protegidas */}
       <Route
