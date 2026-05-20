@@ -1301,7 +1301,10 @@ const PaginaVehiculos = () => {
   };
 
   const abrirDialogoEditar = (vehiculo) => {
-    setVehiculoActual({ ...vehiculo });
+    setVehiculoActual({
+      ...vehiculo,
+      plantillasEliminar: [],
+    });
     setEditando(true);
     setDialogoAbierto(true);
   };
@@ -1374,7 +1377,7 @@ const PaginaVehiculos = () => {
         'proximaItv', 'foto', 'fotoHover', 'nuevo', 'idImagen', 'nombreImagen',
         'comunidadAutonomaId', 'comunidadAutonomaNombre', 'provinciaId', 'provinciaNombre',
         'municipioId', 'municipioNombre', 'carburanteId', 'carburanteNombre', 'precioCarburanteActual',
-        'imagenes', 'plantillas'
+        'imagenes','plantillas','plantillasEliminar'
       ];
 
       const vehiculoFiltrado = {};
@@ -1971,7 +1974,24 @@ const PaginaVehiculos = () => {
         titulo="Quitar plantilla del vehículo"
         mensaje="¿Estás seguro de que deseas quitar esta plantilla de este vehículo? La plantilla seguirá existiendo en la aplicación."
         onConfirmar={() => {
-          manejarCambio('plantillas', []);
+          const plantillaId = vehiculoActual.plantillas?.[0];
+
+          if (!plantillaId) {
+            setConfirmacionPlantillaAbierta(false);
+            return;
+          }
+
+          setVehiculoActual((prev) => ({
+            ...prev,
+            plantillas: (prev.plantillas || []).filter(
+              id => String(id) !== String(plantillaId)
+            ),
+            plantillasEliminar: [
+              ...(prev.plantillasEliminar || []),
+              plantillaId,
+            ],
+          }));
+
           setConfirmacionPlantillaAbierta(false);
         }}
         onCancelar={() => setConfirmacionPlantillaAbierta(false)}
