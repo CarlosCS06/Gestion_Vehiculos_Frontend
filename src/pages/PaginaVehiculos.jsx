@@ -1968,20 +1968,11 @@ const PaginaVehiculos = () => {
       )}
       <DialogoConfirmacion
         abierto={confirmacionPlantillaAbierta}
-        titulo="Eliminar plantilla"
-        mensaje="¿Estás seguro de que deseas eliminar esta plantilla de mantenimiento? Los vehículos asociados perderán su configuración automática."
-        onConfirmar={async () => {
-          try {
-            const plantillaId = vehiculoActual.plantillas?.[0];
-            await eliminarPlantilla(plantillaId);
-            setConfirmacionPlantillaAbierta(false);
-            manejarCambio('plantillas', (vehiculoActual.plantillas || []).filter(id => String(id) !== String(plantillaId)));
-            // Recargar plantillas
-            const nuevas = await obtenerPlantillas();
-            setPlantillas(Array.isArray(nuevas) ? nuevas : []);
-          } catch (err) {
-            setError('Error al eliminar plantilla: ' + err.message);
-          }
+        titulo="Quitar plantilla del vehículo"
+        mensaje="¿Estás seguro de que deseas quitar esta plantilla de este vehículo? La plantilla seguirá existiendo en la aplicación."
+        onConfirmar={() => {
+          manejarCambio('plantillas', []);
+          setConfirmacionPlantillaAbierta(false);
         }}
         onCancelar={() => setConfirmacionPlantillaAbierta(false)}
       />
