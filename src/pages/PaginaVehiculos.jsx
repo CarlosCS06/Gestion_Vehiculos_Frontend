@@ -1445,14 +1445,21 @@ const PaginaVehiculos = () => {
     try {
       await eliminarPlantilla(plantillaGlobalEliminar);
 
-      setDialogoBorrarPlantillaAbierto(false);
-      setPlantillaGlobalEliminar('');
-
       const nuevas = await obtenerPlantillas();
       setPlantillas(Array.isArray(nuevas) ? nuevas : []);
 
-      await cargarVehiculos();
+      setVehiculoActual((prev) => ({
+        ...prev,
+        plantillas: (prev.plantillas || []).filter(
+          (id) => String(id) !== String(plantillaGlobalEliminar)
+        ),
+        plantillasEliminar: (prev.plantillasEliminar || []).filter(
+          (id) => String(id) !== String(plantillaGlobalEliminar)
+        ),
+      }));
 
+      setDialogoBorrarPlantillaAbierto(false);
+      setPlantillaGlobalEliminar('');
       setError('');
     } catch (err) {
       setError('Error al eliminar plantilla: ' + err.message);

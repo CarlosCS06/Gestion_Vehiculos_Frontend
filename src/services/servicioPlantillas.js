@@ -255,13 +255,29 @@ export const actualizarPlantilla = async (id, plantilla) => {
 export const eliminarPlantilla = async (id) => {
   try {
     const token = sessionStorage.getItem('token');
-    await fetchWithLogging(`${API_URL}/${id}`, {
+
+    const response = await fetchWithLogging(`${API_URL}/${id}`, {
       method: 'DELETE',
       headers: {
-        'Authorization': `Bearer ${token}`
-      }
+        'Authorization': `Bearer ${token}`,
+      },
     });
-    return true;
+
+    if (response.status === 204) {
+      return true;
+    }
+
+    const texto = await response.text();
+
+    if (!texto) {
+      return true;
+    }
+
+    try {
+      return JSON.parse(texto);
+    } catch {
+      return true;
+    }
   } catch (error) {
     console.error(`Error eliminando plantilla ${id}:`, error);
     throw error;
