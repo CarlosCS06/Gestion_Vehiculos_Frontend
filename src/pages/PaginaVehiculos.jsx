@@ -1822,23 +1822,42 @@ const PaginaVehiculos = () => {
                           {vehiculoActual.plantillas.map((pId) => {
                             const p = plantillas.find(x => String(x.id) === String(pId));
                             return (
-                              <Badge
+                              <div
                                 key={pId}
-                                appearance="filled"
-                                color="brand"
-                                style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', paddingRight: '8px', paddingLeft: '8px', height: '24px' }}
+                                style={{
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  gap: '4px',
+                                  padding: '2px 8px',
+                                  borderRadius: '9999px',
+                                  backgroundColor: tokens.colorBrandBackground,
+                                  color: tokens.colorNeutralForegroundOnBrand,
+                                  fontSize: '12px',
+                                  fontWeight: '600',
+                                  height: '20px',
+                                  lineHeight: '20px'
+                                }}
                               >
                                 {p ? `${p.nombre}${p.esItv ? ' (ITV)' : ''}` : `Plantilla ${pId}`}
                                 <span
-                                  style={{ cursor: 'pointer', fontWeight: 'bold', marginLeft: '6px', fontSize: '12px', display: 'inline-flex', alignItems: 'center' }}
+                                  style={{
+                                    cursor: 'pointer',
+                                    fontWeight: 'bold',
+                                    marginLeft: '6px',
+                                    fontSize: '12px',
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    color: tokens.colorNeutralForegroundOnBrand
+                                  }}
                                   onClick={(e) => {
+                                    e.preventDefault();
                                     e.stopPropagation();
                                     manejarCambio('plantillas', (vehiculoActual.plantillas || []).filter(id => String(id) !== String(pId)));
                                   }}
                                 >
                                   ✕
                                 </span>
-                              </Badge>
+                              </div>
                             );
                           })}
                         </div>

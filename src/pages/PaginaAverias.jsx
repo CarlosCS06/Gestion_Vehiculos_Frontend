@@ -748,27 +748,46 @@ const PaginaAverias = () => {
                             if (!mat) return null;
                             const vehiculo = listaVehiculos.find(v => v.matricula?.trim().toUpperCase() === mat.toUpperCase());
                             return (
-                              <Badge
-                                key={mat}
-                                appearance="filled"
-                                color="brand"
-                                style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', paddingRight: '8px', paddingLeft: '8px', height: '24px' }}
-                              >
-                                {vehiculo ? `${mat} - ${vehiculo.marca} ${vehiculo.modelo}` : mat}
-                                <span
-                                  style={{ cursor: 'pointer', fontWeight: 'bold', marginLeft: '6px', fontSize: '12px', display: 'inline-flex', alignItems: 'center' }}
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    const actualizado = vehiculosTexto.split(',')
-                                      .map(v => v.trim())
-                                      .filter(v => v !== mat)
-                                      .join(', ');
-                                    setVehiculosTexto(actualizado);
-                                  }}
-                                >
-                                  ✕
-                                </span>
-                              </Badge>
+                               <div
+                                 key={mat}
+                                 style={{
+                                   display: 'inline-flex',
+                                   alignItems: 'center',
+                                   gap: '4px',
+                                   padding: '2px 8px',
+                                   borderRadius: '9999px',
+                                   backgroundColor: tokens.colorBrandBackground,
+                                   color: tokens.colorNeutralForegroundOnBrand,
+                                   fontSize: '12px',
+                                   fontWeight: '600',
+                                   height: '20px',
+                                   lineHeight: '20px'
+                                 }}
+                               >
+                                 {vehiculo ? `${mat} - ${vehiculo.marca} ${vehiculo.modelo}` : mat}
+                                 <span
+                                   style={{
+                                     cursor: 'pointer',
+                                     fontWeight: 'bold',
+                                     marginLeft: '6px',
+                                     fontSize: '12px',
+                                     display: 'inline-flex',
+                                     alignItems: 'center',
+                                     color: tokens.colorNeutralForegroundOnBrand
+                                   }}
+                                   onClick={(e) => {
+                                     e.preventDefault();
+                                     e.stopPropagation();
+                                     const actualizado = vehiculosTexto.split(',')
+                                       .map(v => v.trim())
+                                       .filter(v => v !== mat)
+                                       .join(', ');
+                                     setVehiculosTexto(actualizado);
+                                   }}
+                                 >
+                                   ✕
+                                 </span>
+                               </div>
                             );
                           }).filter(Boolean)}
                         </div>
