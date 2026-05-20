@@ -1294,6 +1294,11 @@ const PaginaVehiculos = () => {
     averiados: vehiculosConEstado.filter((v) => v.estado === ESTADO_VEHICULO.AVERIADO).length,
   };
 
+  const obtenerIdPlantilla = (plantilla) => {
+    if (!plantilla) return null;
+    return typeof plantilla === 'object' ? plantilla.id : plantilla;
+  };
+
   const abrirDialogoCrear = () => {
     setVehiculoActual(crearVehiculoVacio());
     setEditando(false);
@@ -1303,8 +1308,12 @@ const PaginaVehiculos = () => {
   const abrirDialogoEditar = (vehiculo) => {
     setVehiculoActual({
       ...vehiculo,
+      plantillas: (vehiculo.plantillas || [])
+        .map(obtenerIdPlantilla)
+        .filter(Boolean),
       plantillasEliminar: [],
     });
+
     setEditando(true);
     setDialogoAbierto(true);
   };
@@ -1394,6 +1403,7 @@ const PaginaVehiculos = () => {
       }
 
       setArchivoFoto(null);
+      setVehiculoEnDetalle(null);
       await cargarVehiculos(true);
       obtenerPlantillas().then(setPlantillas).catch(console.error);
       setError('');
@@ -1974,7 +1984,7 @@ const PaginaVehiculos = () => {
         titulo="Quitar plantilla del vehículo"
         mensaje="¿Estás seguro de que deseas quitar esta plantilla de este vehículo? La plantilla seguirá existiendo en la aplicación."
         onConfirmar={() => {
-          const plantillaId = vehiculoActual.plantillas?.[0];
+          const plantillaId = obtenerIdPlantilla(vehiculoActual.plantillas?.[0]);
 
           if (!plantillaId) {
             setConfirmacionPlantillaAbierta(false);
@@ -1984,11 +1994,13 @@ const PaginaVehiculos = () => {
           setVehiculoActual((prev) => ({
             ...prev,
             plantillas: (prev.plantillas || []).filter(
-              id => String(id) !== String(plantillaId)
+              id => String(obtenerIdPlantilla(id)) !== String(plantillaId)
             ),
             plantillasEliminar: [
-              ...(prev.plantillasEliminar || []),
-              plantillaId,
+              ...new Set([
+                ...(prev.plantillasEliminar || []).map(String),
+                String(plantillaId),
+              ]),
             ],
           }));
 
