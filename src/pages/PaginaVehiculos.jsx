@@ -1446,9 +1446,6 @@ const PaginaVehiculos = () => {
     try {
       await eliminarPlantilla(plantillaGlobalEliminar);
 
-      const nuevas = await obtenerPlantillas();
-      setPlantillas(Array.isArray(nuevas) ? nuevas : []);
-
       setVehiculoActual((prev) => ({
         ...prev,
         plantillas: (prev.plantillas || []).filter(
@@ -1458,6 +1455,9 @@ const PaginaVehiculos = () => {
           (id) => String(id) !== String(plantillaGlobalEliminar)
         ),
       }));
+
+      const nuevas = await obtenerPlantillas();
+      setPlantillas(Array.isArray(nuevas) ? nuevas : []);
 
       setDialogoBorrarPlantillaAbierto(false);
       setPlantillaGlobalEliminar('');
@@ -2131,7 +2131,27 @@ const PaginaVehiculos = () => {
               await actualizarPlantilla(plantillaEditar.id, datos);
             } else {
               const nueva = await crearPlantilla(datos);
-              manejarCambio('plantillas', [nueva.id]);
+
+              setVehiculoActual((prev) => {
+                
+                const actuales = Array.isArray(prev.plantillas)
+                  ? prev.plantillas
+                      .map((p) => (typeof p === 'object' ? p.id : p))
+                      .filter(Boolean)
+                  : [];
+
+                const nuevaId = String(nueva.id);
+
+                return {
+                  ...prev,
+                  plantillas: actuales.map(String).includes(nuevaId)
+                    ? actuales
+                    : [...actuales, nuevaId],
+                  plantillasEliminar: (prev.plantillasEliminar || []).filter(
+                    (id) => String(id) !== nuevaId
+                  ),
+                };
+              });
             }
             const nuevas = await obtenerPlantillas();
             setPlantillas(Array.isArray(nuevas) ? nuevas : []);
