@@ -1737,7 +1737,7 @@ const PaginaVehiculos = () => {
                         label={vehiculoActual.tipoGastoVehiculo === 'PORCENTAJE'? esVehiculoElectrico ? '% de la batería': '% del tanque': unidadEnergia}
                       />
                     </div>
-                    <Field label={vehiculoActual.tipoGastoVehiculo === 'PORCENTAJE' ? 'Gasto de vehículo (%)' : 'Gasto de vehículo (L)'}>
+                    <Field label={vehiculoActual.tipoGastoVehiculo === 'PORCENTAJE' ? 'Gasto de vehículo (%)' : (esVehiculoElectrico ? 'Gasto de vehículo (kWh)' : 'Gasto de vehículo (L)')}>
                       <Input
                         type="number"
                         step="0.01"

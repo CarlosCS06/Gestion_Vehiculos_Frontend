@@ -1,7 +1,10 @@
 const API_CARBURANTES = 'https://sedeaplicaciones.minetur.gob.es/ServiciosRESTCarburantes/PreciosCarburantes';
+const CORS_PROXY = 'https://api.allorigins.win/raw?url=';
 
 const obtenerJsonCarburantes = async (endpoint) => {
-  const response = await fetch(`${API_CARBURANTES}/${endpoint}`);
+  const urlCompleta = `${API_CARBURANTES}/${endpoint}`;
+  // Usamos un proxy público para saltarnos la restricción de CORS al estar desplegado
+  const response = await fetch(`${CORS_PROXY}${encodeURIComponent(urlCompleta)}`);
 
   if (!response.ok) {
     throw new Error('Error al consultar la API de carburantes');
