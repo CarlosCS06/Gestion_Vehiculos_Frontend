@@ -4,7 +4,7 @@ import { fetchWithLogging } from './apiUtils.js';
 const API_BASE = import.meta.env.VITE_API_URL || 'https://gestion-vehiculos-backend.vercel.app/api';
 
 const obtenerJsonCarburantes = async (endpoint) => {
-  const urlCompleta = `${API_BASE}/carburantes/${endpoint}`;
+  const urlCompleta = `${API_BASE}/${endpoint}`;
   
   const response = await fetchWithLogging(urlCompleta, {
     method: 'GET',
