@@ -1,4 +1,4 @@
-const API_CARBURANTES = 'https://sedeaplicaciones.minetur.gob.es/ServiciosRESTCarburantes/PreciosCarburantes';
+const API_CARBURANTES = 'https://gestion-vehiculos-backend.vercel.app/api';
 const CORS_PROXY = 'https://api.allorigins.win/raw?url=';
 
 const obtenerJsonCarburantes = async (endpoint) => {
@@ -14,19 +14,19 @@ const obtenerJsonCarburantes = async (endpoint) => {
 };
 
 export const obtenerComunidadesAutonomas = async () => {
-  return obtenerJsonCarburantes('Listados/ComunidadesAutonomas/');
+  return obtenerJsonCarburantes('ccaa');
 };
 
 export const obtenerProvinciasPorComunidad = async (idComunidad) => {
-  return obtenerJsonCarburantes(`Listados/ProvinciasPorComunidad/${idComunidad}`);
+  return obtenerJsonCarburantes(`provincias/filtro_ccaa/${idComunidad}`);
 };
 
 export const obtenerMunicipiosPorProvincia = async (idProvincia) => {
-  return obtenerJsonCarburantes(`Listados/MunicipiosPorProvincia/${idProvincia}`);
+  return obtenerJsonCarburantes(`municipios/filtro_provincia/${idProvincia}`);
 };
 
 export const obtenerProductosPetroliferos = async () => {
-  return obtenerJsonCarburantes('Listados/ProductosPetroliferos/');
+  return obtenerJsonCarburantes('carburantes');
 };
 
 /**
