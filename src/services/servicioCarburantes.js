@@ -1,5 +1,4 @@
 const API_CARBURANTES = 'https://gestion-vehiculos-backend.vercel.app/api';
-const CORS_PROXY = 'https://api.allorigins.win/raw?url=';
 
 const obtenerJsonCarburantes = async (endpoint) => {
   const urlCompleta = `${API_CARBURANTES}/${endpoint}`;
