@@ -1,9 +1,14 @@
 const API_CARBURANTES = 'https://gestion-vehiculos-backend.vercel.app/api';
+const CORS_PROXY = 'https://api.allorigins.win/raw?url=';
 
 const obtenerJsonCarburantes = async (endpoint) => {
   const urlCompleta = `${API_CARBURANTES}/${endpoint}`;
   // Usamos un proxy público para saltarnos la restricción de CORS al estar desplegado
-  const response = await fetch(`${CORS_PROXY}${encodeURIComponent(urlCompleta)}`);
+  const response = await fetchWithLogging(`${API_CARBURANTES}/${endpoint}`, {
+      method: 'GET',
+      headers: { 'Content-Type': 'application/json' },
+    });
+
 
   if (!response.ok) {
     throw new Error('Error al consultar la API de carburantes');
