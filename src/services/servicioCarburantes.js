@@ -1,18 +1,15 @@
-const API_CARBURANTES = 'https://gestion-vehiculos-backend.vercel.app/api';
-const CORS_PROXY = 'https://api.allorigins.win/raw?url=';
+
+import { fetchWithLogging } from './apiUtils.js';
+
+const API_BASE = import.meta.env.VITE_API_URL || 'https://gestion-vehiculos-backend.vercel.app/api';
 
 const obtenerJsonCarburantes = async (endpoint) => {
-  const urlCompleta = `${API_CARBURANTES}/${endpoint}`;
-  // Usamos un proxy público para saltarnos la restricción de CORS al estar desplegado
-  const response = await fetchWithLogging(`${API_CARBURANTES}/${endpoint}`, {
-      method: 'GET',
-      headers: { 'Content-Type': 'application/json' },
-    });
-
-
-  if (!response.ok) {
-    throw new Error('Error al consultar la API de carburantes');
-  }
+  const urlCompleta = `${API_BASE}/carburantes/${endpoint}`;
+  
+  const response = await fetchWithLogging(urlCompleta, {
+    method: 'GET',
+    headers: { 'Content-Type': 'application/json' },
+  });
 
   return response.json();
 };
@@ -40,8 +37,7 @@ export const obtenerProductosPetroliferos = async () => {
 export const obtenerEstacionesPorFiltros = async (filtros) => {
   const { idComunidad, idProvincia, idMunicipio, idProducto, matriculaVehiculo } = filtros;
 
-  // URL de vuestro backend
-  const API_BACKEND = (import.meta.env.VITE_API_URL || 'https://gestion-vehiculos-backend.vercel.app/api') + '/estaciones';
+  const urlCompleta = `${API_BASE}/estaciones`;
 
   const payload = {
     matriculaVehiculo: matriculaVehiculo || null,
@@ -51,21 +47,13 @@ export const obtenerEstacionesPorFiltros = async (filtros) => {
     idProducto: String(idProducto), // El backend lo espera como string obligatorio
   };
 
-  const token = sessionStorage.getItem('token');
-
-  const response = await fetch(API_BACKEND, {
+  const response = await fetchWithLogging(urlCompleta, {
     method: 'POST',
     headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${token}`
+      'Content-Type': 'application/json'
     },
     body: JSON.stringify(payload),
   });
-
-  if (!response.ok) {
-    const errorData = await response.json().catch(() => ({}));
-    throw new Error(errorData.error || 'Error al obtener datos de carburantes del backend');
-  }
 
   // Devuelve la estructura ESTACIONES_PROCESADAS
   return response.json();
