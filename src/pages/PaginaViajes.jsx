@@ -255,7 +255,7 @@ const columnas = [
   { nombre: 'Llegada', campo: 'fechaLlegada' },
   { nombre: 'Trayectos', campo: 'numTrayectos' },
   { nombre: 'Km totales', campo: 'kmTotales' },
-  { nombre: 'Gasto total', campo: 'gastoTotal' },
+  //{ nombre: 'Gasto total', campo: 'gastoTotal' },
   { nombre: 'Estado', campo: 'estado' },
   { nombre: 'Acciones', campo: 'acciones' },
 ];
