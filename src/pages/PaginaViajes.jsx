@@ -929,7 +929,7 @@ const manejarGuardar = async () => {
                       <Badge appearance="outline" color="informative">{viaje.trayectos.length}</Badge>
                     </TableCell>
                     <TableCell>{kmTotales.toLocaleString('es-ES')} km</TableCell>
-                    <TableCell>{gastoTotal.toFixed(2)} €</TableCell>
+                    {/* <TableCell>{gastoTotal.toFixed(2)} €</TableCell> */}
                     <TableCell>{obtenerBadgeEstadoViaje(viaje.estado)}</TableCell>
                     <TableCell>
                       {esAdmin ? (
@@ -1106,7 +1106,7 @@ const manejarGuardar = async () => {
                   </div>
                   <div>
                     <div className={estilos.datoEtiqueta}>Gasto</div>
-                    <div className={estilos.datoValor}>{gastoTotal.toFixed(2)} €</div>
+                    {/*<div className={estilos.datoValor}>{gastoTotal.toFixed(2)} €</div>*/}
                   </div>
                   <div style={{ gridColumn: 'span 2' }}>
                     <div className={estilos.datoEtiqueta}>Conductor</div>
@@ -1323,7 +1323,7 @@ const manejarGuardar = async () => {
                       onChange={(_, d) => { manejarCambioViaje('fechaLlegada', d.value); setErroresValidacion(prev => ({ ...prev, fechaLlegada: undefined })); }}
                     />
                   </Field>
-                  <Field label="Gasto gasolina total (€)">
+                  {/*<Field label="Gasto gasolina total (€)">
                     <Input
                       type="number"
                       step="0.01"
@@ -1331,7 +1331,7 @@ const manejarGuardar = async () => {
                       onChange={(_, d) => manejarCambioViaje('gastoGasolina', Number(d.value))}
                       placeholder="0.00"
                     />
-                  </Field>
+                  </Field>*/}
                 </div>
 
                 {viajeActual.kmSalida !== '' && viajeActual.kmLlegada !== '' && (
