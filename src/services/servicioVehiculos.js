@@ -82,7 +82,7 @@ export const crearVehiculo = async (vehiculo) => {
 
   // Normalizar para el backend (Prisma schema)
   const normalizedVehiculo = {
-    matricula: vehiculo.matricula,
+    matricula: vehiculo.matricula.toUpperCase().trim(),
     marca: vehiculo.marca,
     modelo: vehiculo.modelo,
     fechaCompra: vehiculo.fechaCompra ? new Date(vehiculo.fechaCompra).toISOString() : new Date().toISOString(),
